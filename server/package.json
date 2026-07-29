@@ -5,7 +5,10 @@
   "main": "server.js",
   "scripts": {
     "dev": "nodemon src/server.js",
-    "start": "node src/server.js"
+    "start": "node src/server.js",
+    "prepare": "husky",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "keywords": [],
   "type": "module",
@@ -27,9 +30,24 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "nodemon": "^3.1.14"
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.8.0",
+    "globals": "^17.8.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.2.0",
+    "nodemon": "^3.1.14",
+    "prettier": "^3.9.6"
   },
   "allowScripts": {
     "bcrypt@6.0.0": true
+  },
+  "lint-staged": {
+    "*.js": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md}": [
+      "prettier --write"
+    ]
   }
 }
