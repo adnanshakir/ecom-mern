@@ -3,6 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
+import authRoutes from "./routes/auth.routes.js";
 
 import { errorHandler, notFound } from './middleware/error.middleware.js';
 
@@ -32,5 +33,7 @@ app.get('/health', (req, res) => {
 
 app.use(notFound);
 app.use(errorHandler);
+
+app.use("/api/auth", authRoutes);
 
 export default app;
