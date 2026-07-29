@@ -15,7 +15,11 @@ const imageSchema = z.object({
 // so it's intentionally not part of this schema.
 
 export const createBrandSchema = z.object({
-  name: z.string().trim().min(2, "Brand name must be at least 2 characters").max(100, "Brand name cannot exceed 100 characters"),
+  name: z
+    .string()
+    .trim()
+    .min(2, "Brand name must be at least 2 characters")
+    .max(100, "Brand name cannot exceed 100 characters"),
 
   logo: z.string().url("Invalid logo URL").optional(),
 
@@ -28,7 +32,11 @@ export const updateBrandSchema = createBrandSchema.partial();
 // Note: slug is auto-generated server-side from `name`, same as Brand.
 
 export const createCategorySchema = z.object({
-  name: z.string().trim().min(2, "Category name must be at least 2 characters").max(100, "Category name cannot exceed 100 characters"),
+  name: z
+    .string()
+    .trim()
+    .min(2, "Category name must be at least 2 characters")
+    .max(100, "Category name cannot exceed 100 characters"),
 
   parent: objectId.nullable().optional(),
 
@@ -36,31 +44,6 @@ export const createCategorySchema = z.object({
 });
 
 export const updateCategorySchema = createCategorySchema.partial();
-
-// ------- Product --------
-// Note: slug is auto-generated server-side from `name`, same as Brand/Category.
-
-export const createProductSchema = z.object({
-  name: z.string().trim().min(2, "Product name must be at least 2 characters").max(200, "Product name cannot exceed 200 characters"),
-
-  description: z.string().trim().optional(),
-
-  category: objectId,
-
-  brand: objectId,
-
-  status: z.enum(["draft", "active", "archived"]).optional(),
-
-  featured: z.boolean().optional(),
-
-  images: z.array(imageSchema).optional(),
-
-  seoTitle: z.string().trim().max(60).optional(),
-
-  seoDescription: z.string().trim().max(160).optional(),
-});
-
-export const updateProductSchema = createProductSchema.partial();
 
 // --------- Product Variant ---------
 
@@ -78,7 +61,7 @@ const baseVariantSchema = z.object({
       z.object({
         name: z.string().trim().min(1, "Option name is required"),
         value: z.string().trim().min(1, "Option value is required"),
-      }),
+      })
     )
     .optional(),
 
@@ -114,6 +97,12 @@ const baseVariantSchema = z.object({
   isActive: z.boolean().optional(),
 });
 
+// Used when creating a product with nested variants.
+// Product ID doesn't exist yet, so omit it.
+const nestedVariantSchema = baseVariantSchema.omit({
+  product: true,
+});
+
 // shared check: salePrice, if present, must not exceed price
 const salePriceCheck = (data) => !data.salePrice || data.salePrice <= data.price;
 const salePriceCheckOptions = {
@@ -129,3 +118,36 @@ export const updateVariantSchema = baseVariantSchema
   .omit({ product: true })
   .partial()
   .refine(salePriceCheck, salePriceCheckOptions);
+
+// ------- Product --------
+// Note: slug is auto-generated server-side from `name`, same as Brand/Category.
+
+export const createProductSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(2, "Product name must be at least 2 characters")
+    .max(200, "Product name cannot exceed 200 characters"),
+
+  description: z.string().trim().optional(),
+
+  category: objectId,
+
+  brand: objectId,
+
+  status: z.enum(["draft", "active", "archived"]).optional(),
+
+  featured: z.boolean().optional(),
+
+  images: z.array(imageSchema).optional(),
+
+  seoTitle: z.string().trim().max(60).optional(),
+
+  seoDescription: z.string().trim().max(160).optional(),
+
+  variants: z
+    .array(nestedVariantSchema)
+    .min(1, "At least one variant is required"),
+});
+
+export const updateProductSchema = createProductSchema.partial();

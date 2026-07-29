@@ -15,10 +15,6 @@ export const createProduct = async (req, res, next) => {
   try {
     const { variants, ...productData } = req.body;
 
-    if (!variants || variants.length === 0) {
-      throw new ApiError(400, "At least one variant is required");
-    }
-
     const categoryExists = await Category.findById(productData.category);
     if (!categoryExists) throw new ApiError(400, "Category not found");
 
