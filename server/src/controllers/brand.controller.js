@@ -1,6 +1,7 @@
 import Brand from "../models/brand.model.js";
 import ApiError from "../utils/apiError.js";
 import { generateUniqueSlug } from "../utils/slugify.js";
+import Product from "../models/product.model.js";
 
 export const createBrand = async (req, res, next) => {
   try {
@@ -59,6 +60,11 @@ export const updateBrand = async (req, res, next) => {
 
 export const deleteBrand = async (req, res, next) => {
   try {
+    const inUse = await Product.exists({ brand: req.params.id });
+    if (inUse) {
+      throw new ApiError(400, "Cannot delete a brand that has products assigned to it");
+    }
+
     const brand = await Brand.findByIdAndDelete(req.params.id);
     if (!brand) throw new ApiError(404, "Brand not found");
 

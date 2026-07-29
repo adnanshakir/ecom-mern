@@ -4,6 +4,9 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
 import authRoutes from "./routes/auth.routes.js";
+import brandRoutes from "./routes/brand.routes.js";
+import categoryRoutes from "./routes/category.routes.js";
+import productRoutes from "./routes/product.routes.js";
 
 import { errorHandler, notFound } from './middleware/error.middleware.js';
 
@@ -31,6 +34,10 @@ app.get('/health', (req, res) => {
 
 // Routes go here
 app.use("/api/auth", authRoutes);
+app.use("/api/brands", brandRoutes);
+app.use("/api/categories", categoryRoutes);
+app.use("/api/products", productRoutes);
+
 
 app.use(notFound);
 app.use(errorHandler);

@@ -1,6 +1,7 @@
 import Category from "../models/category.model.js";
 import ApiError from "../utils/apiError.js";
 import { generateUniqueSlug } from "../utils/slugify.js";
+import Product from "../models/product.model.js";
 
 export const createCategory = async (req, res, next) => {
   try {
@@ -74,6 +75,11 @@ export const deleteCategory = async (req, res, next) => {
     const hasChildren = await Category.exists({ parent: req.params.id });
     if (hasChildren) {
       throw new ApiError(400, "Cannot delete a category that has subcategories");
+    }
+
+    const inUse = await Product.exists({ category: req.params.id });
+    if (inUse) {
+      throw new ApiError(400, "Cannot delete a category that has products assigned to it");
     }
 
     const category = await Category.findByIdAndDelete(req.params.id);
