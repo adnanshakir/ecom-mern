@@ -11,6 +11,8 @@ const imageSchema = z.object({
 });
 
 // ------ Brand ------
+// Note: slug is auto-generated server-side from `name` in the controller,
+// so it's intentionally not part of this schema.
 
 export const createBrandSchema = z.object({
   name: z.string().trim().min(2, "Brand name must be at least 2 characters").max(100, "Brand name cannot exceed 100 characters"),
@@ -23,6 +25,7 @@ export const createBrandSchema = z.object({
 export const updateBrandSchema = createBrandSchema.partial();
 
 // ------- Category -------
+// Note: slug is auto-generated server-side from `name`, same as Brand.
 
 export const createCategorySchema = z.object({
   name: z.string().trim().min(2, "Category name must be at least 2 characters").max(100, "Category name cannot exceed 100 characters"),
@@ -35,6 +38,7 @@ export const createCategorySchema = z.object({
 export const updateCategorySchema = createCategorySchema.partial();
 
 // ------- Product --------
+// Note: slug is auto-generated server-side from `name`, same as Brand/Category.
 
 export const createProductSchema = z.object({
   name: z.string().trim().min(2, "Product name must be at least 2 characters").max(200, "Product name cannot exceed 200 characters"),
@@ -60,7 +64,9 @@ export const updateProductSchema = createProductSchema.partial();
 
 // --------- Product Variant ---------
 
-export const createVariantSchema = z.object({
+// base schema kept separate (no refine) so both create and update
+// can independently apply .partial() / .omit() before adding refine checks
+const baseVariantSchema = z.object({
   product: objectId,
 
   sku: z.string().trim().min(1, "SKU is required").max(100),
@@ -108,4 +114,18 @@ export const createVariantSchema = z.object({
   isActive: z.boolean().optional(),
 });
 
-export const updateVariantSchema = createVariantSchema.partial();
+// shared check: salePrice, if present, must not exceed price
+const salePriceCheck = (data) => !data.salePrice || data.salePrice <= data.price;
+const salePriceCheckOptions = {
+  message: "Sale price cannot be greater than price",
+  path: ["salePrice"],
+};
+
+export const createVariantSchema = baseVariantSchema.refine(salePriceCheck, salePriceCheckOptions);
+
+// `product` is deliberately excluded from updates — a variant shouldn't be
+// reassignable to a different product through an edit request
+export const updateVariantSchema = baseVariantSchema
+  .omit({ product: true })
+  .partial()
+  .refine(salePriceCheck, salePriceCheckOptions);
