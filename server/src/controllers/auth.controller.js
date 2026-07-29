@@ -1,7 +1,7 @@
 import User from "../models/user.model.js";
 import RefreshToken from "../models/refreshToken.model.js";
 import { generateAccessToken, generateRefreshToken } from "../utils/token.utils.js";
-import ApiError from "../utils/apiError.js";
+import ApiError from "../utils/apiError.utils.js";
 import { config } from "../config/config.js";
 
 const getRefreshTokenExpiryDate = () => {

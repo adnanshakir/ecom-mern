@@ -1,6 +1,6 @@
 import jwt from "jsonwebtoken";
 import { config } from "../config/config.js";
-import ApiError from "../utils/apiError.js";
+import ApiError from "../utils/apiError.utils.js";
 
 export const authenticate = (req, res, next) => {
   try {
