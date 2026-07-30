@@ -8,6 +8,7 @@ import brandRoutes from "./routes/brand.routes.js";
 import categoryRoutes from "./routes/category.routes.js";
 import productRoutes from "./routes/product.routes.js";
 import dashboardRoutes from "./routes/dashboard.routes.js";
+import imageRoutes from "./routes/image.routes.js";
 
 import { errorHandler, notFound } from './middleware/error.middleware.js';
 
@@ -39,6 +40,7 @@ app.use("/api/brands", brandRoutes);
 app.use("/api/categories", categoryRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/images", imageRoutes);
 
 
 app.use(notFound);

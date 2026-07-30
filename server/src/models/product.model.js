@@ -39,7 +39,8 @@ const productSchema = new mongoose.Schema(
     },
     images: [
       {
-        url: { type: String, required: true }, // ImageKit URL
+        url: { type: String, required: true }, // ImageKit's URL of the uploaded image
+        fileId: { type: String, required: true }, // ImageKit's internal reference, needed to delete the file later
         altText: { type: String, default: "" },
         position: { type: Number, default: 0 },
       },

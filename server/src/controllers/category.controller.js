@@ -2,6 +2,7 @@ import Category from "../models/category.model.js";
 import ApiError from "../utils/apiError.utils.js";
 import { generateUniqueSlug } from "../utils/slugify.js";
 import Product from "../models/product.model.js";
+import { logActivity } from "../utils/activityLogger.js";
 
 export const createCategory = async (req, res, next) => {
   try {
@@ -15,6 +16,14 @@ export const createCategory = async (req, res, next) => {
     const slug = await generateUniqueSlug(Category, name);
 
     const category = await Category.create({ name, slug, parent: parent || null, isActive });
+
+    await logActivity({
+      userId: req.user.id,
+      action: "create",
+      resource: "Category",
+      resourceId: category._id,
+      description: `Created category: ${category.name}`,
+    });
 
     res.status(201).json({ success: true, data: category });
   } catch (err) {
@@ -64,6 +73,14 @@ export const updateCategory = async (req, res, next) => {
     });
     if (!category) throw new ApiError(404, "Category not found");
 
+    await logActivity({
+      userId: req.user.id,
+      action: "update",
+      resource: "Category",
+      resourceId: category._id,
+      description: `Updated category: ${category.name}`,
+    });
+
     res.status(200).json({ success: true, data: category });
   } catch (err) {
     next(err);
@@ -82,8 +99,18 @@ export const deleteCategory = async (req, res, next) => {
       throw new ApiError(400, "Cannot delete a category that has products assigned to it");
     }
 
-    const category = await Category.findByIdAndDelete(req.params.id);
-    if (!category) throw new ApiError(404, "Category not found");
+    const categoryToDelete = await Category.findById(req.params.id);
+    if (!categoryToDelete) throw new ApiError(404, "Category not found");
+
+    await Category.findByIdAndDelete(req.params.id);
+
+    await logActivity({
+      userId: req.user.id,
+      action: "delete",
+      resource: "Category",
+      resourceId: categoryToDelete._id,
+      description: `Deleted category: ${categoryToDelete.name}`,
+    });
 
     res.status(200).json({ success: true, message: "Category deleted" });
   } catch (err) {

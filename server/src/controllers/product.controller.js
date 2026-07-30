@@ -30,6 +30,14 @@ export const createProduct = async (req, res, next) => {
 
     await session.commitTransaction();
 
+    await logActivity({
+      userId: req.user.id,
+      action: "create",
+      resource: "Product",
+      resourceId: product._id,
+      description: `Created product: ${product.name} (${createdVariants.length} variant${createdVariants.length > 1 ? "s" : ""})`,
+    });
+
     res.status(201).json({
       success: true,
       data: { ...product.toObject(), variants: createdVariants },
@@ -127,6 +135,14 @@ export const updateProduct = async (req, res, next) => {
     });
     if (!product) throw new ApiError(404, "Product not found");
 
+    await logActivity({
+      userId: req.user.id,
+      action: "update",
+      resource: "Product",
+      resourceId: product._id,
+      description: `Updated product: ${product.name}`,
+    });
+
     res.status(200).json({ success: true, data: product });
   } catch (err) {
     next(err);
@@ -145,6 +161,15 @@ export const deleteProduct = async (req, res, next) => {
     await ProductVariant.deleteMany({ product: product._id }, { session });
 
     await session.commitTransaction();
+
+    await logActivity({
+      userId: req.user.id,
+      action: "delete",
+      resource: "Product",
+      resourceId: product._id,
+      description: `Deleted product: ${product.name}`,
+    });
+    
     res.status(200).json({ success: true, message: "Product and its variants deleted" });
   } catch (err) {
     await session.abortTransaction();

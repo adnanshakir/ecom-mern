@@ -2,6 +2,7 @@ import Brand from "../models/brand.model.js";
 import ApiError from "../utils/apiError.utils.js";
 import { generateUniqueSlug } from "../utils/slugify.js";
 import Product from "../models/product.model.js";
+import { logActivity } from "../utils/activityLogger.js";
 
 export const createBrand = async (req, res, next) => {
   try {
@@ -10,6 +11,14 @@ export const createBrand = async (req, res, next) => {
     const slug = await generateUniqueSlug(Brand, name);
 
     const brand = await Brand.create({ name, slug, logo, isActive });
+
+    await logActivity({
+      userId: req.user.id,
+      action: "create",
+      resource: "Brand",
+      resourceId: brand._id,
+      description: `Created brand: ${brand.name}`,
+    });
 
     res.status(201).json({ success: true, data: brand });
   } catch (err) {
@@ -52,6 +61,14 @@ export const updateBrand = async (req, res, next) => {
     });
     if (!brand) throw new ApiError(404, "Brand not found");
 
+    await logActivity({
+      userId: req.user.id,
+      action: "update",
+      resource: "Brand",
+      resourceId: brand._id,
+      description: `Updated brand: ${brand.name}`,
+    });
+
     res.status(200).json({ success: true, data: brand });
   } catch (err) {
     next(err);
@@ -67,6 +84,14 @@ export const deleteBrand = async (req, res, next) => {
 
     const brand = await Brand.findByIdAndDelete(req.params.id);
     if (!brand) throw new ApiError(404, "Brand not found");
+
+    await logActivity({
+      userId: req.user.id,
+      action: "delete",
+      resource: "Brand",
+      resourceId: brand._id,
+      description: `Deleted brand: ${brand.name}`,
+    });
 
     res.status(200).json({ success: true, message: "Brand deleted" });
   } catch (err) {

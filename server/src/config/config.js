@@ -2,7 +2,14 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-const requiredEnv = ["PORT", "MONGO_URI", "JWT_SECRET", "IMAGEKIT_PRIVATE_KEY"];
+const requiredEnv = [
+  "PORT",
+  "MONGO_URI",
+  "JWT_SECRET",
+  "IMAGEKIT_PUBLIC_KEY",
+  "IMAGEKIT_PRIVATE_KEY",
+  "IMAGEKIT_URL_ENDPOINT",
+];
 
 for (const key of requiredEnv) {
   if (!process.env[key]) {
@@ -13,8 +20,13 @@ for (const key of requiredEnv) {
 export const config = {
   port: Number(process.env.PORT),
   mongodbUri: process.env.MONGO_URI,
-  imagekit: process.env.IMAGEKIT_PRIVATE_KEY,
   lowStockThreshold: Number(process.env.LOW_STOCK_THRESHOLD) || 10,
+
+  imagekit: {
+    publicKey: process.env.IMAGEKIT_PUBLIC_KEY,
+    privateKey: process.env.IMAGEKIT_PRIVATE_KEY,
+    urlEndpoint: process.env.IMAGEKIT_URL_ENDPOINT,
+  },
   jwtSecret: {
     secret: process.env.JWT_SECRET,
     accessExpiry: "15m",
