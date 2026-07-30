@@ -1,6 +1,8 @@
 import mongoose from "mongoose";
 import Product from "../models/product.model.js";
 import ProductVariant from "../models/productVariant.model.js";
+import Category from "../models/category.model.js";
+import Brand from "../models/brand.model.js";
 import ImportJob from "../models/importJob.model.js";
 import {
   findOrCreateCategoryPath,
@@ -167,57 +169,49 @@ export const confirmCsvImport = async (req, res, next) => {
 };
 
 export const rollbackCsvImport = async (req, res, next) => {
-  const { id } = req.params;
-
-  const importJob = await ImportJob.findById(id);
-  if (!importJob) throw new ApiError(404, "Import job not found");
-
-  if (importJob.status === "rolled_back") {
-    throw new ApiError(400, "This import has already been rolled back");
-  }
-
-  const session = await mongoose.startSession();
-  session.startTransaction();
-
   try {
-    await ProductVariant.deleteMany(
-      { _id: { $in: importJob.createdVariantIds } },
-      { session }
-    );
-    await Product.deleteMany(
-      { _id: { $in: importJob.createdProductIds } },
-      { session }
-    );
-    await Category.deleteMany(
-      { _id: { $in: importJob.createdCategoryIds } },
-      { session }
-    );
-    await Brand.deleteMany(
-      { _id: { $in: importJob.createdBrandIds } },
-      { session }
-    );
+    const { id } = req.params;
 
-    importJob.status = "rolled_back";
-    await importJob.save({ session });
+    const importJob = await ImportJob.findById(id);
+    if (!importJob) throw new ApiError(404, "Import job not found");
 
-    await session.commitTransaction();
+    if (importJob.status === "rolled_back") {
+      throw new ApiError(400, "This import has already been rolled back");
+    }
+
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+      await ProductVariant.deleteMany({ _id: { $in: importJob.createdVariantIds } }, { session });
+      await Product.deleteMany({ _id: { $in: importJob.createdProductIds } }, { session });
+      await Category.deleteMany({ _id: { $in: importJob.createdCategoryIds } }, { session });
+      await Brand.deleteMany({ _id: { $in: importJob.createdBrandIds } }, { session });
+
+      importJob.status = "rolled_back";
+      await importJob.save({ session });
+
+      await session.commitTransaction();
+    } catch (err) {
+      await session.abortTransaction();
+      throw err;
+    } finally {
+      session.endSession();
+    }
+
+    await logActivity({
+      userId: req.user.id,
+      action: "delete",
+      resource: "Product",
+      resourceId: importJob._id,
+      description: `Rolled back CSV import: ${importJob.fileName} (${importJob.successCount} products removed)`,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: `Rolled back ${importJob.successCount} products and their variants`,
+    });
   } catch (err) {
-    await session.abortTransaction();
-    session.endSession();
-    return next(err);
+    next(err);
   }
-  session.endSession();
-
-  await logActivity({
-    userId: req.user.id,
-    action: "delete",
-    resource: "Product",
-    resourceId: importJob._id,
-    description: `Rolled back CSV import: ${importJob.fileName} (${importJob.successCount} products removed)`,
-  });
-
-  res.status(200).json({
-    success: true,
-    message: `Rolled back ${importJob.successCount} products and their variants`,
-  });
 };

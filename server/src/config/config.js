@@ -29,7 +29,7 @@ export const config = {
   },
   jwtSecret: {
     secret: process.env.JWT_SECRET,
-    accessExpiry: "15m",
+    accessExpiry: "30m",
     refreshExpiry: "7d",
   },
   nodeEnv: process.env.NODE_ENV || "development",
