@@ -13,9 +13,6 @@ import {
   updateVariant,
   deleteVariant,
 } from "../controllers/productVariant.controller.js";
-import { authenticate } from "../middleware/authenticate.middleware.js";
-import { authorize } from "../middleware/authorize.js";
-import { validate } from "../middleware/validate.js";
 import {
   createProductSchema,
   updateProductSchema,
@@ -23,11 +20,23 @@ import {
   updateVariantSchema,
   nestedCreateVariantSchema
 } from "../validations/product.validation.js";
+import { authenticate } from "../middleware/authenticate.middleware.js";
+import { validate } from "../middleware/validate.js";
+import { authorize } from "../middleware/authorize.js";
+import { previewCsvImport, confirmCsvImport, rollbackCsvImport } from "../controllers/csvImport.controller.js";
+import { csvUpload } from "../middleware/csvUpload.js";
 
 const router = express.Router();
 
 // ---- Product ----
 router.get("/", authenticate, getProducts);
+router.post(
+  "/import/preview",
+  authenticate,
+  authorize("super_admin", "admin"),
+  csvUpload.single("file"),
+  previewCsvImport
+);
 router.get("/:id", authenticate, getProductById);
 router.post(
   "/",
@@ -67,6 +76,21 @@ router.delete(
   authenticate,
   authorize("super_admin", "admin"),
   deleteVariant
+);
+
+// Csv import confirmation endpoint
+router.post(
+  "/import/confirm",
+  authenticate,
+  authorize("super_admin", "admin"),
+  confirmCsvImport
+);
+
+router.post(
+  "/import/:id/rollback",
+  authenticate,
+  authorize("super_admin", "admin"),
+  rollbackCsvImport
 );
 
 export default router;
