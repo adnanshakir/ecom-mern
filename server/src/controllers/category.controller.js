@@ -1,5 +1,5 @@
 import Category from "../models/category.model.js";
-import ApiError from "../utils/apiError.js";
+import ApiError from "../utils/apiError.utils.js";
 import { generateUniqueSlug } from "../utils/slugify.js";
 import Product from "../models/product.model.js";
 

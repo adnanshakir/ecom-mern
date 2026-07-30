@@ -1,6 +1,6 @@
 import ProductVariant from "../models/productVariant.model.js";
 import Product from "../models/product.model.js";
-import ApiError from "../utils/apiError.js";
+import ApiError from "../utils/apiError.utils.js";
 
 // ---------------- ADD a variant to an existing product ----------------
 export const createVariant = async (req, res, next) => {

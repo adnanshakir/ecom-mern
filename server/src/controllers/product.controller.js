@@ -2,7 +2,7 @@ import Product from "../models/product.model.js";
 import ProductVariant from "../models/productVariant.model.js";
 import Category from "../models/category.model.js";
 import Brand from "../models/brand.model.js";
-import ApiError from "../utils/apiError.js";
+import ApiError from "../utils/apiError.utils.js";
 import { generateUniqueSlug } from "../utils/slugify.js";
 import mongoose from "mongoose";
 
