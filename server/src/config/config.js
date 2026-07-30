@@ -14,6 +14,7 @@ export const config = {
   port: Number(process.env.PORT),
   mongodbUri: process.env.MONGO_URI,
   imagekit: process.env.IMAGEKIT_PRIVATE_KEY,
+  lowStockThreshold: Number(process.env.LOW_STOCK_THRESHOLD) || 10,
   jwtSecret: {
     secret: process.env.JWT_SECRET,
     accessExpiry: "15m",
