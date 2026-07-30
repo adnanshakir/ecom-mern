@@ -13,8 +13,25 @@ import { createBrandSchema, updateBrandSchema } from "../validations/product.val
 
 const router = express.Router();
 
+/**
+ * @route   GET /api/brands
+ * @desc    List all brands
+ * @access  Private (any authenticated role)
+ */
 router.get("/", authenticate, getBrands);
+
+/**
+ * @route   GET /api/brands/:id
+ * @desc    Get a single brand by ID
+ * @access  Private (any authenticated role)
+ */
 router.get("/:id", authenticate, getBrandById);
+
+/**
+ * @route   POST /api/brands
+ * @desc    Create a new brand
+ * @access  Private (super_admin, admin)
+ */
 router.post(
   "/",
   authenticate,
@@ -22,6 +39,12 @@ router.post(
   validate(createBrandSchema),
   createBrand
 );
+
+/**
+ * @route   PUT /api/brands/:id
+ * @desc    Update a brand
+ * @access  Private (super_admin, admin)
+ */
 router.put(
   "/:id",
   authenticate,
@@ -29,6 +52,12 @@ router.put(
   validate(updateBrandSchema),
   updateBrand
 );
+
+/**
+ * @route   DELETE /api/brands/:id
+ * @desc    Delete a brand (blocked if any product references it)
+ * @access  Private (super_admin, admin)
+ */
 router.delete("/:id", authenticate, authorize("super_admin", "admin"), deleteBrand);
 
 export default router;

@@ -6,6 +6,11 @@ import { upload } from "../middleware/upload.js";
 
 const router = express.Router();
 
+/**
+ * @route   POST /api/images/upload
+ * @desc    Upload a single image to ImageKit, returns url + fileId
+ * @access  Private (super_admin, admin)
+ */
 router.post(
   "/upload",
   authenticate,

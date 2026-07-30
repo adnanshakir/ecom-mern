@@ -13,22 +13,39 @@ import { createCategorySchema, updateCategorySchema } from "../validations/produ
 
 const router = express.Router();
 
+/**
+ * @route   GET /api/categories
+ * @desc    List all categories
+ * @access  Private (any authenticated role)
+ */
 router.get("/", authenticate, getCategories);
+
+/**
+ * @route   GET /api/categories/:id
+ * @desc    Get a single category by ID
+ * @access  Private (any authenticated role)
+ */
 router.get("/:id", authenticate, getCategoryById);
-router.post(
-  "/",
-  authenticate,
-  authorize("super_admin", "admin"),
-  validate(createCategorySchema),
-  createCategory
-);
-router.put(
-  "/:id",
-  authenticate,
-  authorize("super_admin", "admin"),
-  validate(updateCategorySchema),
-  updateCategory
-);
+
+/**
+ * @route   POST /api/categories
+ * @desc    Create a category (top-level or nested via `parent`)
+ * @access  Private (super_admin, admin)
+ */
+router.post("/", authenticate, authorize("super_admin", "admin"), validate(createCategorySchema), createCategory);
+
+/**
+ * @route   PUT /api/categories/:id
+ * @desc    Update a category
+ * @access  Private (super_admin, admin)
+ */
+router.put("/:id", authenticate, authorize("super_admin", "admin"), validate(updateCategorySchema), updateCategory);
+
+/**
+ * @route   DELETE /api/categories/:id
+ * @desc    Delete a category (blocked if it has children or referencing products)
+ * @access  Private (super_admin, admin)
+ */
 router.delete("/:id", authenticate, authorize("super_admin", "admin"), deleteCategory);
 
 export default router;
