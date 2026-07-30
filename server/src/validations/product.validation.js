@@ -98,11 +98,6 @@ const baseVariantSchema = z.object({
   isActive: z.boolean().optional(),
 });
 
-// Used when creating a product with nested variants.
-// Product ID doesn't exist yet, so omit it.
-const nestedVariantSchema = baseVariantSchema.omit({
-  product: true,
-});
 
 // shared check: salePrice, if present, must not exceed price
 const salePriceCheck = (data) => !data.salePrice || data.salePrice <= data.price;
@@ -112,6 +107,12 @@ const salePriceCheckOptions = {
 };
 
 export const createVariantSchema = baseVariantSchema.refine(salePriceCheck, salePriceCheckOptions);
+
+// Used when creating a product with nested variants.
+// Product ID doesn't exist yet, so omit it.
+export const nestedCreateVariantSchema = baseVariantSchema
+  .omit({ product: true })
+  .refine(salePriceCheck, salePriceCheckOptions);
 
 // `product` is deliberately excluded from updates — a variant shouldn't be
 // reassignable to a different product through an edit request
@@ -146,9 +147,7 @@ export const createProductSchema = z.object({
 
   seoDescription: z.string().trim().max(160).optional(),
 
-  variants: z
-    .array(nestedVariantSchema)
-    .min(1, "At least one variant is required"),
+  variants: z.array(nestedCreateVariantSchema).min(1, "At least one variant is required"),
 });
 
 export const updateProductSchema = createProductSchema.partial();

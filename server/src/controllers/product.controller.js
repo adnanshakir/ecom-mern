@@ -4,6 +4,7 @@ import Category from "../models/category.model.js";
 import Brand from "../models/brand.model.js";
 import ApiError from "../utils/apiError.utils.js";
 import { generateUniqueSlug } from "../utils/slugify.js";
+import { logActivity } from "../utils/activityLogger.js";
 import mongoose from "mongoose";
 
 // ---------------- CREATE ----------------
@@ -11,6 +12,8 @@ import mongoose from "mongoose";
 export const createProduct = async (req, res, next) => {
   const session = await mongoose.startSession();
   session.startTransaction();
+
+  let product, createdVariants;
 
   try {
     const { variants, ...productData } = req.body;
@@ -23,31 +26,31 @@ export const createProduct = async (req, res, next) => {
 
     const slug = await generateUniqueSlug(Product, productData.name);
 
-    const [product] = await Product.create([{ ...productData, slug }], { session });
+    [product] = await Product.create([{ ...productData, slug }], { session });
 
     const variantDocs = variants.map((v) => ({ ...v, product: product._id }));
-    const createdVariants = await ProductVariant.insertMany(variantDocs, { session });
+    createdVariants = await ProductVariant.insertMany(variantDocs, { session });
 
     await session.commitTransaction();
-
-    await logActivity({
-      userId: req.user.id,
-      action: "create",
-      resource: "Product",
-      resourceId: product._id,
-      description: `Created product: ${product.name} (${createdVariants.length} variant${createdVariants.length > 1 ? "s" : ""})`,
-    });
-
-    res.status(201).json({
-      success: true,
-      data: { ...product.toObject(), variants: createdVariants },
-    });
   } catch (err) {
     await session.abortTransaction();
-    next(err);
+    return next(err);
   } finally {
     session.endSession();
   }
+
+  await logActivity({
+    userId: req.user.id,
+    action: "create",
+    resource: "Product",
+    resourceId: product._id,
+    description: `Created product: ${product.name} (${createdVariants.length} variant${createdVariants.length > 1 ? "s" : ""})`,
+  });
+
+  res.status(201).json({
+    success: true,
+    data: { ...product.toObject(), variants: createdVariants },
+  });
 };
 
 // ---------------- GET ALL (with filters + population) ----------------
@@ -154,27 +157,33 @@ export const deleteProduct = async (req, res, next) => {
   const session = await mongoose.startSession();
   session.startTransaction();
 
+  let product;
+
   try {
-    const product = await Product.findByIdAndDelete(req.params.id, { session });
+    product = await Product.findById(req.params.id).session(session);
     if (!product) throw new ApiError(404, "Product not found");
 
     await ProductVariant.deleteMany({ product: product._id }, { session });
+    await Product.deleteOne({ _id: product._id }, { session });
 
     await session.commitTransaction();
-
-    await logActivity({
-      userId: req.user.id,
-      action: "delete",
-      resource: "Product",
-      resourceId: product._id,
-      description: `Deleted product: ${product.name}`,
-    });
-    
-    res.status(200).json({ success: true, message: "Product and its variants deleted" });
   } catch (err) {
     await session.abortTransaction();
-    next(err);
+    return next(err);
   } finally {
     session.endSession();
   }
+
+  await logActivity({
+    userId: req.user.id,
+    action: "delete",
+    resource: "Product",
+    resourceId: product._id,
+    description: `Deleted product: ${product.name}`,
+  });
+
+  res.status(200).json({
+    success: true,
+    message: "Product and its variants deleted",
+  });
 };

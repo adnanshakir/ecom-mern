@@ -21,6 +21,7 @@ import {
   updateProductSchema,
   createVariantSchema,
   updateVariantSchema,
+  nestedCreateVariantSchema
 } from "../validations/product.validation.js";
 
 const router = express.Router();
@@ -51,7 +52,7 @@ router.post(
   "/:productId/variants",
   authenticate,
   authorize("super_admin", "admin"),
-  validate(createVariantSchema),
+  validate(nestedCreateVariantSchema),
   createVariant
 );
 router.put(
