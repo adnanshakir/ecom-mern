@@ -1,0 +1,68 @@
+import mongoose from "mongoose";
+import { adjustStock } from "../utils/inventory.js";
+import InventoryMovement from "../models/inventoryMovement.model.js";
+import ApiError from "../utils/apiError.js";
+
+export const createMovement = async (req, res, next) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    const { variantId, type, quantity, reason } = req.body;
+
+    const { variant, movement } = await adjustStock({
+      variantId,
+      type,
+      quantity,
+      reason,
+      userId: req.user.id,
+      session,
+    });
+
+    await session.commitTransaction();
+
+    res.status(201).json({
+      success: true,
+      data: { variant, movement },
+    });
+  } catch (err) {
+    await session.abortTransaction();
+    return next(err);
+  } finally {
+    session.endSession();
+  }
+};
+
+export const getMovementsByVariant = async (req, res, next) => {
+  try {
+    const movements = await InventoryMovement.find({ variant: req.params.variantId })
+      .populate("user", "name")
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({ success: true, data: movements });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const reconcileStock = async (req, res, next) => {
+  // recomputes a variant's stock by summing its full movement history —
+  // used to detect/fix drift if variant.stock and the ledger ever disagree
+  try {
+    const { variantId } = req.params;
+
+    const result = await InventoryMovement.aggregate([
+      { $match: { variant: new mongoose.Types.ObjectId(variantId) } },
+      { $group: { _id: null, total: { $sum: "$quantityChange" } } },
+    ]);
+
+    const computedStock = result[0]?.total || 0;
+
+    res.status(200).json({
+      success: true,
+      data: { variantId, computedStock },
+    });
+  } catch (err) {
+    next(err);
+  }
+};

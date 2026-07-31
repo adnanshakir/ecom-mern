@@ -2,9 +2,10 @@ import Product from "../models/product.model.js";
 import ProductVariant from "../models/productVariant.model.js";
 import Category from "../models/category.model.js";
 import Brand from "../models/brand.model.js";
-import ApiError from "../utils/apiError.utils.js";
+import ApiError from "../utils/apiError.js";
 import { generateUniqueSlug } from "../utils/slugify.js";
 import { logActivity } from "../utils/activityLogger.js";
+import { adjustStock } from "../utils/inventory.js";
 import mongoose from "mongoose";
 
 // ---------------- CREATE ----------------
@@ -13,7 +14,7 @@ export const createProduct = async (req, res, next) => {
   const session = await mongoose.startSession();
   session.startTransaction();
 
-  let product, createdVariants;
+  let product, createdVariants, finalVariants;
 
   try {
     const { variants, ...productData } = req.body;
@@ -28,8 +29,26 @@ export const createProduct = async (req, res, next) => {
 
     [product] = await Product.create([{ ...productData, slug }], { session });
 
-    const variantDocs = variants.map((v) => ({ ...v, product: product._id }));
-    createdVariants = await ProductVariant.insertMany(variantDocs, { session });
+    // create variants with stock 0 first — the ledger is the source of truth,
+    // so initial stock gets set via adjustStock, not written directly
+    const variantDocs = variants.map((v) => ({ ...v, stock: 0, product: product._id }));
+    createdVariants = await ProductVariant.insertMany(variantDocs, { session }); // no `const` — assign to outer var
+
+    for (let i = 0; i < createdVariants.length; i++) {
+      const initialStock = variants[i].stock || 0;
+      if (initialStock > 0) {
+        await adjustStock({
+          variantId: createdVariants[i]._id,
+          type: "initial",
+          quantity: initialStock,
+          reason: "Initial stock on product creation",
+          userId: req.user.id,
+          session,
+        });
+      }
+    }
+
+    finalVariants = await ProductVariant.find({ product: product._id }).session(session); // no `const`
 
     await session.commitTransaction();
   } catch (err) {
@@ -44,12 +63,12 @@ export const createProduct = async (req, res, next) => {
     action: "create",
     resource: "Product",
     resourceId: product._id,
-    description: `Created product: ${product.name} (${createdVariants.length} variant${createdVariants.length > 1 ? "s" : ""})`,
+    description: `Created product: ${product.name} (${finalVariants.length} variant${finalVariants.length > 1 ? "s" : ""})`,
   });
 
   res.status(201).json({
     success: true,
-    data: { ...product.toObject(), variants: createdVariants },
+    data: { ...product.toObject(), variants: finalVariants },
   });
 };
 

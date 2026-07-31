@@ -7,8 +7,8 @@ import {
   deleteBrand,
 } from "../controllers/brand.controller.js";
 import { authenticate } from "../middleware/authenticate.middleware.js";
-import { authorize } from "../middleware/authorize.js";
-import { validate } from "../middleware/validate.js";
+import { authorize } from "../middleware/authorize.middleware.js";
+import { validate } from "../middleware/validate.middleware.js";
 import { createBrandSchema, updateBrandSchema } from "../validations/product.validation.js";
 
 const router = express.Router();

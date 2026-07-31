@@ -1,5 +1,5 @@
 import imagekit from "../utils/imagekit.js";
-import ApiError from "../utils/apiError.utils.js";
+import ApiError from "../utils/apiError.js";
 
 export const uploadImage = async (req, res, next) => {
   try {

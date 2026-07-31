@@ -21,14 +21,14 @@ import {
   nestedCreateVariantSchema,
 } from "../validations/product.validation.js";
 import { authenticate } from "../middleware/authenticate.middleware.js";
-import { validate } from "../middleware/validate.js";
-import { authorize } from "../middleware/authorize.js";
+import { validate } from "../middleware/validate.middleware.js";
+import { authorize } from "../middleware/authorize.middleware.js";
 import {
   previewCsvImport,
   confirmCsvImport,
   rollbackCsvImport,
 } from "../controllers/csvImport.controller.js";
-import { csvUpload } from "../middleware/csvUpload.js";
+import { csvUpload } from "../middleware/csvUpload.middleware.js";
 
 const router = express.Router();
 

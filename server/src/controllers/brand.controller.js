@@ -1,5 +1,5 @@
 import Brand from "../models/brand.model.js";
-import ApiError from "../utils/apiError.utils.js";
+import ApiError from "../utils/apiError.js";
 import { generateUniqueSlug } from "../utils/slugify.js";
 import Product from "../models/product.model.js";
 import { logActivity } from "../utils/activityLogger.js";

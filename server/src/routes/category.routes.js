@@ -7,8 +7,8 @@ import {
   deleteCategory,
 } from "../controllers/category.controller.js";
 import { authenticate } from "../middleware/authenticate.middleware.js";
-import { authorize } from "../middleware/authorize.js";
-import { validate } from "../middleware/validate.js";
+import { authorize } from "../middleware/authorize.middleware.js";
+import { validate } from "../middleware/validate.middleware.js";
 import { createCategorySchema, updateCategorySchema } from "../validations/product.validation.js";
 
 const router = express.Router();

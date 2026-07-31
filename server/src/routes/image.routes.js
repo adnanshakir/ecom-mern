@@ -1,8 +1,8 @@
 import express from "express";
 import { uploadImage } from "../controllers/image.controller.js";
 import { authenticate } from "../middleware/authenticate.middleware.js";
-import { authorize } from "../middleware/authorize.js";
-import { upload } from "../middleware/upload.js";
+import { authorize } from "../middleware/authorize.middleware.js";
+import { upload } from "../middleware/upload.middleware.js";
 
 const router = express.Router();
 

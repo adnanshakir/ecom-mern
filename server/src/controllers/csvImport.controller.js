@@ -13,7 +13,9 @@ import {
 import { generateUniqueSlug } from "../utils/slugify.js";
 import { logActivity } from "../utils/activityLogger.js";
 import { parseCsvBuffer } from "../utils/csvParser.js";
-import ApiError from "../utils/apiError.utils.js";
+import ApiError from "../utils/apiError.js";
+import { adjustStock } from "../utils/inventory.js";
+import InventoryMovement from "../models/inventoryMovement.model.js"
 
 export const previewCsvImport = async (req, res, next) => {
   try {
@@ -115,13 +117,27 @@ export const confirmCsvImport = async (req, res, next) => {
         barcode: v.barcode,
         price: v.price,
         salePrice: v.salePrice,
-        stock: v.stock,
+        stock: 0,
         options: v.options,
         weight: v.weight,
       }));
 
       const createdVariants = await ProductVariant.insertMany(variantDocs, { session });
       createdVariantIds.push(...createdVariants.map((v) => v._id));
+
+      for (let i = 0; i < createdVariants.length; i++) {
+        const initialStock = item.variants[i].stock || 0;
+        if (initialStock > 0) {
+          await adjustStock({
+            variantId: createdVariants[i]._id,
+            type: "initial",
+            quantity: initialStock,
+            reason: `Initial stock from CSV import: ${fileName || "unnamed"}`,
+            userId: req.user.id,
+            session,
+          });
+        }
+      }
 
       successCount++;
     }
@@ -187,6 +203,7 @@ export const rollbackCsvImport = async (req, res, next) => {
       await Product.deleteMany({ _id: { $in: importJob.createdProductIds } }, { session });
       await Category.deleteMany({ _id: { $in: importJob.createdCategoryIds } }, { session });
       await Brand.deleteMany({ _id: { $in: importJob.createdBrandIds } }, { session });
+      await InventoryMovement.deleteMany({ product: { $in: importJob.createdProductIds } }, { session });
 
       importJob.status = "rolled_back";
       await importJob.save({ session });
