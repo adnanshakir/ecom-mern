@@ -10,6 +10,7 @@ import productRoutes from "./routes/product.routes.js";
 import dashboardRoutes from "./routes/dashboard.routes.js";
 import imageRoutes from "./routes/image.routes.js";
 import inventoryRoutes from "./routes/inventory.routes.js";
+import userRoutes from "./routes/user.routes.js";
 import { errorHandler, notFound } from './middleware/error.middleware.js';
 
 const app = express();
@@ -42,6 +43,7 @@ app.use("/api/products", productRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/images", imageRoutes);
 app.use("/api/inventory", inventoryRoutes);
+app.use("/api/users", userRoutes);
 
 
 // Global error handling middleware
