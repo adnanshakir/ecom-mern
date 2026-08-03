@@ -9,6 +9,7 @@ const requiredEnv = [
   "IMAGEKIT_PUBLIC_KEY",
   "IMAGEKIT_PRIVATE_KEY",
   "IMAGEKIT_URL_ENDPOINT",
+  "FRONTEND_URL",
 ];
 
 for (const key of requiredEnv) {
@@ -21,6 +22,7 @@ export const config = {
   port: Number(process.env.PORT),
   mongodbUri: process.env.MONGO_URI,
   lowStockThreshold: Number(process.env.LOW_STOCK_THRESHOLD) || 10,
+  FRONTEND_URL: process.env.FRONTEND_URL,
 
   imagekit: {
     publicKey: process.env.IMAGEKIT_PUBLIC_KEY,
@@ -29,7 +31,7 @@ export const config = {
   },
   jwtSecret: {
     secret: process.env.JWT_SECRET,
-    accessExpiry: "30m",
+    accessExpiry: "15m",
     refreshExpiry: "7d",
   },
   nodeEnv: process.env.NODE_ENV || "development",
