@@ -24,7 +24,7 @@ const importJobSchema = new mongoose.Schema(
     createdVariantIds: [{ type: mongoose.Schema.Types.ObjectId, ref: "ProductVariant" }],
     createdCategoryIds: [{ type: mongoose.Schema.Types.ObjectId, ref: "Category" }],
     createdBrandIds: [{ type: mongoose.Schema.Types.ObjectId, ref: "Brand" }],
-    errors: [String],
+    importErrors: [String],
   },
   { timestamps: true }
 );
