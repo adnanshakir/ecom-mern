@@ -1,14 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useDispatch, useSelector } from "react-redux";
 import { Loader2 } from "lucide-react";
 
-import { login } from "@/redux/slices/authSlice";
-import { loginSchema } from "@/schemas/auth";
+import { useAuth } from "@/hooks/useAuth";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,29 +10,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 
 export default function LoginPage() {
-  const dispatch = useDispatch();
-  const router = useRouter();
-  const [serverError, setServerError] = useState(null);
-
-  const status = useSelector((state) => state.auth.status);
-  const isSubmitting = status === "loading";
-
-  const form = useForm({
-    resolver: zodResolver(loginSchema),
-    defaultValues: { email: "", password: "" },
-  });
-
-  const onSubmit = async (values) => {
-    console.log("LOGIN VALUES:", JSON.stringify(values));
-    setServerError(null);
-    const result = await dispatch(login(values));
-
-    if (login.fulfilled.match(result)) {
-      router.push("/dashboard");
-    } else {
-      setServerError(result.payload || "Unable to log in");
-    }
-  };
+  const { loginForm: form, isLoginSubmitting: isSubmitting, serverError, submitLogin: submit } = useAuth();
 
   return (
     <PageContainer className="flex min-h-screen items-center justify-center">
@@ -49,7 +21,7 @@ export default function LoginPage() {
         </CardHeader>
         <CardContent>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4" noValidate>
+            <form onSubmit={form.handleSubmit(submit)} className="grid gap-4" noValidate>
               <FormField
                 control={form.control}
                 name="email"

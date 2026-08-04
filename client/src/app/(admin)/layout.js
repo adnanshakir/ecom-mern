@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { useDispatch, useSelector } from "react-redux";
+import { usePathname } from "next/navigation";
+import { useSelector } from "react-redux";
 import {
   LayoutDashboard,
   Package,
@@ -13,7 +13,7 @@ import {
   LogOut,
 } from "lucide-react";
 
-import { logout } from "@/redux/slices/authSlice";
+import { useAuth } from "@/hooks/useAuth";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -29,14 +29,8 @@ const NAV_ITEMS = [
 
 export default function AdminLayout({ children }) {
   const pathname = usePathname();
-  const dispatch = useDispatch();
-  const router = useRouter();
   const user = useSelector((state) => state.auth.user);
-
-  const handleLogout = async () => {
-    await dispatch(logout());
-    router.push("/login");
-  };
+  const { handleLogout } = useAuth();
 
   const visibleNavItems = NAV_ITEMS.filter(
     (item) => !user?.role || item.allow.includes(user.role)

@@ -12,70 +12,55 @@ export function useBrands() {
   const [error, setError] = useState(null);
 
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingBrand, setEditingBrand] = useState(null); // null = creating
+  const [editingBrand, setEditingBrand] = useState(null);
+
   const [formError, setFormError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const fetchBrands = useCallback(() => {
-    setLoading(true);
-    getBrands()
-      .then(({ data }) => setBrands(data.data))
-      .catch((err) =>
-        setError(err.response?.data?.message || "Failed to load brands")
-      )
-      .finally(() => setLoading(false));
-  }, []);
-
-  useEffect(() => {
-    fetchBrands();
-  }, [fetchBrands]);
-
+  // Form
   const form = useForm({
     resolver: zodResolver(brandSchema),
-    defaultValues: { name: "", logo: "", isActive: true },
+    defaultValues: {
+      name: "",
+      logo: "",
+      isActive: true,
+    },
   });
 
-  const openCreateDialog = () => {
-    setEditingBrand(null);
-    setFormError(null);
-    form.reset({ name: "", logo: "", isActive: true });
-    setDialogOpen(true);
-  };
-
-  const openEditDialog = (brand) => {
-    setEditingBrand(brand);
-    setFormError(null);
-    form.reset({
-      name: brand.name,
-      logo: brand.logo || "",
-      isActive: !!brand.isActive,
-    });
-    setDialogOpen(true);
-  };
-
-  const onSubmit = async (values) => {
-    setSubmitting(true);
-    setFormError(null);
-    const payload = { ...values, logo: values.logo || undefined };
-
+  // CRUD
+  const fetchBrands = useCallback(async () => {
     try {
-      if (editingBrand) {
-        await updateBrand(editingBrand._id, payload);
-      } else {
-        await createBrand(payload);
-      }
-      setDialogOpen(false);
-      fetchBrands();
+      setLoading(true);
+      setError(null);
+
+      const { data } = await getBrands();
+      setBrands(data.data);
     } catch (err) {
-      setFormError(err.response?.data?.message || "Failed to save brand");
+      setError(err.response?.data?.message || "Failed to load brands");
     } finally {
-      setSubmitting(false);
+      setLoading(false);
     }
+  }, []);
+
+  const create = async (values) => {
+    const payload = {
+      ...values,
+      logo: values.logo || undefined,
+    };
+
+    await createBrand(payload);
   };
 
-  const handleDelete = async (brand) => {
-    // Backend blocks deletion if a Product references this brand — the
-    // error message from the API explains that case, so we just surface it.
+  const update = async (values) => {
+    const payload = {
+      ...values,
+      logo: values.logo || undefined,
+    };
+
+    await updateBrand(editingBrand._id, payload);
+  };
+
+  const remove = async (brand) => {
     if (!window.confirm(`Delete brand "${brand.name}"?`)) return;
 
     try {
@@ -86,19 +71,86 @@ export function useBrands() {
     }
   };
 
+  // UI Actions
+  const openCreateDialog = () => {
+    setEditingBrand(null);
+    setFormError(null);
+
+    form.reset({
+      name: "",
+      logo: "",
+      isActive: true,
+    });
+
+    setDialogOpen(true);
+  };
+
+  const openEditDialog = (brand) => {
+    setEditingBrand(brand);
+    setFormError(null);
+
+    form.reset({
+      name: brand.name,
+      logo: brand.logo || "",
+      isActive: !!brand.isActive,
+    });
+
+    setDialogOpen(true);
+  };
+
+  const closeDialog = () => {
+    setDialogOpen(false);
+    setEditingBrand(null);
+    setFormError(null);
+    form.reset();
+  };
+
+  // Submit
+  const submit = async (values) => {
+    try {
+      setSubmitting(true);
+      setFormError(null);
+
+      if (editingBrand) {
+        await update(values);
+      } else {
+        await create(values);
+      }
+
+      closeDialog();
+      fetchBrands();
+    } catch (err) {
+      setFormError(err.response?.data?.message || "Failed to save brand");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchBrands();
+  }, [fetchBrands]);
+
   return {
     brands,
     loading,
     error,
+
     dialogOpen,
     setDialogOpen,
     editingBrand,
+
+    form,
     formError,
     submitting,
-    form,
+
     openCreateDialog,
     openEditDialog,
-    onSubmit,
-    handleDelete,
+    closeDialog,
+
+    fetchBrands,
+    create,
+    update,
+    remove,
+    submit,
   };
 }

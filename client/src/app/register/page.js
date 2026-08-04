@@ -1,13 +1,8 @@
 "use client";
 
-import { useEffect } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useDispatch, useSelector } from "react-redux";
 import { Loader2 } from "lucide-react";
 
-import { registerUser, clearRegisterStatus } from "@/redux/slices/authSlice";
-import { registerSchema } from "@/schemas/auth";
+import { useAuth } from "@/hooks/useAuth";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { RoleGate } from "@/components/RoleGate";
 import { Button } from "@/components/ui/button";
@@ -17,23 +12,7 @@ import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function RegisterPage() {
-  const dispatch = useDispatch();
-  const { registerStatus, registerError } = useSelector((state) => state.auth);
-  const isSubmitting = registerStatus === "loading";
-
-  const form = useForm({
-    resolver: zodResolver(registerSchema),
-    defaultValues: { name: "", email: "", password: "", role: "admin" },
-  });
-
-  const onSubmit = async (values) => {
-    const result = await dispatch(registerUser(values));
-    if (registerUser.fulfilled.match(result)) {
-      form.reset();
-    }
-  };
-
-  useEffect(() => () => dispatch(clearRegisterStatus()), [dispatch]);
+  const { registerForm: form, isRegisterSubmitting: isSubmitting, registerStatus, registerError, submitRegister: submit } = useAuth();
 
   return (
     <RoleGate allow={["super_admin"]}>
@@ -45,7 +24,7 @@ export default function RegisterPage() {
           </CardHeader>
           <CardContent>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4" noValidate>
+              <form onSubmit={form.handleSubmit(submit)} className="grid gap-4" noValidate>
                 <FormField
                   control={form.control}
                   name="name"
