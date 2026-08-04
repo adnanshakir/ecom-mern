@@ -1,13 +1,9 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { useSelector } from "react-redux";
 import { Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 
-import api from "@/lib/axios";
-import { brandSchema } from "@/lib/validations/brand";
+import { useBrands } from "@/hooks/useBrands";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -28,85 +24,21 @@ export default function BrandsPage() {
   const role = useSelector((state) => state.auth.user?.role);
   const canWrite = CAN_WRITE_ROLES.includes(role);
 
-  const [brands, setBrands] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingBrand, setEditingBrand] = useState(null); // null = creating
-  const [formError, setFormError] = useState(null);
-  const [submitting, setSubmitting] = useState(false);
-
-  const fetchBrands = useCallback(() => {
-    setLoading(true);
-    api
-      .get("/brands")
-      .then(({ data }) => setBrands(data.data))
-      .catch((err) =>
-        setError(err.response?.data?.message || "Failed to load brands")
-      )
-      .finally(() => setLoading(false));
-  }, []);
-
-  useEffect(() => {
-    fetchBrands();
-  }, [fetchBrands]);
-
-  const form = useForm({
-    resolver: zodResolver(brandSchema),
-    defaultValues: { name: "", logo: "", isActive: true },
-  });
-
-  const openCreateDialog = () => {
-    setEditingBrand(null);
-    setFormError(null);
-    form.reset({ name: "", logo: "", isActive: true });
-    setDialogOpen(true);
-  };
-
-  const openEditDialog = (brand) => {
-    setEditingBrand(brand);
-    setFormError(null);
-    form.reset({
-      name: brand.name,
-      logo: brand.logo || "",
-      isActive: !!brand.isActive,
-    });
-    setDialogOpen(true);
-  };
-
-  const onSubmit = async (values) => {
-    setSubmitting(true);
-    setFormError(null);
-    const payload = { ...values, logo: values.logo || undefined };
-
-    try {
-      if (editingBrand) {
-        await api.put(`/brands/${editingBrand._id}`, payload);
-      } else {
-        await api.post("/brands", payload);
-      }
-      setDialogOpen(false);
-      fetchBrands();
-    } catch (err) {
-      setFormError(err.response?.data?.message || "Failed to save brand");
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleDelete = async (brand) => {
-    // Backend blocks deletion if a Product references this brand — the
-    // error message from the API explains that case, so we just surface it.
-    if (!window.confirm(`Delete brand "${brand.name}"?`)) return;
-
-    try {
-      await api.delete(`/brands/${brand._id}`);
-      fetchBrands();
-    } catch (err) {
-      alert(err.response?.data?.message || "Failed to delete brand");
-    }
-  };
+  const {
+    brands,
+    loading,
+    error,
+    dialogOpen,
+    setDialogOpen,
+    editingBrand,
+    formError,
+    submitting,
+    form,
+    openCreateDialog,
+    openEditDialog,
+    onSubmit,
+    handleDelete,
+  } = useBrands();
 
   return (
     <div className="grid gap-4">

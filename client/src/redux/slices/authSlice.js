@@ -1,6 +1,11 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import api from "@/lib/axios";
 import { decodeJwtPayload } from "@/lib/jwt";
+import {
+  loginRequest,
+  refreshRequest,
+  logoutRequest,
+  registerRequest,
+} from "@/services/auth";
 
 // Access token lives only in Redux (in-memory) — never localStorage.
 // It's lost on refresh and recovered via refreshAccessToken() on app mount.
@@ -16,7 +21,7 @@ const initialState = {
 
 export const login = createAsyncThunk("auth/login", async ({ email, password }, { rejectWithValue }) => {
   try {
-    const { data } = await api.post("/auth/login", { email, password });
+    const { data } = await loginRequest({ email, password });
     return data.data; // { accessToken, user }
   } catch (err) {
     return rejectWithValue(err.response?.data?.message || "Unable to log in");
@@ -25,7 +30,7 @@ export const login = createAsyncThunk("auth/login", async ({ email, password }, 
 
 export const refreshAccessToken = createAsyncThunk("auth/refresh", async (_, { rejectWithValue }) => {
   try {
-    const { data } = await api.post("/auth/refresh");
+    const { data } = await refreshRequest();
     return data.data; // { accessToken }
   } catch (err) {
     return rejectWithValue(err.response?.data?.message || "Session expired");
@@ -34,7 +39,7 @@ export const refreshAccessToken = createAsyncThunk("auth/refresh", async (_, { r
 
 export const logout = createAsyncThunk("auth/logout", async (_, { rejectWithValue }) => {
   try {
-    await api.post("/auth/logout");
+    await logoutRequest();
   } catch (err) {
     return rejectWithValue(err.response?.data?.message || "Logout failed");
   }
@@ -45,7 +50,7 @@ export const registerUser = createAsyncThunk(
   "auth/register",
   async ({ name, email, password, role }, { rejectWithValue }) => {
     try {
-      const { data } = await api.post("/auth/register", {
+      const { data } = await registerRequest({
         name,
         email,
         password,

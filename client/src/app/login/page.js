@@ -8,7 +8,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { Loader2 } from "lucide-react";
 
 import { login } from "@/redux/slices/authSlice";
-import { loginSchema } from "@/lib/validations/auth";
+import { loginSchema } from "@/schemas/auth";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

@@ -7,7 +7,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { Loader2 } from "lucide-react";
 
 import { registerUser, clearRegisterStatus } from "@/redux/slices/authSlice";
-import { registerSchema } from "@/lib/validations/auth";
+import { registerSchema } from "@/schemas/auth";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { RoleGate } from "@/components/RoleGate";
 import { Button } from "@/components/ui/button";

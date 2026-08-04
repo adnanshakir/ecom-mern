@@ -3,7 +3,7 @@
 import { useRef, useEffect } from "react";
 import { Provider } from "react-redux";
 import { makeStore } from "@/redux/store";
-import { injectStore } from "@/lib/axios";
+import { injectStore } from "@/services/axios";
 import { refreshAccessToken } from "@/redux/slices/authSlice";
 
 export default function StoreProvider({ children }) {
