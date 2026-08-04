@@ -3,7 +3,15 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useDispatch, useSelector } from "react-redux";
-import { LayoutDashboard, Package, Tags, BadgeCheck, Warehouse, Users, LogOut } from "lucide-react";
+import {
+  LayoutDashboard,
+  Package,
+  Tags,
+  BadgeCheck,
+  Warehouse,
+  Users,
+  LogOut,
+} from "lucide-react";
 
 import { logout } from "@/redux/slices/authSlice";
 import { PageContainer } from "@/components/layout/PageContainer";
@@ -11,12 +19,12 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/products", label: "Products", icon: Package },
-  { href: "/categories", label: "Categories", icon: Tags },
-  { href: "/brands", label: "Brands", icon: BadgeCheck },
-  { href: "/inventory", label: "Inventory", icon: Warehouse },
-  { href: "/users", label: "Users", icon: Users },
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, allow: ["super_admin", "admin", "staff"] },
+  { href: "/products", label: "Products", icon: Package, allow: ["super_admin", "admin", "staff"] },
+  { href: "/categories", label: "Categories", icon: Tags, allow: ["super_admin", "admin", "staff"] },
+  { href: "/brands", label: "Brands", icon: BadgeCheck, allow: ["super_admin", "admin", "staff"] },
+  { href: "/inventory", label: "Inventory", icon: Warehouse, allow: ["super_admin", "admin", "staff"] },
+  { href: "/users", label: "Users", icon: Users, allow: ["super_admin"] },
 ];
 
 export default function AdminLayout({ children }) {
@@ -30,12 +38,16 @@ export default function AdminLayout({ children }) {
     router.push("/login");
   };
 
+  const visibleNavItems = NAV_ITEMS.filter(
+    (item) => !user?.role || item.allow.includes(user.role)
+  );
+
   return (
     <div className="flex min-h-screen">
       <aside className="hidden w-56 flex-col border-r bg-card px-3 py-4 sm:flex">
         <div className="mb-6 px-2 text-sm font-semibold">Ecom Admin</div>
         <nav className="flex flex-col gap-1">
-          {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
+          {visibleNavItems.map(({ href, label, icon: Icon }) => {
             const isActive = pathname.startsWith(href);
             return (
               <Link
@@ -43,7 +55,9 @@ export default function AdminLayout({ children }) {
                 href={href}
                 className={cn(
                   "flex items-center gap-2 rounded-md px-2 py-2 text-sm transition-colors",
-                  isActive ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                  isActive
+                    ? "bg-accent text-accent-foreground"
+                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                 )}
               >
                 <Icon className="size-4" />
@@ -56,7 +70,9 @@ export default function AdminLayout({ children }) {
 
       <div className="flex flex-1 flex-col">
         <header className="flex items-center justify-between border-b px-4 py-3">
-          <div className="text-sm text-muted-foreground">{user ? `${user.name} · ${user.role}` : ""}</div>
+          <div className="text-sm text-muted-foreground">
+            {user ? `${user.name} · ${user.role}` : ""}
+          </div>
           <Button variant="ghost" size="sm" onClick={handleLogout}>
             <LogOut className="size-4" />
             Logout

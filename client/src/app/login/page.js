@@ -71,7 +71,7 @@ export default function LoginPage() {
                   <FormItem>
                     <FormLabel>Password</FormLabel>
                     <FormControl>
-                      <Input type="password" autoComplete="current-password" placeholder="••••••••" {...field} />
+                      <Input type="password" autoComplete="current-password" placeholder="Enter your password" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
