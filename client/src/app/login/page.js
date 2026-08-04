@@ -28,27 +28,13 @@ export default function LoginPage() {
     defaultValues: { email: "", password: "" },
   });
 
-  // const onSubmit = async (values) => {
-  //   setServerError(null);
-
-  //   console.log("submitting", values);
-  //   setServerError(null);
-  //   const result = await dispatch(login(values));
-
-  //   if (login.fulfilled.match(result)) {
-  //     router.push("/");
-  //   } else {
-  //     setServerError(result.payload || "Unable to log in");
-  //   }
-  // };
-
   const onSubmit = async (values) => {
     console.log("LOGIN VALUES:", JSON.stringify(values));
     setServerError(null);
     const result = await dispatch(login(values));
 
     if (login.fulfilled.match(result)) {
-      router.push("/");
+      router.push("/dashboard");
     } else {
       setServerError(result.payload || "Unable to log in");
     }
