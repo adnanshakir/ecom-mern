@@ -381,9 +381,9 @@ function VariantsPanel({ productId }) {
                   name="stock"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Stock</FormLabel>
+                      <FormLabel>Stock{editingVariant ? " (adjust via Inventory)" : ""}</FormLabel>
                       <FormControl>
-                        <Input type="number" {...field} />
+                        <Input type="number" disabled={!!editingVariant} {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
