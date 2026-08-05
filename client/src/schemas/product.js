@@ -25,3 +25,7 @@ export const productSchema = z.object({
   images: z.string().optional(), // newline-separated URLs in the UI, split into an array on submit
   variants: z.array(variantSchema).min(1, "At least one variant is required"),
 });
+
+// Used on the Edit page — PUT /products/:id never touches variants,
+// so this mirrors productSchema minus the variants array.
+export const productDetailsSchema = productSchema.omit({ variants: true });
