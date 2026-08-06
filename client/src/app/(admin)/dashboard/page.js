@@ -2,8 +2,19 @@
 
 import { useEffect, useState } from "react";
 import api from "@/services/axios";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+} from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
+
+const ACTION_LABELS = {
+  create: "created",
+  update: "updated",
+  delete: "deleted",
+};
 
 export default function DashboardPage() {
   const [stats, setStats] = useState(null);
@@ -19,7 +30,8 @@ export default function DashboardPage() {
         if (!cancelled) setStats(data.data);
       })
       .catch((err) => {
-        if (!cancelled) setError(err.response?.data?.message || "Failed to load stats");
+        if (!cancelled)
+          setError(err.response?.data?.message || "Failed to load stats");
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -51,27 +63,63 @@ export default function DashboardPage() {
         <StatCard label="Brands" value={stats.totalBrands} />
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            Low stock ({stats.lowStock.count}, threshold {stats.lowStock.threshold})
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {stats.lowStock.items?.length ? (
-            <ul className="grid gap-2 text-sm">
-              {stats.lowStock.items.map((item) => (
-                <li key={item._id || item.sku} className="flex justify-between border-b pb-1 last:border-0">
-                  <span>{item.sku || item.name}</span>
-                  <span className="text-muted-foreground">stock: {item.stock}</span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-sm text-muted-foreground">No low stock items.</p>
-          )}
-        </CardContent>
-      </Card>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>
+              Low stock ({stats.lowStock.count}, threshold {stats.lowStock.threshold})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {stats.lowStock.items?.length ? (
+              <ul className="grid gap-2 text-sm">
+                {stats.lowStock.items.map((variant) => (
+                  <li
+                    key={variant._id}
+                    className="flex justify-between border-b pb-1 last:border-0"
+                  >
+                    <span>
+                      {variant.product?.name || "—"}{" "}
+                      <span className="text-muted-foreground">({variant.sku})</span>
+                    </span>
+                    <span className="text-muted-foreground">stock: {variant.stock}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-muted-foreground">No low stock items.</p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent activity</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {stats.latestActivity?.length ? (
+              <ul className="grid gap-3 text-sm">
+                {stats.latestActivity.map((log) => (
+                  <li key={log._id} className="grid gap-0.5">
+                    <span>
+                      <span className="font-medium">{log.user?.name || "Someone"}</span>{" "}
+                      {ACTION_LABELS[log.action] || log.action}{" "}
+                      <span className="text-muted-foreground">{log.resource.toLowerCase()}</span>
+                      {" — "}
+                      {log.description}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {new Date(log.createdAt).toLocaleString()}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-muted-foreground">No recent activity.</p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
