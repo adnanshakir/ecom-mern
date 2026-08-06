@@ -5,23 +5,20 @@ import { Loader2, Plus, Trash2, ArrowRight, ArrowLeft } from "lucide-react";
 import { useCreateProduct } from "@/hooks/useCreateProduct";
 import { useCategories } from "@/hooks/useCategories";
 import { useBrands } from "@/hooks/useBrands";
-import { RoleGate } from "@/components/RoleGate";
 import { ProductDetailsFields } from "@/components/products/ProductDetailsFields";
 import { VariantRowFields } from "@/components/products/VariantRowFields";
 import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { Form, FormMessage } from "@/components/ui/form";
 import { cn } from "@/lib/utils";
 
-export default function NewProductPage() {
-  return (
-    <RoleGate allow={["super_admin", "admin"]}>
-      <NewProductForm />
-    </RoleGate>
-  );
-}
-
-function NewProductForm() {
+export function CreateProductDialog({ open, onOpenChange, onCreated }) {
   const {
     form,
     step,
@@ -33,43 +30,52 @@ function NewProductForm() {
     submit,
     submitting,
     formError,
-  } = useCreateProduct();
-  const { categories } = useCategories();
-  const { brands } = useBrands();
+  } = useCreateProduct(open, (product) => {
+    onOpenChange(false);
+    onCreated(product);
+  });
+
+  const { categories, fetchCategories } = useCategories();
+  const { brands, fetchBrands } = useBrands();
 
   return (
-    <div className="mx-auto grid max-w-2xl gap-4">
-      <h1 className="text-xl font-semibold">New product</h1>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>New product</DialogTitle>
+          <DialogDescription>
+            <Stepper step={step} />
+          </DialogDescription>
+        </DialogHeader>
 
-      <Stepper step={step} />
-
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(submit)} noValidate>
-          {step === 1 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Details</CardTitle>
-              </CardHeader>
-              <CardContent className="grid gap-4">
-                <ProductDetailsFields form={form} categories={categories} brands={brands} />
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(submit)} noValidate>
+            {step === 1 && (
+              <div className="grid gap-4">
+                <ProductDetailsFields
+                  form={form}
+                  categories={categories}
+                  brands={brands}
+                  refetchCategories={fetchCategories}
+                  refetchBrands={fetchBrands}
+                />
                 <Button type="button" className="w-fit" onClick={goToVariants}>
                   Next: Variants
                   <ArrowRight className="size-4" />
                 </Button>
-              </CardContent>
-            </Card>
-          )}
+              </div>
+            )}
 
-          {step === 2 && (
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle>Variants</CardTitle>
-                <Button type="button" variant="outline" size="sm" onClick={addVariant}>
-                  <Plus className="size-4" />
-                  Add variant
-                </Button>
-              </CardHeader>
-              <CardContent className="grid gap-4">
+            {step === 2 && (
+              <div className="grid gap-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">Variants</span>
+                  <Button type="button" variant="outline" size="sm" onClick={addVariant}>
+                    <Plus className="size-4" />
+                    Add variant
+                  </Button>
+                </div>
+
                 {variantFields.map((variantField, index) => (
                   <div key={variantField.id} className="grid gap-3 rounded-md border p-3">
                     <div className="flex items-center justify-between">
@@ -105,12 +111,12 @@ function NewProductForm() {
                     Create product
                   </Button>
                 </div>
-              </CardContent>
-            </Card>
-          )}
-        </form>
-      </Form>
-    </div>
+              </div>
+            )}
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -126,7 +132,7 @@ function Stepper({ step }) {
           <div key={label} className="flex items-center gap-2">
             <div
               className={cn(
-                "flex size-6 items-center justify-center rounded-full border text-xs",
+                "flex size-5 items-center justify-center rounded-full border text-xs",
                 active && "border-primary bg-primary text-primary-foreground",
                 done && "border-primary text-primary",
                 !active && !done && "text-muted-foreground"
@@ -134,10 +140,10 @@ function Stepper({ step }) {
             >
               {num}
             </div>
-            <span className={cn(active ? "font-medium" : "text-muted-foreground")}>
+            <span className={cn(active ? "font-medium text-foreground" : "text-muted-foreground")}>
               {label}
             </span>
-            {num < steps.length && <div className="h-px w-8 bg-border" />}
+            {num < steps.length && <div className="h-px w-6 bg-border" />}
           </div>
         );
       })}

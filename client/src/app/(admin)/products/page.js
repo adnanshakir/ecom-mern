@@ -1,12 +1,14 @@
 "use client";
 
-import Link from "next/link";
+import { useState } from "react";
 import { useSelector } from "react-redux";
 import { Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 
 import { useProducts } from "@/hooks/useProducts";
 import { useCategories } from "@/hooks/useCategories";
 import { useBrands } from "@/hooks/useBrands";
+import { CreateProductDialog } from "@/components/products/CreateProductDialog";
+import { EditProductDialog } from "@/components/products/EditProductDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
@@ -16,10 +18,14 @@ const CAN_WRITE_ROLES = ["super_admin", "admin"];
 const STATUS_OPTIONS = ["draft", "active", "archived"];
 
 export default function ProductsPage() {
+  const [createOpen, setCreateOpen] = useState(false);
+  const [editingProductId, setEditingProductId] = useState(null);
+
   const role = useSelector((state) => state.auth.user?.role);
   const canWrite = CAN_WRITE_ROLES.includes(role);
 
-  const { products, pagination, loading, error, filters, setFilter, setPage, removeProduct } = useProducts();
+  const { products, pagination, loading, error, filters, setFilter, setPage, removeProduct, fetchProducts } =
+    useProducts();
   const { categories } = useCategories();
   const { brands } = useBrands();
 
@@ -34,18 +40,11 @@ export default function ProductsPage() {
     <div className="grid gap-4">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Products</h1>
-        {canWrite && (
-          <Button asChild>
-            <Link href="/products/new" className="flex items-center gap-2">
-              <Plus className="size-4" />
-              New product
-            </Link>
-          </Button>
-        )}
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        <Input
+      <div className="flex flex-wrap justify-between gap-2">
+       <div className="flex gap-2">
+         <Input
           placeholder="Search products..."
           defaultValue={filters.search}
           className="w-56"
@@ -99,6 +98,12 @@ export default function ProductsPage() {
         </Select>
       </div>
 
+        <Button onClick={() => setCreateOpen(true)}>
+          <Plus className="size-4" />
+          New product
+        </Button>
+      </div>
+
       {loading && (
         <div className="flex items-center gap-2 text-muted-foreground">
           <Loader2 className="size-4 animate-spin" />
@@ -136,10 +141,8 @@ export default function ProductsPage() {
                   <TableCell className="capitalize">{product.status}</TableCell>
                   {canWrite && (
                     <TableCell className="text-right">
-                      <Button variant="ghost" size="icon" asChild>
-                        <Link href={`/products/${product._id}`}>
-                          <Pencil className="size-4" />
-                        </Link>
+                      <Button variant="ghost" size="icon" onClick={() => setEditingProductId(product._id)}>
+                        <Pencil className="size-4" />
                       </Button>
                       <Button variant="ghost" size="icon" onClick={() => removeProduct(product)}>
                         <Trash2 className="size-4" />
@@ -176,6 +179,15 @@ export default function ProductsPage() {
           </div>
         </>
       )}
+
+      <CreateProductDialog open={createOpen} onOpenChange={setCreateOpen} onCreated={fetchProducts} />
+
+      <EditProductDialog
+        productId={editingProductId}
+        open={!!editingProductId}
+        onOpenChange={(open) => !open && setEditingProductId(null)}
+        onSaved={fetchProducts}
+      />
     </div>
   );
 }

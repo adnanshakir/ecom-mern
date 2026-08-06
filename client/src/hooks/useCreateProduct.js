@@ -1,7 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
@@ -10,8 +9,6 @@ import { productSchema } from "@/schemas/product";
 
 const EMPTY_VARIANT = { sku: "", price: "", stock: "", salePrice: "", barcode: "" };
 
-// Fields that belong to "step 1" — validated before letting the user move
-// on to the variants step.
 const DETAILS_FIELDS = [
   "name",
   "category",
@@ -23,31 +20,41 @@ const DETAILS_FIELDS = [
   "seoDescription",
 ];
 
-export function useCreateProduct() {
-  const router = useRouter();
-  const [step, setStep] = useState(1); // 1 = details, 2 = variants
+const DEFAULTS = {
+  name: "",
+  category: "",
+  brand: "",
+  status: "draft",
+  featured: false,
+  seoTitle: "",
+  seoDescription: "",
+  images: "",
+  variants: [EMPTY_VARIANT],
+};
+
+export function useCreateProduct(open, onCreated) {
+  const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState(null);
 
   const form = useForm({
     resolver: zodResolver(productSchema),
-    defaultValues: {
-      name: "",
-      category: "",
-      brand: "",
-      status: "draft",
-      featured: false,
-      seoTitle: "",
-      seoDescription: "",
-      images: "",
-      variants: [EMPTY_VARIANT],
-    },
+    defaultValues: DEFAULTS,
   });
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
     name: "variants",
   });
+
+  // Reset to a clean slate every time the dialog opens.
+  useEffect(() => {
+    if (open) {
+      setStep(1);
+      setFormError(null);
+      form.reset(DEFAULTS);
+    }
+  }, [open]);
 
   const addVariant = () => append(EMPTY_VARIANT);
 
@@ -82,7 +89,7 @@ export function useCreateProduct() {
 
     try {
       const { data } = await createProduct(payload);
-      router.push(`/products/${data.data._id}`);
+      onCreated(data.data);
     } catch (err) {
       setFormError(err.response?.data?.message || "Failed to create product");
     } finally {

@@ -3,6 +3,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
+import { createCategory } from "@/services/categories";
+import { createBrand } from "@/services/brands";
+import { QuickCreateEntityDialog } from "@/components/products/QuickCreateEntityDialog";
 
 export function ProductDetailsFields({ form, categories, brands }) {
   return (
@@ -27,7 +30,17 @@ export function ProductDetailsFields({ form, categories, brands }) {
           name="category"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Category</FormLabel>
+              <div className="flex items-center justify-between">
+                <FormLabel>Category</FormLabel>
+                <QuickCreateEntityDialog
+                  label="Category"
+                  createFn={createCategory}
+                  onCreated={(newCategory) => {
+                    refetchCategories();
+                    field.onChange(newCategory._id);
+                  }}
+                />
+              </div>
               <Select value={field.value} onValueChange={field.onChange}>
                 <FormControl>
                   <SelectTrigger className="w-full">
@@ -54,7 +67,17 @@ export function ProductDetailsFields({ form, categories, brands }) {
           name="brand"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Brand</FormLabel>
+              <div className="flex items-center justify-between">
+                <FormLabel>Brand</FormLabel>
+                <QuickCreateEntityDialog
+                  label="Brand"
+                  createFn={createBrand}
+                  onCreated={(newBrand) => {
+                    refetchBrands();
+                    field.onChange(newBrand._id);
+                  }}
+                />
+              </div>
               <Select value={field.value} onValueChange={field.onChange}>
                 <FormControl>
                   <SelectTrigger className="w-full">
