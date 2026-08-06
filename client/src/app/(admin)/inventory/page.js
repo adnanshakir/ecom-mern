@@ -254,15 +254,16 @@ function VariantMovements({ variantId, canWrite, canReconcile }) {
             <TableHeader>
               <TableRow>
                 <TableHead>Type</TableHead>
-                <TableHead>Quantity</TableHead>
-                <TableHead>Reason</TableHead>
+                <TableHead>Change</TableHead>
+                <TableHead>Stock</TableHead>
+                <TableHead>By</TableHead>
                 <TableHead>Date</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {movements.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-muted-foreground">
+                  <TableCell colSpan={5} className="text-muted-foreground">
                     No movements recorded yet.
                   </TableCell>
                 </TableRow>
@@ -270,8 +271,18 @@ function VariantMovements({ variantId, canWrite, canReconcile }) {
               {movements.map((m) => (
                 <TableRow key={m._id}>
                   <TableCell className="capitalize">{m.type}</TableCell>
-                  <TableCell>{m.quantity}</TableCell>
-                  <TableCell className="text-muted-foreground">{m.reason || "—"}</TableCell>
+                  <TableCell
+                    className={
+                      m.quantityChange >= 0 ? "text-emerald-500" : "text-destructive"
+                    }
+                  >
+                    {m.quantityChange >= 0 ? "+" : ""}
+                    {m.quantityChange}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {m.previousStock} → {m.newStock}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">{m.user?.name || "—"}</TableCell>
                   <TableCell className="text-muted-foreground">
                     {new Date(m.createdAt).toLocaleString()}
                   </TableCell>
@@ -288,7 +299,8 @@ function VariantMovements({ variantId, canWrite, canReconcile }) {
             <DialogTitle>Record movement</DialogTitle>
             <DialogDescription>
               Correction takes a signed delta (e.g. -3 to reduce stock). All other types must
-              be a positive quantity.
+              be a positive quantity. History shows the signed change, before/after stock, and
+              the user who recorded it.
             </DialogDescription>
           </DialogHeader>
 
