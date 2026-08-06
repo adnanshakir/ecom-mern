@@ -1,8 +1,9 @@
 "use client";
 
 import { useSelector } from "react-redux";
-import { Loader2, Pencil, Trash2 } from "lucide-react";
+import { Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 
+import { useCreateUser } from "@/hooks/useCreateUser";
 import { useUsers } from "@/hooks/useUsers";
 import { userRoles } from "@/schemas/user";
 import { RoleGate } from "@/components/RoleGate";
@@ -46,14 +47,31 @@ function UsersTable() {
     form,
     formError,
     submitting,
+    fetchUsers,
     openEditDialog,
     submit,
     remove,
   } = useUsers();
 
+  const {
+    dialogOpen: createDialogOpen,
+    setDialogOpen: setCreateDialogOpen,
+    form: createForm,
+    formError: createFormError,
+    submitting: creating,
+    openCreateDialog,
+    submit: submitCreate,
+  } = useCreateUser(fetchUsers);
+
   return (
     <div className="grid gap-4">
-      <h1 className="text-xl font-semibold">Users</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-semibold">Users</h1>
+        <Button onClick={openCreateDialog}>
+          <Plus className="size-4" />
+          Create user
+        </Button>
+      </div>
 
       <div className="flex flex-wrap gap-2">
         <Input
@@ -264,6 +282,96 @@ function UsersTable() {
                 <Button type="submit" disabled={submitting}>
                   {submitting && <Loader2 className="animate-spin" />}
                   Save changes
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create user</DialogTitle>
+            <DialogDescription>Add a new admin or staff account.</DialogDescription>
+          </DialogHeader>
+
+          <Form {...createForm}>
+            <form onSubmit={createForm.handleSubmit(submitCreate)} className="grid gap-4" noValidate>
+              <FormField
+                control={createForm.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Name</FormLabel>
+                    <FormControl>
+                      <Input autoComplete="name" placeholder="Jane Doe" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={createForm.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input type="email" autoComplete="email" placeholder="user@company.com" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={createForm.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Password</FormLabel>
+                    <FormControl>
+                      <Input type="password" autoComplete="new-password" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={createForm.control}
+                name="role"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Role</FormLabel>
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <FormControl>
+                        <SelectTrigger className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="admin">Admin</SelectItem>
+                        <SelectItem value="staff">Staff</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {createFormError && (
+                <p className="text-sm text-destructive" role="alert">
+                  {createFormError}
+                </p>
+              )}
+
+              <DialogFooter>
+                <Button type="submit" disabled={creating}>
+                  {creating && <Loader2 className="animate-spin" />}
+                  Create user
                 </Button>
               </DialogFooter>
             </form>

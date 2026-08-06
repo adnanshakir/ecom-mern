@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-const PUBLIC_ONLY_ROUTES = ["/login", "/register"];
+const PUBLIC_ONLY_ROUTES = ["/login"];
 
 export function middleware(request) {
   const { pathname } = request.nextUrl;
@@ -17,7 +17,7 @@ export function middleware(request) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // Already logged in and hitting login/register → send to dashboard.
+  // Already logged in and hitting login → send to dashboard.
   if (hasRefreshCookie && isPublicOnlyRoute) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
