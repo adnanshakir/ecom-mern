@@ -1,8 +1,9 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useSelector } from "react-redux";
+import { usePathname, useRouter } from "next/navigation";
+import { useDispatch, useSelector } from "react-redux";
 import {
   LayoutDashboard,
   Package,
@@ -11,11 +12,21 @@ import {
   Warehouse,
   Users,
   LogOut,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Menu,
+  X,
 } from "lucide-react";
 
-import { useAuth } from "@/hooks/useAuth";
+import { logout } from "@/redux/slices/authSlice";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+  TooltipProvider,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
@@ -27,56 +38,156 @@ const NAV_ITEMS = [
   { href: "/users", label: "Users", icon: Users, allow: ["super_admin"] },
 ];
 
+const COLLAPSE_KEY = "sidebar-collapsed";
+
 export default function AdminLayout({ children }) {
   const pathname = usePathname();
+  const dispatch = useDispatch();
+  const router = useRouter();
   const user = useSelector((state) => state.auth.user);
-  const { handleLogout } = useAuth();
+
+  const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  // Restore collapsed preference after mount (avoids SSR/client mismatch).
+  useEffect(() => {
+    if (localStorage.getItem(COLLAPSE_KEY) === "true") setCollapsed(true);
+  }, []);
+
+  const toggleCollapsed = () => {
+    setCollapsed((prev) => {
+      localStorage.setItem(COLLAPSE_KEY, String(!prev));
+      return !prev;
+    });
+  };
+
+  // Close the mobile drawer on route change.
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
+
+  const handleLogout = async () => {
+    await dispatch(logout());
+    router.push("/login");
+  };
 
   const visibleNavItems = NAV_ITEMS.filter(
     (item) => !user?.role || item.allow.includes(user.role)
   );
 
   return (
-    <div className="flex min-h-screen">
-      <aside className="hidden w-56 flex-col border-r bg-card px-3 py-4 sm:flex">
-        <div className="mb-6 px-2 text-sm font-semibold">Ecom Admin</div>
-        <nav className="flex flex-col gap-1">
-          {visibleNavItems.map(({ href, label, icon: Icon }) => {
-            const isActive = pathname.startsWith(href);
-            return (
-              <Link
-                key={href}
-                href={href}
-                className={cn(
-                  "flex items-center gap-2 rounded-md px-2 py-2 text-sm transition-colors",
-                  isActive
-                    ? "bg-accent text-accent-foreground"
-                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                )}
-              >
-                <Icon className="size-4" />
-                {label}
-              </Link>
-            );
-          })}
-        </nav>
-      </aside>
+    <TooltipProvider delayDuration={200}>
+      <div className="flex min-h-screen">
+        {mobileOpen && (
+          <div
+            className="fixed inset-0 z-40 bg-black/50 sm:hidden"
+            onClick={() => setMobileOpen(false)}
+          />
+        )}
 
-      <div className="flex flex-1 flex-col">
-        <header className="flex items-center justify-between border-b px-4 py-3">
-          <div className="text-sm text-muted-foreground">
-            {user ? `${user.name} · ${user.role}` : ""}
+        <aside
+          className={cn(
+            "flex flex-col border-r bg-card transition-all duration-200 ease-in-out",
+            "fixed inset-y-0 left-0 z-50 sm:static",
+            collapsed ? "w-16" : "w-64",
+            mobileOpen ? "translate-x-0" : "-translate-x-full sm:translate-x-0"
+          )}
+        >
+          <div className="flex items-center justify-between px-3 py-4">
+            {!collapsed && (
+              <span className="truncate text-sm font-semibold">Ecom Admin</span>
+            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="hidden sm:inline-flex"
+              onClick={toggleCollapsed}
+            >
+              {collapsed ? (
+                <PanelLeftOpen className="size-4" />
+              ) : (
+                <PanelLeftClose className="size-4" />
+              )}
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="sm:hidden"
+              onClick={() => setMobileOpen(false)}
+            >
+              <X className="size-4" />
+            </Button>
           </div>
-          <Button variant="ghost" size="sm" onClick={handleLogout}>
-            <LogOut className="size-4" />
-            Logout
-          </Button>
-        </header>
 
-        <main className="flex-1">
-          <PageContainer className="py-6">{children}</PageContainer>
-        </main>
+          <nav className="flex flex-1 flex-col gap-1 px-2">
+            {visibleNavItems.map(({ href, label, icon: Icon }) => {
+              const isActive = pathname.startsWith(href);
+              const link = (
+                <Link
+                  href={href}
+                  className={cn(
+                    "flex items-center gap-2 rounded-md px-2.5 py-2 text-sm transition-colors",
+                    collapsed && "justify-center",
+                    isActive
+                      ? "bg-accent text-accent-foreground"
+                      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                  )}
+                >
+                  <Icon className="size-4 shrink-0" />
+                  {!collapsed && <span className="truncate">{label}</span>}
+                </Link>
+              );
+
+              return collapsed ? (
+                <Tooltip key={href}>
+                  <TooltipTrigger asChild>{link}</TooltipTrigger>
+                  <TooltipContent side="right">{label}</TooltipContent>
+                </Tooltip>
+              ) : (
+                <div key={href}>{link}</div>
+              );
+            })}
+          </nav>
+
+          <div className="border-t px-2 py-3">
+            {!collapsed ? (
+              <div className="flex items-center justify-between gap-2 px-1">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium">{user?.name}</p>
+                  <p className="truncate text-xs capitalize text-muted-foreground">
+                    {user?.role}
+                  </p>
+                </div>
+                <Button variant="ghost" size="icon" onClick={handleLogout}>
+                  <LogOut className="size-4" />
+                </Button>
+              </div>
+            ) : (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="icon" className="w-full" onClick={handleLogout}>
+                    <LogOut className="size-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="right">{user?.name} — Logout</TooltipContent>
+              </Tooltip>
+            )}
+          </div>
+        </aside>
+
+        <div className="flex flex-1 flex-col">
+          <header className="flex items-center border-b px-4 py-3 sm:hidden">
+            <Button variant="ghost" size="icon" onClick={() => setMobileOpen(true)}>
+              <Menu className="size-4" />
+            </Button>
+            <span className="ml-2 text-sm font-semibold">Ecom Admin</span>
+          </header>
+
+          <main className="flex-1">
+            <PageContainer className="py-6">{children}</PageContainer>
+          </main>
+        </div>
       </div>
-    </div>
+    </TooltipProvider>
   );
 }
