@@ -8,10 +8,24 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { createProduct } from "@/services/products";
 import { productSchema } from "@/schemas/product";
 
-const EMPTY_VARIANT = { sku: "", price: "", stock: "", salePrice: "", barcode: "", weight: "" };
+const EMPTY_VARIANT = { sku: "", price: "", stock: "", salePrice: "", barcode: "" };
+
+// Fields that belong to "step 1" — validated before letting the user move
+// on to the variants step.
+const DETAILS_FIELDS = [
+  "name",
+  "category",
+  "brand",
+  "status",
+  "featured",
+  "images",
+  "seoTitle",
+  "seoDescription",
+];
 
 export function useCreateProduct() {
   const router = useRouter();
+  const [step, setStep] = useState(1); // 1 = details, 2 = variants
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState(null);
 
@@ -38,17 +52,20 @@ export function useCreateProduct() {
   const addVariant = () => append(EMPTY_VARIANT);
 
   const removeVariant = (index) => {
-    // Mirrors the backend's "at least one variant" rule client-side —
-    // there's no product yet at this point, so this just protects the form.
     if (fields.length <= 1) return;
     remove(index);
   };
 
+  const goToVariants = async () => {
+    const valid = await form.trigger(DETAILS_FIELDS);
+    if (valid) setStep(2);
+  };
+
+  const goToDetails = () => setStep(1);
+
   const submit = async (values) => {
-     console.log("submit called");
     setSubmitting(true);
     setFormError(null);
-    console.log("Submitting product:", JSON.stringify(values, null, 2));
 
     const payload = {
       ...values,
@@ -59,13 +76,12 @@ export function useCreateProduct() {
         ...v,
         salePrice: v.salePrice || undefined,
         barcode: v.barcode || undefined,
-        weight: v.weight || undefined,
+        weight: v.weight?.value ? { value: v.weight.value, unit: v.weight.unit || "g" } : undefined,
       })),
     };
 
     try {
       const { data } = await createProduct(payload);
-      console.log("Product created successfully:", data);
       router.push(`/products/${data.data._id}`);
     } catch (err) {
       setFormError(err.response?.data?.message || "Failed to create product");
@@ -76,6 +92,9 @@ export function useCreateProduct() {
 
   return {
     form,
+    step,
+    goToVariants,
+    goToDetails,
     variantFields: fields,
     addVariant,
     removeVariant,

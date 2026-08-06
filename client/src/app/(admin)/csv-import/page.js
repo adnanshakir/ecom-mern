@@ -6,14 +6,7 @@ import { useCsvImport } from "@/hooks/useCsvImport";
 import { RoleGate } from "@/components/RoleGate";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableHead,
-  TableRow,
-  TableCell,
-} from "@/components/ui/table";
+import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/table";
 
 export default function CsvImportPage() {
   return (
@@ -79,8 +72,8 @@ function CsvImportFlow() {
         <Card>
           <CardHeader>
             <CardTitle className="text-sm font-medium">
-              2. Review — {preview.validCount} valid, {preview.invalidCount} invalid, out of{" "}
-              {preview.totalProducts} products ({preview.totalRows} rows)
+              2. Review — {preview.validCount} valid, {preview.invalidCount} invalid, out of {preview.totalProducts}{" "}
+              products ({preview.totalRows} rows)
             </CardTitle>
           </CardHeader>
           <CardContent className="grid gap-4">
@@ -137,10 +130,9 @@ function CsvImportFlow() {
           </CardHeader>
           <CardContent className="grid gap-3">
             <p className="text-sm">
-              Imported <span className="text-emerald-500">{confirmResult.successCount}</span>,
-              skipped{" "}
-              <span className="text-destructive">{confirmResult.skippedCount}</span> — all
-              imported products are set to <span className="font-medium">draft</span> status.
+              Imported <span className="text-emerald-500">{confirmResult.successCount}</span>, skipped{" "}
+              <span className="text-destructive">{confirmResult.skippedCount}</span> — all imported products are set to{" "}
+              <span className="font-medium">draft</span> status.
             </p>
 
             {confirmResult.errors?.length > 0 && (

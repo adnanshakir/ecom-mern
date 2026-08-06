@@ -81,7 +81,7 @@ export default function AdminLayout({ children }) {
 
   return (
     <TooltipProvider delayDuration={200}>
-      <div className="flex min-h-screen">
+      <div className="flex h-screen overflow-hidden">
         {mobileOpen && (
           <div className="fixed inset-0 z-40 bg-black/50 sm:hidden" onClick={() => setMobileOpen(false)} />
         )}
@@ -89,7 +89,7 @@ export default function AdminLayout({ children }) {
         <aside
           className={cn(
             "flex flex-col border-r bg-card transition-all duration-200 ease-in-out",
-            "fixed inset-y-0 left-0 z-50 sm:static",
+            "fixed inset-y-0 left-0 z-50",
             effectiveCollapsed ? "w-16" : "w-64",
             mobileOpen ? "translate-x-0" : "-translate-x-full sm:translate-x-0"
           )}
@@ -171,7 +171,7 @@ export default function AdminLayout({ children }) {
           </div>
         </aside>
 
-        <div className="flex flex-1 flex-col">
+        <div className={cn("flex min-h-0 flex-1 flex-col", effectiveCollapsed ? "sm:ml-16" : "sm:ml-64")}>
           <header className="flex items-center justify-between border-b px-4 py-3 sm:hidden">
             <div className="flex items-center gap-2">
               <Button variant="ghost" size="icon" onClick={() => setMobileOpen(true)}>
@@ -186,7 +186,7 @@ export default function AdminLayout({ children }) {
             )}
           </header>
 
-          <main className="flex-1">
+          <main className="flex-1 overflow-y-auto">
             <PageContainer className="py-6">{children}</PageContainer>
           </main>
         </div>

@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+export const weightUnits = ["g", "kg", "lb", "oz"];
+
 export const variantSchema = z.object({
   sku: z.string().min(1, "SKU is required"),
   price: z.coerce.number().positive("Price must be greater than 0"),
@@ -9,7 +11,7 @@ export const variantSchema = z.object({
   weight: z
     .object({
       value: z.coerce.number().positive(),
-      unit: z.enum(["g", "kg", "lb", "oz"]).default("g"),
+      unit: z.enum(weightUnits).default("g"),
     })
     .optional(),
 });

@@ -12,7 +12,7 @@ import {
 } from "@/services/variants";
 import { variantSchema } from "@/schemas/product";
 
-const EMPTY_VARIANT = { sku: "", price: "", stock: "", salePrice: "", barcode: "", weight: "" };
+const EMPTY_VARIANT = { sku: "", price: "", stock: "", salePrice: "", barcode: "" };
 
 export function useProductVariants(productId) {
   const [variants, setVariants] = useState([]);
@@ -61,7 +61,7 @@ export function useProductVariants(productId) {
       stock: variant.stock,
       salePrice: variant.salePrice || "",
       barcode: variant.barcode || "",
-      weight: variant.weight || "",
+      weight: variant.weight,
     });
     setDialogOpen(true);
   };
