@@ -15,7 +15,7 @@ import { logActivity } from "../utils/activityLogger.js";
 import { parseCsvBuffer } from "../utils/csvParser.js";
 import ApiError from "../utils/apiError.js";
 import { adjustStock } from "../utils/inventory.js";
-import InventoryMovement from "../models/inventoryMovement.model.js"
+import InventoryMovement from "../models/inventoryMovement.model.js";
 
 export const previewCsvImport = async (req, res, next) => {
   try {
@@ -168,7 +168,7 @@ export const confirmCsvImport = async (req, res, next) => {
   await logActivity({
     userId: req.user.id,
     action: "create",
-    resource: "Product",
+    resource: "ImportJob",
     resourceId: importJob._id,
     description: `CSV import: ${successCount}/${products.length} products imported from ${importJob.fileName}`,
   });
@@ -219,7 +219,7 @@ export const rollbackCsvImport = async (req, res, next) => {
     await logActivity({
       userId: req.user.id,
       action: "delete",
-      resource: "Product",
+      resource: "ImportJob",
       resourceId: importJob._id,
       description: `Rolled back CSV import: ${importJob.fileName} (${importJob.successCount} products removed)`,
     });
@@ -227,6 +227,70 @@ export const rollbackCsvImport = async (req, res, next) => {
     res.status(200).json({
       success: true,
       message: `Rolled back ${importJob.successCount} products and their variants`,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ---------------- LIST IMPORT JOBS ----------------
+/**
+ * GET /api/products/import
+ * Returns recent ImportJob documents for the current user, paginated.
+ * Query params: page (default 1), limit (default 20), status (optional filter)
+ */
+export const getImportJobs = async (req, res, next) => {
+  try {
+    const { page = 1, limit = 20, status } = req.query;
+
+    const filter = { user: req.user.id };
+    if (status) filter.status = status;
+
+    const skip = (Number(page) - 1) * Number(limit);
+
+    const [jobs, total] = await Promise.all([
+      ImportJob.find(filter)
+        .select("fileName status successCount skippedCount totalProducts createdAt")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(Number(limit)),
+      ImportJob.countDocuments(filter),
+    ]);
+
+    res.status(200).json({
+      success: true,
+      data: jobs,
+      pagination: {
+        total,
+        page: Number(page),
+        pages: Math.ceil(total / Number(limit)),
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ---------------- GET SINGLE IMPORT JOB ----------------
+/**
+ * GET /api/products/import/:id
+ * Returns full detail for a single ImportJob so the client can verify
+ * current status (e.g. rolled_back) without relying on stale frontend state.
+ * The large createdProductIds / createdVariantIds arrays are omitted from the
+ * response — they are only needed internally by rollback.
+ */
+export const getImportJobById = async (req, res, next) => {
+  try {
+    const importJob = await ImportJob.findOne({
+      _id: req.params.id,
+      user: req.user.id, // scope to owning user
+    }).select("-createdProductIds -createdVariantIds -createdCategoryIds -createdBrandIds");
+
+    if (!importJob) throw new ApiError(404, "Import job not found");
+
+    res.status(200).json({
+      success: true,
+      data: importJob,
     });
   } catch (err) {
     next(err);

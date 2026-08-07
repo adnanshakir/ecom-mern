@@ -27,6 +27,8 @@ import {
   previewCsvImport,
   confirmCsvImport,
   rollbackCsvImport,
+  getImportJobs,
+  getImportJobById,
 } from "../controllers/csvImport.controller.js";
 import { csvUpload } from "../middleware/csvUpload.middleware.js";
 
@@ -53,6 +55,22 @@ router.post(
   csvUpload.single("file"),
   previewCsvImport
 );
+
+/**
+ * @route   GET /api/products/import
+ * @desc    List recent ImportJob documents for the current user, paginated
+ *          (supports ?page=&limit=&status= query params)
+ * @access  Private (super_admin, admin)
+ */
+router.get("/import", authenticate, authorize("super_admin", "admin"), getImportJobs);
+
+/**
+ * @route   GET /api/products/import/:id
+ * @desc    Fetch a single ImportJob by ID (server-verified status — use this to
+ *          determine whether the rollback button should be shown/disabled)
+ * @access  Private (super_admin, admin)
+ */
+router.get("/import/:id", authenticate, authorize("super_admin", "admin"), getImportJobById);
 
 /**
  * @route   GET /api/products/:id
