@@ -2,13 +2,9 @@
 
 import { useEffect, useState } from "react";
 import api from "@/services/axios";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-} from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
+import { ActivityLog } from "@/components/dashboard/ActivityLog";
 
 const ACTION_LABELS = {
   create: "created",
@@ -30,8 +26,7 @@ export default function DashboardPage() {
         if (!cancelled) setStats(data.data);
       })
       .catch((err) => {
-        if (!cancelled)
-          setError(err.response?.data?.message || "Failed to load stats");
+        if (!cancelled) setError(err.response?.data?.message || "Failed to load stats");
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -57,6 +52,10 @@ export default function DashboardPage() {
 
   return (
     <div className="grid gap-4">
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-semibold">Dashboard</h1>
+      </div>
+
       <div className="grid gap-4 sm:grid-cols-3">
         <StatCard label="Products" value={stats.totalProducts} />
         <StatCard label="Categories" value={stats.totalCategories} />
@@ -74,13 +73,9 @@ export default function DashboardPage() {
             {stats.lowStock.items?.length ? (
               <ul className="grid gap-2 text-sm">
                 {stats.lowStock.items.map((variant) => (
-                  <li
-                    key={variant._id}
-                    className="flex justify-between border-b pb-1 last:border-0"
-                  >
+                  <li key={variant._id} className="flex justify-between border-b pb-1 last:border-0">
                     <span>
-                      {variant.product?.name || "—"}{" "}
-                      <span className="text-muted-foreground">({variant.sku})</span>
+                      {variant.product?.name || "—"} <span className="text-muted-foreground">({variant.sku})</span>
                     </span>
                     <span className="text-muted-foreground">stock: {variant.stock}</span>
                   </li>
@@ -97,26 +92,7 @@ export default function DashboardPage() {
             <CardTitle>Recent activity</CardTitle>
           </CardHeader>
           <CardContent>
-            {stats.latestActivity?.length ? (
-              <ul className="grid gap-3 text-sm">
-                {stats.latestActivity.map((log) => (
-                  <li key={log._id} className="grid gap-0.5">
-                    <span>
-                      <span className="font-medium">{log.user?.name || "Someone"}</span>{" "}
-                      {ACTION_LABELS[log.action] || log.action}{" "}
-                      <span className="text-muted-foreground">{log.resource.toLowerCase()}</span>
-                      {" — "}
-                      {log.description}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {new Date(log.createdAt).toLocaleString()}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-sm text-muted-foreground">No recent activity.</p>
-            )}
+            <ActivityLog items={stats.latestActivity} />
           </CardContent>
         </Card>
       </div>
