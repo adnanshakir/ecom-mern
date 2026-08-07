@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { previewImport, confirmImport, rollbackImport } from "@/services/csvImport";
 
 export function useCsvImport() {
@@ -9,6 +9,7 @@ export function useCsvImport() {
   const [previewing, setPreviewing] = useState(false);
   const [previewError, setPreviewError] = useState(null);
   const [preview, setPreview] = useState(null);
+  const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
 
   const [confirming, setConfirming] = useState(false);
   const [confirmError, setConfirmError] = useState(null);
@@ -18,23 +19,26 @@ export function useCsvImport() {
   const [rollbackError, setRollbackError] = useState(null);
   const [rolledBack, setRolledBack] = useState(false);
 
-  const runPreview = async () => {
+  useEffect(() => {
     if (!file) return;
+
     setPreviewing(true);
     setPreviewError(null);
     setPreview(null);
+    setPreviewDialogOpen(false);
     setConfirmResult(null);
+    setConfirmError(null);
     setRolledBack(false);
+    setRollbackError(null);
 
-    try {
-      const { data } = await previewImport(file);
-      setPreview(data.data);
-    } catch (err) {
-      setPreviewError(err.response?.data?.message || "Failed to parse CSV");
-    } finally {
-      setPreviewing(false);
-    }
-  };
+    previewImport(file)
+      .then(({ data }) => {
+        setPreview(data.data);
+        setPreviewDialogOpen(true);
+      })
+      .catch((err) => setPreviewError(err.response?.data?.message || "Failed to parse CSV"))
+      .finally(() => setPreviewing(false));
+  }, [file]);
 
   const runConfirm = async () => {
     if (!preview || !file) return;
@@ -42,10 +46,9 @@ export function useCsvImport() {
     setConfirmError(null);
 
     try {
-      // Send the full preview.products array back (valid + invalid) —
-      // the backend re-validates and only imports the valid rows itself.
       const { data } = await confirmImport(file.name, preview.products);
       setConfirmResult(data.data);
+      setPreviewDialogOpen(false);
     } catch (err) {
       setConfirmError(err.response?.data?.message || "Failed to import products");
     } finally {
@@ -74,6 +77,7 @@ export function useCsvImport() {
     setFile(null);
     setPreview(null);
     setPreviewError(null);
+    setPreviewDialogOpen(false);
     setConfirmResult(null);
     setConfirmError(null);
     setRolledBack(false);
@@ -86,7 +90,8 @@ export function useCsvImport() {
     previewing,
     previewError,
     preview,
-    runPreview,
+    previewDialogOpen,
+    setPreviewDialogOpen,
     confirming,
     confirmError,
     confirmResult,
