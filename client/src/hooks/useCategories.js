@@ -5,11 +5,13 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { categorySchema } from "@/schemas/category";
 import { getCategories, createCategory, updateCategory, deleteCategory } from "@/services/categories";
+import { buildCategoryTree, getDescendantIds } from "@/lib/categoryTree";
 
 export function useCategories() {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [expandedIds, setExpandedIds] = useState(() => new Set());
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState(null); // null = creating
@@ -107,6 +109,22 @@ export function useCategories() {
     form.reset();
   };
 
+  const toggleExpanded = (categoryId) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+
+      if (next.has(categoryId)) {
+        next.delete(categoryId);
+      } else {
+        next.add(categoryId);
+      }
+
+      return next;
+    });
+  };
+
+  const isExpanded = (categoryId) => expandedIds.has(categoryId);
+
   // Submit
   const submit = async (values) => {
     try {
@@ -128,19 +146,40 @@ export function useCategories() {
     }
   };
 
-  // A category can't be nested under itself — exclude it from the parent
-  // options when editing. Computed here so the page doesn't need to know about
-  // editingCategory at all.
-  const parentOptions = categories.filter((c) => c._id !== editingCategory?._id);
+  // new — excludes itself AND all its descendants, preventing a cycle:
+  const excludedIds = editingCategory
+    ? new Set([editingCategory._id, ...getDescendantIds(categories, editingCategory._id)])
+    : new Set();
+  const parentOptions = buildCategoryTree(categories).filter((c) => !excludedIds.has(c._id));
 
   useEffect(() => {
-    fetchCategories();
-  }, [fetchCategories]);
+    let cancelled = false;
+
+    getCategories()
+      .then(({ data }) => {
+        if (!cancelled) setCategories(data.data);
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setError(err.response?.data?.message || "Failed to load categories");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return {
     categories,
     loading,
     error,
+    expandedIds,
+    isExpanded,
+    toggleExpanded,
 
     dialogOpen,
     setDialogOpen,

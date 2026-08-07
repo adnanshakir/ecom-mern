@@ -1,13 +1,21 @@
 "use client";
 
 import { useSelector } from "react-redux";
-import { Loader2, Pencil, Plus, Trash2 } from "lucide-react";
+import { Loader2, Pencil, Plus, Trash2, ChevronRight, ChevronDown } from "lucide-react";
 
 import { useCategories } from "@/hooks/useCategories";
+import { buildChildrenMap } from "@/lib/categoryTree";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/table";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableHead,
+  TableRow,
+  TableCell,
+} from "@/components/ui/table";
 import {
   Dialog,
   DialogContent,
@@ -16,8 +24,21 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
+import {
+  Form,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormControl,
+  FormMessage,
+} from "@/components/ui/form";
 
 const CAN_WRITE_ROLES = ["super_admin", "admin"];
 
@@ -29,18 +50,96 @@ export default function CategoriesPage() {
     categories,
     loading,
     error,
+    isExpanded,
+    toggleExpanded,
     dialogOpen,
     setDialogOpen,
     editingCategory,
     form,
     formError,
     submitting,
-    parentOptions,
     openCreateDialog,
     openEditDialog,
     submit,
     remove,
+    parentOptions, // now computed in useCategories per your update
   } = useCategories();
+
+  const childrenMap = buildChildrenMap(categories);
+  const roots = childrenMap.get(null) || [];
+
+  const renderRows = (nodes, depth) =>
+    nodes.flatMap((category) => {
+      const children = childrenMap.get(category._id) || [];
+      const hasChildren = children.length > 0;
+      const expanded = isExpanded(category._id);
+
+      const row = (
+        <TableRow
+          key={category._id}
+          className={hasChildren ? "cursor-pointer" : undefined}
+          onClick={hasChildren ? () => toggleExpanded(category._id) : undefined}
+        >
+          <TableCell>
+            <span
+              style={{ paddingLeft: `${depth * 1.25}rem` }}
+              className="inline-flex items-center gap-1.5"
+            >
+              {hasChildren ? (
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    toggleExpanded(category._id);
+                  }}
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  {expanded ? (
+                    <ChevronDown className="size-3.5" />
+                  ) : (
+                    <ChevronRight className="size-3.5" />
+                  )}
+                </button>
+              ) : (
+                depth > 0 && <span className="inline-block w-3.5" />
+              )}
+              {category.name}
+            </span>
+          </TableCell>
+          <TableCell>
+            <span className={category.isActive ? "text-emerald-500" : "text-muted-foreground"}>
+              {category.isActive ? "Active" : "Inactive"}
+            </span>
+          </TableCell>
+          {canWrite && (
+            <TableCell className="text-right">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  openEditDialog(category);
+                }}
+              >
+                <Pencil className="size-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  remove(category);
+                }}
+              >
+                <Trash2 className="size-4" />
+              </Button>
+            </TableCell>
+          )}
+        </TableRow>
+      );
+
+      return hasChildren && expanded ? [row, ...renderRows(children, depth + 1)] : [row];
+    });
 
   return (
     <div className="grid gap-4">
@@ -68,7 +167,6 @@ export default function CategoriesPage() {
           <TableHeader>
             <TableRow>
               <TableHead>Name</TableHead>
-              <TableHead>Parent</TableHead>
               <TableHead>Status</TableHead>
               {canWrite && <TableHead className="text-right">Actions</TableHead>}
             </TableRow>
@@ -76,32 +174,12 @@ export default function CategoriesPage() {
           <TableBody>
             {categories.length === 0 && (
               <TableRow>
-                <TableCell colSpan={canWrite ? 4 : 3} className="text-muted-foreground">
+                <TableCell colSpan={canWrite ? 3 : 2} className="text-muted-foreground">
                   No categories yet.
                 </TableCell>
               </TableRow>
             )}
-            {categories.map((category) => (
-              <TableRow key={category._id}>
-                <TableCell>{category.name}</TableCell>
-                <TableCell className="text-muted-foreground">{category.parent?.name || "—"}</TableCell>
-                <TableCell>
-                  <span className={category.isActive ? "text-emerald-500" : "text-muted-foreground"}>
-                    {category.isActive ? "Active" : "Inactive"}
-                  </span>
-                </TableCell>
-                {canWrite && (
-                  <TableCell className="text-right">
-                    <Button variant="ghost" size="icon" onClick={() => openEditDialog(category)}>
-                      <Pencil className="size-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={() => remove(category)}>
-                      <Trash2 className="size-4" />
-                    </Button>
-                  </TableCell>
-                )}
-              </TableRow>
-            ))}
+            {renderRows(roots, 0)}
           </TableBody>
         </Table>
       )}
@@ -111,7 +189,9 @@ export default function CategoriesPage() {
           <DialogHeader>
             <DialogTitle>{editingCategory ? "Edit category" : "New category"}</DialogTitle>
             <DialogDescription>
-              {editingCategory ? "Update this category's details." : "Add a new category for products to reference."}
+              {editingCategory
+                ? "Update this category's details."
+                : "Add a new category for products to reference."}
             </DialogDescription>
           </DialogHeader>
 
@@ -137,7 +217,6 @@ export default function CategoriesPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Parent category (optional)</FormLabel>
-
                     <Select
                       value={field.value || "none"}
                       onValueChange={(val) => field.onChange(val === "none" ? "" : val)}
@@ -147,17 +226,17 @@ export default function CategoriesPage() {
                           <SelectValue placeholder="None (top-level)" />
                         </SelectTrigger>
                       </FormControl>
-
                       <SelectContent>
                         <SelectItem value="none">None (top-level)</SelectItem>
                         {parentOptions.map((c) => (
                           <SelectItem key={c._id} value={c._id}>
+                            {"—".repeat(c.depth)}
+                            {c.depth > 0 ? " " : ""}
                             {c.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
-
                     <FormMessage />
                   </FormItem>
                 )}
