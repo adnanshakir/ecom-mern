@@ -14,9 +14,18 @@ function Dialog({
 }
 
 function DialogTrigger({
+  render,
+  children,
   ...props
 }) {
-  return <DialogPrimitive.Trigger data-slot="dialog-trigger" {...props} />;
+
+  return (
+    <DialogPrimitive.Trigger
+      data-slot="dialog-trigger"
+      render={render ?? children}
+      {...props}
+    />
+  );
 }
 
 function DialogPortal({
@@ -133,6 +142,7 @@ function DialogDescription({
   return (
     <DialogPrimitive.Description
       data-slot="dialog-description"
+      render={<div />}
       className={cn(
         "text-sm text-muted-foreground *:[a]:underline *:[a]:underline-offset-3 *:[a]:hover:text-foreground",
         className

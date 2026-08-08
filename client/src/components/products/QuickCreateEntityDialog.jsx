@@ -51,11 +51,13 @@ export function QuickCreateEntityDialog({ label, createFn, onCreated }) {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button type="button" variant="ghost" size="icon" className="size-6" title={`New ${label.toLowerCase()}`}>
-          <Plus className="size-3.5" />
-        </Button>
-      </DialogTrigger>
+      <DialogTrigger
+        render={
+          <Button type="button" variant="ghost" size="icon" className="size-6" title={`New ${label.toLowerCase()}`}>
+            <Plus className="size-3.5" />
+          </Button>
+        }
+      />
       <DialogContent>
         <DialogHeader>
           <DialogTitle>New {label.toLowerCase()}</DialogTitle>
