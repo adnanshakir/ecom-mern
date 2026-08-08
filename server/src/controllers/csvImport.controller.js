@@ -34,6 +34,26 @@ export const previewCsvImport = async (req, res, next) => {
     const groups = groupRowsByProduct(rows);
     const mappedProducts = await Promise.all(groups.map(mapGroupToProduct));
 
+    // --- Per-SKU duplicate check ---
+    // Collect every SKU in this CSV and look them up in the DB in one query.
+    const allSkus = mappedProducts.flatMap((p) => p.variants.map((v) => v.sku));
+    const existingVariants = await ProductVariant.find({ sku: { $in: allSkus } }).select("sku");
+    const existingSkuSet = new Set(existingVariants.map((v) => v.sku));
+
+    mappedProducts.forEach((product) => {
+      const duplicateSkus = product.variants
+        .filter((v) => existingSkuSet.has(v.sku))
+        .map((v) => v.sku);
+
+      if (duplicateSkus.length > 0) {
+        product.valid = false;
+        product.errors = [
+          ...(product.errors || []),
+          `Already imported — SKU(s) already exist: ${duplicateSkus.join(", ")}`,
+        ];
+      }
+    });
+
     const validCount = mappedProducts.filter((p) => p.valid).length;
     const invalidCount = mappedProducts.length - validCount;
 
@@ -122,6 +142,9 @@ export const confirmCsvImport = async (req, res, next) => {
         weight: v.weight,
       }));
 
+      // Safety net for a race condition (SKU imported by someone else between
+      // preview and confirm) — let it abort the transaction cleanly rather than
+      // trying to continue using a session MongoDB has already doomed.
       const createdVariants = await ProductVariant.insertMany(variantDocs, { session });
       createdVariantIds.push(...createdVariants.map((v) => v._id));
 
@@ -233,12 +256,6 @@ export const rollbackCsvImport = async (req, res, next) => {
   }
 };
 
-// ---------------- LIST IMPORT JOBS ----------------
-/**
- * GET /api/products/import
- * Returns recent ImportJob documents for the current user, paginated.
- * Query params: page (default 1), limit (default 20), status (optional filter)
- */
 export const getImportJobs = async (req, res, next) => {
   try {
     const { page = 1, limit = 20, status } = req.query;
@@ -271,14 +288,6 @@ export const getImportJobs = async (req, res, next) => {
   }
 };
 
-// ---------------- GET SINGLE IMPORT JOB ----------------
-/**
- * GET /api/products/import/:id
- * Returns full detail for a single ImportJob so the client can verify
- * current status (e.g. rolled_back) without relying on stale frontend state.
- * The large createdProductIds / createdVariantIds arrays are omitted from the
- * response — they are only needed internally by rollback.
- */
 export const getImportJobById = async (req, res, next) => {
   try {
     const importJob = await ImportJob.findOne({

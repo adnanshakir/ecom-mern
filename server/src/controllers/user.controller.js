@@ -3,9 +3,6 @@ import ApiError from "../utils/apiError.js";
 import { logActivity } from "../utils/activityLogger.js";
 import RefreshToken from "../models/refreshToken.model.js";
 
-// ---------------- GET ME (hydration) ----------------
-// Returns the authenticated user's own profile without requiring a user ID in
-// the URL — intended for frontend session hydration on page load / refresh.
 export const getMe = async (req, res, next) => {
   try {
     const user = await User.findById(req.user.id);
@@ -16,7 +13,6 @@ export const getMe = async (req, res, next) => {
     next(err);
   }
 };
-
 
 export const getUsers = async (req, res, next) => {
   try {
