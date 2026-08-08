@@ -1,8 +1,10 @@
 "use client";
 
-import { Loader2, Upload, RotateCcw } from "lucide-react";
+import { Loader2, Upload } from "lucide-react";
 
 import { useCsvImport } from "@/hooks/useCsvImport";
+import { useRecentImports } from "@/hooks/useRecentImports";
+import { ImportJobsList } from "@/components/csv-import/ImportJobsList";
 import { RoleGate } from "@/components/RoleGate";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -44,12 +46,10 @@ function CsvImportFlow() {
     confirmError,
     confirmResult,
     runConfirm,
-    rollingBack,
-    rollbackError,
-    rolledBack,
-    runRollback,
     reset,
   } = useCsvImport();
+
+  const recentImports = useRecentImports();
 
   return (
     <div className="grid gap-4">
@@ -89,37 +89,12 @@ function CsvImportFlow() {
           <CardHeader>
             <CardTitle className="text-sm font-medium">Import complete</CardTitle>
           </CardHeader>
-          <CardContent className="grid gap-3">
+          <CardContent>
             <p className="text-sm">
               Imported <span className="text-emerald-500">{confirmResult.successCount}</span>,
-              skipped <span className="text-destructive">{confirmResult.skippedCount}</span> —
-              all imported products are set to <span className="font-medium">draft</span> status.
+              skipped <span className="text-destructive">{confirmResult.skippedCount}</span> — see
+              Recent Imports below to undo if needed.
             </p>
-
-            {confirmResult.errors?.length > 0 && (
-              <ul className="grid gap-1 text-sm text-muted-foreground">
-                {confirmResult.errors.map((err, i) => (
-                  <li key={i}>• {typeof err === "string" ? err : err.message}</li>
-                ))}
-              </ul>
-            )}
-
-            {!rolledBack ? (
-              <Button
-                variant="outline"
-                className="w-fit"
-                onClick={runRollback}
-                disabled={rollingBack || confirmResult.successCount === 0}
-              >
-                {rollingBack && <Loader2 className="animate-spin" />}
-                <RotateCcw className="size-4" />
-                Undo this import
-              </Button>
-            ) : (
-              <p className="text-sm text-emerald-500">Import rolled back.</p>
-            )}
-
-            {rollbackError && <p className="text-sm text-destructive">{rollbackError}</p>}
           </CardContent>
         </Card>
       )}
@@ -168,7 +143,13 @@ function CsvImportFlow() {
               {confirmError && <p className="text-sm text-destructive">{confirmError}</p>}
 
               <DialogFooter>
-                <Button onClick={runConfirm} disabled={confirming || preview.validCount === 0}>
+                <Button
+                  onClick={async () => {
+                    await runConfirm();
+                    recentImports.fetchJobs();
+                  }}
+                  disabled={confirming || preview.validCount === 0}
+                >
                   {confirming && <Loader2 className="animate-spin" />}
                   <Upload className="size-4" />
                   Confirm import ({preview.validCount} rows)
@@ -178,6 +159,29 @@ function CsvImportFlow() {
           )}
         </DialogContent>
       </Dialog>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm font-medium">Recent imports</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {recentImports.loading ? (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="size-4 animate-spin" />
+              Loading...
+            </div>
+          ) : recentImports.error ? (
+            <p className="text-sm text-destructive">{recentImports.error}</p>
+          ) : (
+            <ImportJobsList
+              jobs={recentImports.jobs}
+              showRollback
+              rollingBackId={recentImports.rollingBackId}
+              onRollback={recentImports.rollback}
+            />
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

@@ -11,3 +11,7 @@ export const previewImport = (file) => {
 export const confirmImport = (fileName, products) => api.post("/products/import/confirm", { fileName, products });
 
 export const rollbackImport = (importJobId) => api.post(`/products/import/${importJobId}/rollback`);
+
+export const getImportJobs = (params) => api.get("/products/import", { params });
+
+export const getImportJob = (id) => api.get(`/products/import/${id}`);

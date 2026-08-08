@@ -8,6 +8,7 @@ import { StatCard } from "@/components/dashboard/StatCard";
 import { LowStockList } from "@/components/dashboard/LowStockList";
 import { ActivityLog } from "@/components/dashboard/ActivityLog";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { ImportJobsList } from "@/components/csv-import/ImportJobsList";
 
 export default function DashboardPage() {
   const [stats, setStats] = useState(null);
@@ -80,6 +81,17 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent imports</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {/* dashboard is read-only overview — no rollback action here, that
+              lives on the CSV Import page */}
+          <ImportJobsList jobs={stats.recentImports} showRollback={false} />
+        </CardContent>
+      </Card>
     </div>
   );
 }

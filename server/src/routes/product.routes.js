@@ -43,6 +43,27 @@ const router = express.Router();
  */
 router.get("/", authenticate, getProducts);
 
+// ---- CSV Import (confirm + rollback) ----
+
+/**
+ * @route   POST /api/products/import/confirm
+ * @desc    Re-validates and imports valid rows from a previewed CSV (transactional), records an ImportJob
+ * @access  Private (super_admin, admin)
+ */
+router.post("/import/confirm", authenticate, authorize("super_admin", "admin"), confirmCsvImport);
+
+/**
+ * @route   POST /api/products/import/:id/rollback
+ * @desc    Undo a completed import using its ImportJob's tracked created IDs
+ * @access  Private (super_admin, admin)
+ */
+router.post(
+  "/import/:id/rollback",
+  authenticate,
+  authorize("super_admin", "admin"),
+  rollbackCsvImport
+);
+
 /**
  * @route   POST /api/products/import/preview
  * @desc    Parse + validate a Shopify-format CSV, group rows into products/variants. No DB writes.
@@ -164,27 +185,6 @@ router.delete(
   authenticate,
   authorize("super_admin", "admin"),
   deleteVariant
-);
-
-// ---- CSV Import (confirm + rollback) ----
-
-/**
- * @route   POST /api/products/import/confirm
- * @desc    Re-validates and imports valid rows from a previewed CSV (transactional), records an ImportJob
- * @access  Private (super_admin, admin)
- */
-router.post("/import/confirm", authenticate, authorize("super_admin", "admin"), confirmCsvImport);
-
-/**
- * @route   POST /api/products/import/:id/rollback
- * @desc    Undo a completed import using its ImportJob's tracked created IDs
- * @access  Private (super_admin, admin)
- */
-router.post(
-  "/import/:id/rollback",
-  authenticate,
-  authorize("super_admin", "admin"),
-  rollbackCsvImport
 );
 
 export default router;

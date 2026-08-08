@@ -237,7 +237,15 @@ function VariantMovements({ variantId, canWrite, canReconcile }) {
       </CardHeader>
       <CardContent className="grid gap-4">
         {reconcileResult && (
-          <p className="text-sm">Ledger-computed stock: {reconcileResult.computedStock}</p>
+          <p
+            className={
+              reconcileResult.hasDrift ? "text-sm text-destructive" : "text-sm text-emerald-500"
+            }
+          >
+            {reconcileResult.sku}: ledger says {reconcileResult.computedStock}, variant shows{" "}
+            {reconcileResult.currentStock}
+            {reconcileResult.hasDrift ? " — drift detected." : " — in sync."}
+          </p>
         )}
 
         {loading && (
