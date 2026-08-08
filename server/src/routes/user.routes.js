@@ -1,11 +1,18 @@
 import express from "express";
-import { getUsers, getUserById, updateUser, deleteUser } from "../controllers/user.controller.js";
+import { getUsers, getUserById, updateUser, deleteUser, getMe } from "../controllers/user.controller.js";
 import { authenticate } from "../middleware/authenticate.middleware.js";
 import { authorize } from "../middleware/authorize.middleware.js";
 import { validate } from "../middleware/validate.middleware.js";
 import { updateUserSchema } from "../validations/user.validation.js";
 
 const router = express.Router();
+
+/**
+ * @route   GET /api/users/me
+ * @desc    Return the authenticated user's own profile (session hydration)
+ * @access  Private (any authenticated role)
+ */
+router.get("/me", authenticate, getMe);
 
 /**
  * @route   GET /api/users
@@ -35,4 +42,4 @@ router.put("/:id", authenticate, authorize("super_admin"), validate(updateUserSc
  */
 router.delete("/:id", authenticate, authorize("super_admin"), deleteUser);
 
-export default router;
+export default router;

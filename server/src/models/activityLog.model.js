@@ -14,7 +14,7 @@ const activityLogSchema = new mongoose.Schema(
     },
     resource: {
       type: String,
-      enum: ["Product", "ProductVariant", "Category", "Brand", "User"],
+      enum: ["Product", "ProductVariant", "Category", "Brand", "User", "ImportJob"],
       required: true,
     },
     resourceId: {

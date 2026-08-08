@@ -15,7 +15,7 @@ import { logActivity } from "../utils/activityLogger.js";
 import { parseCsvBuffer } from "../utils/csvParser.js";
 import ApiError from "../utils/apiError.js";
 import { adjustStock } from "../utils/inventory.js";
-import InventoryMovement from "../models/inventoryMovement.model.js"
+import InventoryMovement from "../models/inventoryMovement.model.js";
 
 export const previewCsvImport = async (req, res, next) => {
   try {
@@ -33,6 +33,26 @@ export const previewCsvImport = async (req, res, next) => {
 
     const groups = groupRowsByProduct(rows);
     const mappedProducts = await Promise.all(groups.map(mapGroupToProduct));
+
+    // --- Per-SKU duplicate check ---
+    // Collect every SKU in this CSV and look them up in the DB in one query.
+    const allSkus = mappedProducts.flatMap((p) => p.variants.map((v) => v.sku));
+    const existingVariants = await ProductVariant.find({ sku: { $in: allSkus } }).select("sku");
+    const existingSkuSet = new Set(existingVariants.map((v) => v.sku));
+
+    mappedProducts.forEach((product) => {
+      const duplicateSkus = product.variants
+        .filter((v) => existingSkuSet.has(v.sku))
+        .map((v) => v.sku);
+
+      if (duplicateSkus.length > 0) {
+        product.valid = false;
+        product.errors = [
+          ...(product.errors || []),
+          `Already imported — SKU(s) already exist: ${duplicateSkus.join(", ")}`,
+        ];
+      }
+    });
 
     const validCount = mappedProducts.filter((p) => p.valid).length;
     const invalidCount = mappedProducts.length - validCount;
@@ -122,6 +142,9 @@ export const confirmCsvImport = async (req, res, next) => {
         weight: v.weight,
       }));
 
+      // Safety net for a race condition (SKU imported by someone else between
+      // preview and confirm) — let it abort the transaction cleanly rather than
+      // trying to continue using a session MongoDB has already doomed.
       const createdVariants = await ProductVariant.insertMany(variantDocs, { session });
       createdVariantIds.push(...createdVariants.map((v) => v._id));
 
@@ -168,7 +191,7 @@ export const confirmCsvImport = async (req, res, next) => {
   await logActivity({
     userId: req.user.id,
     action: "create",
-    resource: "Product",
+    resource: "ImportJob",
     resourceId: importJob._id,
     description: `CSV import: ${successCount}/${products.length} products imported from ${importJob.fileName}`,
   });
@@ -219,7 +242,7 @@ export const rollbackCsvImport = async (req, res, next) => {
     await logActivity({
       userId: req.user.id,
       action: "delete",
-      resource: "Product",
+      resource: "ImportJob",
       resourceId: importJob._id,
       description: `Rolled back CSV import: ${importJob.fileName} (${importJob.successCount} products removed)`,
     });
@@ -227,6 +250,56 @@ export const rollbackCsvImport = async (req, res, next) => {
     res.status(200).json({
       success: true,
       message: `Rolled back ${importJob.successCount} products and their variants`,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const getImportJobs = async (req, res, next) => {
+  try {
+    const { page = 1, limit = 20, status } = req.query;
+
+    const filter = { user: req.user.id };
+    if (status) filter.status = status;
+
+    const skip = (Number(page) - 1) * Number(limit);
+
+    const [jobs, total] = await Promise.all([
+      ImportJob.find(filter)
+        .select("fileName status successCount skippedCount totalProducts createdAt")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(Number(limit)),
+      ImportJob.countDocuments(filter),
+    ]);
+
+    res.status(200).json({
+      success: true,
+      data: jobs,
+      pagination: {
+        total,
+        page: Number(page),
+        pages: Math.ceil(total / Number(limit)),
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const getImportJobById = async (req, res, next) => {
+  try {
+    const importJob = await ImportJob.findOne({
+      _id: req.params.id,
+      user: req.user.id, // scope to owning user
+    }).select("-createdProductIds -createdVariantIds -createdCategoryIds -createdBrandIds");
+
+    if (!importJob) throw new ApiError(404, "Import job not found");
+
+    res.status(200).json({
+      success: true,
+      data: importJob,
     });
   } catch (err) {
     next(err);

@@ -45,6 +45,8 @@ export const updateVariant = async (req, res, next) => {
   try {
     const updates = { ...req.body };
     delete updates.product; // enforced at the validation layer too, but double-guarded here
+    delete updates.stock;   // stock is ledger-only — use POST /inventory/movements instead
+
 
     const variant = await ProductVariant.findByIdAndUpdate(req.params.id, updates, {
       new: true,

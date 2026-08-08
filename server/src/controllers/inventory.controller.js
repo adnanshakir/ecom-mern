@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import { adjustStock } from "../utils/inventory.js";
 import InventoryMovement from "../models/inventoryMovement.model.js";
+import ProductVariant from "../models/productVariant.model.js";
 import ApiError from "../utils/apiError.js";
 
 export const createMovement = async (req, res, next) => {
@@ -35,11 +36,27 @@ export const createMovement = async (req, res, next) => {
 
 export const getMovementsByVariant = async (req, res, next) => {
   try {
-    const movements = await InventoryMovement.find({ variant: req.params.variantId })
-      .populate("user", "name")
-      .sort({ createdAt: -1 });
+    const { page = 1, limit = 20 } = req.query;
+    const skip = (Number(page) - 1) * Number(limit);
 
-    res.status(200).json({ success: true, data: movements });
+    const [movements, total] = await Promise.all([
+      InventoryMovement.find({ variant: req.params.variantId })
+        .populate("user", "name role")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(Number(limit)),
+      InventoryMovement.countDocuments({ variant: req.params.variantId }),
+    ]);
+
+    res.status(200).json({
+      success: true,
+      data: movements,
+      pagination: {
+        total,
+        page: Number(page),
+        pages: Math.ceil(total / Number(limit)),
+      },
+    });
   } catch (err) {
     next(err);
   }
@@ -51,18 +68,28 @@ export const reconcileStock = async (req, res, next) => {
   try {
     const { variantId } = req.params;
 
+    const variant = await ProductVariant.findById(variantId).select("stock sku");
+    if (!variant) throw new ApiError(404, "Variant not found");
+
     const result = await InventoryMovement.aggregate([
       { $match: { variant: new mongoose.Types.ObjectId(variantId) } },
       { $group: { _id: null, total: { $sum: "$quantityChange" } } },
     ]);
 
     const computedStock = result[0]?.total || 0;
+    const currentStock = variant.stock;
 
     res.status(200).json({
       success: true,
-      data: { variantId, computedStock },
+      data: {
+        variantId,
+        sku: variant.sku,
+        currentStock,          // what variant.stock field actually holds
+        computedStock,         // what the movement ledger sums to
+        hasDrift: currentStock !== computedStock,
+      },
     });
   } catch (err) {
     next(err);
   }
-};
+};

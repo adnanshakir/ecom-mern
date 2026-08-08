@@ -115,11 +115,15 @@ export const nestedCreateVariantSchema = baseVariantSchema
   .refine(salePriceCheck, salePriceCheckOptions);
 
 // `product` is deliberately excluded from updates — a variant shouldn't be
-// reassignable to a different product through an edit request
+// reassignable to a different product through an edit request.
+// `stock` is deliberately excluded — stock is ledger-only, mutated exclusively
+// via POST /inventory/movements (adjustStock). Direct writes are blocked here
+// to ensure the inventory movement history is always the source of truth.
 export const updateVariantSchema = baseVariantSchema
-  .omit({ product: true })
+  .omit({ product: true, stock: true })
   .partial()
   .refine(salePriceCheck, salePriceCheckOptions);
+
 
 // ------- Product --------
 // Note: slug is auto-generated server-side from `name`, same as Brand/Category.

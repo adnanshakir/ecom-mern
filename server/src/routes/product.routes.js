@@ -27,6 +27,8 @@ import {
   previewCsvImport,
   confirmCsvImport,
   rollbackCsvImport,
+  getImportJobs,
+  getImportJobById,
 } from "../controllers/csvImport.controller.js";
 import { csvUpload } from "../middleware/csvUpload.middleware.js";
 
@@ -41,6 +43,27 @@ const router = express.Router();
  */
 router.get("/", authenticate, getProducts);
 
+// ---- CSV Import (confirm + rollback) ----
+
+/**
+ * @route   POST /api/products/import/confirm
+ * @desc    Re-validates and imports valid rows from a previewed CSV (transactional), records an ImportJob
+ * @access  Private (super_admin, admin)
+ */
+router.post("/import/confirm", authenticate, authorize("super_admin", "admin"), confirmCsvImport);
+
+/**
+ * @route   POST /api/products/import/:id/rollback
+ * @desc    Undo a completed import using its ImportJob's tracked created IDs
+ * @access  Private (super_admin, admin)
+ */
+router.post(
+  "/import/:id/rollback",
+  authenticate,
+  authorize("super_admin", "admin"),
+  rollbackCsvImport
+);
+
 /**
  * @route   POST /api/products/import/preview
  * @desc    Parse + validate a Shopify-format CSV, group rows into products/variants. No DB writes.
@@ -53,6 +76,22 @@ router.post(
   csvUpload.single("file"),
   previewCsvImport
 );
+
+/**
+ * @route   GET /api/products/import
+ * @desc    List recent ImportJob documents for the current user, paginated
+ *          (supports ?page=&limit=&status= query params)
+ * @access  Private (super_admin, admin)
+ */
+router.get("/import", authenticate, authorize("super_admin", "admin"), getImportJobs);
+
+/**
+ * @route   GET /api/products/import/:id
+ * @desc    Fetch a single ImportJob by ID (server-verified status — use this to
+ *          determine whether the rollback button should be shown/disabled)
+ * @access  Private (super_admin, admin)
+ */
+router.get("/import/:id", authenticate, authorize("super_admin", "admin"), getImportJobById);
 
 /**
  * @route   GET /api/products/:id
@@ -146,27 +185,6 @@ router.delete(
   authenticate,
   authorize("super_admin", "admin"),
   deleteVariant
-);
-
-// ---- CSV Import (confirm + rollback) ----
-
-/**
- * @route   POST /api/products/import/confirm
- * @desc    Re-validates and imports valid rows from a previewed CSV (transactional), records an ImportJob
- * @access  Private (super_admin, admin)
- */
-router.post("/import/confirm", authenticate, authorize("super_admin", "admin"), confirmCsvImport);
-
-/**
- * @route   POST /api/products/import/:id/rollback
- * @desc    Undo a completed import using its ImportJob's tracked created IDs
- * @access  Private (super_admin, admin)
- */
-router.post(
-  "/import/:id/rollback",
-  authenticate,
-  authorize("super_admin", "admin"),
-  rollbackCsvImport
 );
 
 export default router;

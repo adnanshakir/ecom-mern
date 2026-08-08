@@ -3,6 +3,17 @@ import ApiError from "../utils/apiError.js";
 import { logActivity } from "../utils/activityLogger.js";
 import RefreshToken from "../models/refreshToken.model.js";
 
+export const getMe = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) throw new ApiError(404, "User not found");
+
+    res.status(200).json({ success: true, data: user });
+  } catch (err) {
+    next(err);
+  }
+};
+
 export const getUsers = async (req, res, next) => {
   try {
     const { role, isActive, search, page = 1, limit = 20 } = req.query;
