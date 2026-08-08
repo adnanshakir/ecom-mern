@@ -10,21 +10,8 @@ import { useInventoryMovements } from "@/hooks/useInventoryMovements";
 import { movementTypes } from "@/schemas/inventory";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from "@/components/ui/select";
-import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableHead,
-  TableRow,
-  TableCell,
-} from "@/components/ui/table";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/table";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import {
   Dialog,
@@ -34,14 +21,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import {
-  Form,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormControl,
-  FormMessage,
-} from "@/components/ui/form";
+import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 
 const CAN_WRITE_ROLES = ["super_admin", "admin"];
 const CAN_RECONCILE_ROLES = ["super_admin", "admin"];
@@ -51,8 +31,7 @@ export default function InventoryPage() {
   const canWrite = CAN_WRITE_ROLES.includes(role);
   const canReconcile = CAN_RECONCILE_ROLES.includes(role);
 
-  const { products, pagination, loading, search, setSearch, page, setPage } =
-    useProductPicker();
+  const { products, pagination, loading, search, setSearch, page, setPage } = useProductPicker();
 
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [variants, setVariants] = useState([]);
@@ -113,15 +92,10 @@ export default function InventoryPage() {
                     <TableRow
                       key={p._id}
                       onClick={() => selectProduct(p)}
-                      className={
-                        "cursor-pointer" +
-                        (selectedProduct?._id === p._id ? " bg-accent" : "")
-                      }
+                      className={"cursor-pointer" + (selectedProduct?._id === p._id ? " bg-accent" : "")}
                     >
                       <TableCell>{p.name}</TableCell>
-                      <TableCell className="capitalize text-muted-foreground">
-                        {p.status}
-                      </TableCell>
+                      <TableCell className="capitalize text-muted-foreground">{p.status}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -132,12 +106,7 @@ export default function InventoryPage() {
                   Page {pagination.page} of {pagination.pages || 1} ({pagination.total} total)
                 </span>
                 <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={page <= 1}
-                    onClick={() => setPage(page - 1)}
-                  >
+                  <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>
                     Previous
                   </Button>
                   <Button
@@ -158,9 +127,7 @@ export default function InventoryPage() {
       {selectedProduct && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm font-medium">
-              Variant — {selectedProduct.name}
-            </CardTitle>
+            <CardTitle className="text-sm font-medium">Variant — {selectedProduct.name}</CardTitle>
           </CardHeader>
           <CardContent>
             {variantsLoading ? (
@@ -189,11 +156,7 @@ export default function InventoryPage() {
       )}
 
       {selectedVariantId && (
-        <VariantMovements
-          variantId={selectedVariantId}
-          canWrite={canWrite}
-          canReconcile={canReconcile}
-        />
+        <VariantMovements variantId={selectedVariantId} canWrite={canWrite} canReconcile={canReconcile} />
       )}
     </div>
   );
@@ -202,6 +165,9 @@ export default function InventoryPage() {
 function VariantMovements({ variantId, canWrite, canReconcile }) {
   const {
     movements,
+    page,
+    setPage,
+    pagination,
     loading,
     error,
     dialogOpen,
@@ -237,11 +203,7 @@ function VariantMovements({ variantId, canWrite, canReconcile }) {
       </CardHeader>
       <CardContent className="grid gap-4">
         {reconcileResult && (
-          <p
-            className={
-              reconcileResult.hasDrift ? "text-sm text-destructive" : "text-sm text-emerald-500"
-            }
-          >
+          <p className={reconcileResult.hasDrift ? "text-sm text-destructive" : "text-sm text-emerald-500"}>
             {reconcileResult.sku}: ledger says {reconcileResult.computedStock}, variant shows{" "}
             {reconcileResult.currentStock}
             {reconcileResult.hasDrift ? " — drift detected." : " — in sync."}
@@ -258,46 +220,60 @@ function VariantMovements({ variantId, canWrite, canReconcile }) {
         {!loading && error && <p className="text-sm text-destructive">{error}</p>}
 
         {!loading && !error && (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Type</TableHead>
-                <TableHead>Change</TableHead>
-                <TableHead>Stock</TableHead>
-                <TableHead>By</TableHead>
-                <TableHead>Date</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {movements.length === 0 && (
+          <>
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={5} className="text-muted-foreground">
-                    No movements recorded yet.
-                  </TableCell>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Change</TableHead>
+                  <TableHead>Stock</TableHead>
+                  <TableHead>By</TableHead>
+                  <TableHead>Date</TableHead>
                 </TableRow>
-              )}
-              {movements.map((m) => (
-                <TableRow key={m._id}>
-                  <TableCell className="capitalize">{m.type}</TableCell>
-                  <TableCell
-                    className={
-                      m.quantityChange >= 0 ? "text-emerald-500" : "text-destructive"
-                    }
-                  >
-                    {m.quantityChange >= 0 ? "+" : ""}
-                    {m.quantityChange}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {m.previousStock} → {m.newStock}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">{m.user?.name || "—"}</TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {new Date(m.createdAt).toLocaleString()}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {movements.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-muted-foreground">
+                      No movements recorded yet.
+                    </TableCell>
+                  </TableRow>
+                )}
+                {movements.map((m) => (
+                  <TableRow key={m._id}>
+                    <TableCell className="capitalize">{m.type}</TableCell>
+                    <TableCell className={m.quantityChange >= 0 ? "text-emerald-500" : "text-destructive"}>
+                      {m.quantityChange >= 0 ? "+" : ""}
+                      {m.quantityChange}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {m.previousStock} → {m.newStock}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">{m.user?.name || "—"}</TableCell>
+                    <TableCell className="text-muted-foreground">{new Date(m.createdAt).toLocaleString()}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+            <div className="flex items-center justify-between pt-2 text-sm text-muted-foreground">
+              <span>
+                Page {pagination.page} of {pagination.pages || 1} ({pagination.total} total)
+              </span>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>
+                  Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page >= (pagination.pages || 1)}
+                  onClick={() => setPage(page + 1)}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          </>
         )}
       </CardContent>
 
@@ -306,9 +282,8 @@ function VariantMovements({ variantId, canWrite, canReconcile }) {
           <DialogHeader>
             <DialogTitle>Record movement</DialogTitle>
             <DialogDescription>
-              Correction takes a signed delta (e.g. -3 to reduce stock). All other types must
-              be a positive quantity. History shows the signed change, before/after stock, and
-              the user who recorded it.
+              Correction takes a signed delta (e.g. -3 to reduce stock). All other types must be a positive quantity.
+              History shows the signed change, before/after stock, and the user who recorded it.
             </DialogDescription>
           </DialogHeader>
 
