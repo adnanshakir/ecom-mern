@@ -17,12 +17,12 @@ export const getDashboardStats = async (req, res, next) => {
           .populate("product", "name")
           .select("sku stock product"),
         ActivityLog.find()
-          .populate("user", "name")
+          .populate("user", "name role")
           .sort({ createdAt: -1 })
           .limit(10),
         ImportJob.find()
           .select("fileName status successCount skippedCount totalProducts createdAt user")
-          .populate("user", "name")
+          .populate("user", "name role")
           .sort({ createdAt: -1 })
           .limit(5),
       ]);

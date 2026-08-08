@@ -36,11 +36,27 @@ export const createMovement = async (req, res, next) => {
 
 export const getMovementsByVariant = async (req, res, next) => {
   try {
-    const movements = await InventoryMovement.find({ variant: req.params.variantId })
-      .populate("user", "name")
-      .sort({ createdAt: -1 });
+    const { page = 1, limit = 20 } = req.query;
+    const skip = (Number(page) - 1) * Number(limit);
 
-    res.status(200).json({ success: true, data: movements });
+    const [movements, total] = await Promise.all([
+      InventoryMovement.find({ variant: req.params.variantId })
+        .populate("user", "name role")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(Number(limit)),
+      InventoryMovement.countDocuments({ variant: req.params.variantId }),
+    ]);
+
+    res.status(200).json({
+      success: true,
+      data: movements,
+      pagination: {
+        total,
+        page: Number(page),
+        pages: Math.ceil(total / Number(limit)),
+      },
+    });
   } catch (err) {
     next(err);
   }
