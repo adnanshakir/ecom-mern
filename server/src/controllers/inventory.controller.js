@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import { adjustStock } from "../utils/inventory.js";
 import InventoryMovement from "../models/inventoryMovement.model.js";
+import ProductVariant from "../models/productVariant.model.js";
 import ApiError from "../utils/apiError.js";
 
 export const createMovement = async (req, res, next) => {
@@ -51,18 +52,28 @@ export const reconcileStock = async (req, res, next) => {
   try {
     const { variantId } = req.params;
 
+    const variant = await ProductVariant.findById(variantId).select("stock sku");
+    if (!variant) throw new ApiError(404, "Variant not found");
+
     const result = await InventoryMovement.aggregate([
       { $match: { variant: new mongoose.Types.ObjectId(variantId) } },
       { $group: { _id: null, total: { $sum: "$quantityChange" } } },
     ]);
 
     const computedStock = result[0]?.total || 0;
+    const currentStock = variant.stock;
 
     res.status(200).json({
       success: true,
-      data: { variantId, computedStock },
+      data: {
+        variantId,
+        sku: variant.sku,
+        currentStock,          // what variant.stock field actually holds
+        computedStock,         // what the movement ledger sums to
+        hasDrift: currentStock !== computedStock,
+      },
     });
   } catch (err) {
     next(err);
   }
-};
+};
