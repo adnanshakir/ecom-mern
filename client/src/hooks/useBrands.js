@@ -1,15 +1,16 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+
+import { fetchBrands, addBrand, editBrand, removeBrand } from "@/redux/slices/brandsSlice";
 import { brandSchema } from "@/schemas/brand";
-import { getBrands, createBrand, updateBrand, deleteBrand } from "@/services/brands";
 
 export function useBrands() {
-  const [brands, setBrands] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const dispatch = useDispatch();
+  const { items: brands, loading, error, fetched } = useSelector((state) => state.brands);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingBrand, setEditingBrand] = useState(null);
@@ -27,47 +28,32 @@ export function useBrands() {
     },
   });
 
+  // Only fetch once — subsequent mounts (opening Create Product again,
+  // navigating back to /brands) reuse the cached store data.
+  useEffect(() => {
+    if (!fetched) dispatch(fetchBrands());
+  }, [dispatch, fetched]);
+
+  const fetchBrandsAgain = () => dispatch(fetchBrands());
+
   // CRUD
-  const fetchBrands = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const { data } = await getBrands();
-      setBrands(data.data);
-    } catch (err) {
-      setError(err.response?.data?.message || "Failed to load brands");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
   const create = async (values) => {
-    const payload = {
-      ...values,
-      logo: values.logo || undefined,
-    };
-
-    await createBrand(payload);
+    const payload = { ...values, logo: values.logo || undefined };
+    return dispatch(addBrand(payload)).unwrap();
   };
 
   const update = async (values) => {
-    const payload = {
-      ...values,
-      logo: values.logo || undefined,
-    };
-
-    await updateBrand(editingBrand._id, payload);
+    const payload = { ...values, logo: values.logo || undefined };
+    return dispatch(editBrand({ id: editingBrand._id, payload })).unwrap();
   };
 
   const remove = async (brand) => {
     if (!window.confirm(`Delete brand "${brand.name}"?`)) return;
 
     try {
-      await deleteBrand(brand._id);
-      fetchBrands();
+      await dispatch(removeBrand(brand._id)).unwrap();
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to delete brand");
+      alert(err || "Failed to delete brand");
     }
   };
 
@@ -118,17 +104,12 @@ export function useBrands() {
       }
 
       closeDialog();
-      fetchBrands();
     } catch (err) {
-      setFormError(err.response?.data?.message || "Failed to save brand");
+      setFormError(err || "Failed to save brand");
     } finally {
       setSubmitting(false);
     }
   };
-
-  useEffect(() => {
-    fetchBrands();
-  }, [fetchBrands]);
 
   return {
     brands,
@@ -147,7 +128,7 @@ export function useBrands() {
     openEditDialog,
     closeDialog,
 
-    fetchBrands,
+    fetchBrands: fetchBrandsAgain,
     create,
     update,
     remove,
