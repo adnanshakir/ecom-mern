@@ -6,6 +6,7 @@ import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/comp
 import { createCategory } from "@/services/categories";
 import { createBrand } from "@/services/brands";
 import { QuickCreateEntityDialog } from "@/components/products/QuickCreateEntityDialog";
+import { ImageUploader } from "@/components/products/ImageUploader";
 
 export function ProductDetailsFields({ form, categories, brands }) {
   return (
@@ -143,9 +144,9 @@ export function ProductDetailsFields({ form, categories, brands }) {
         name="images"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Image URLs (one per line, optional)</FormLabel>
+            <FormLabel>Product images (optional)</FormLabel>
             <FormControl>
-              <Textarea rows={3} placeholder="https://..." {...field} />
+              <ImageUploader images={field.value || []} onChange={field.onChange} multiple maxImages={8} />
             </FormControl>
             <FormMessage />
           </FormItem>

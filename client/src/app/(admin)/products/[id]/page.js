@@ -1,21 +1,17 @@
 "use client";
 
-import { Loader2, Pencil, Plus, Trash2 } from "lucide-react";
+import { useParams, useRouter } from "next/navigation";
+import { Loader2, ArrowLeft, Pencil, Plus, Trash2 } from "lucide-react";
 
 import { useEditProduct } from "@/hooks/useEditProduct";
 import { useProductVariants } from "@/hooks/useProductVariants";
 import { useCategories } from "@/hooks/useCategories";
 import { useBrands } from "@/hooks/useBrands";
+import { RoleGate } from "@/components/RoleGate";
 import { ProductDetailsFields } from "@/components/products/ProductDetailsFields";
 import { VariantRowFields } from "@/components/products/VariantRowFields";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
+import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Table,
@@ -25,39 +21,53 @@ import {
   TableRow,
   TableCell,
 } from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Form } from "@/components/ui/form";
 
-export function EditProductDialog({ productId, open, onOpenChange, onSaved }) {
+export default function ProductDetailPage() {
+  const { id } = useParams();
+  const router = useRouter();
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[85vh] sm:max-w-3xl overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Edit product</DialogTitle>
-        </DialogHeader>
+    <RoleGate allow={["super_admin", "admin"]}>
+      <div className="mx-auto grid max-w-2xl gap-4">
+        <Button variant="ghost" size="sm" className="w-fit" onClick={() => router.push("/products")}>
+          <ArrowLeft className="size-4" />
+          Back to products
+        </Button>
 
-        {productId && (
-          <Tabs defaultValue="details">
-            <TabsList>
-              <TabsTrigger value="details">Details</TabsTrigger>
-              <TabsTrigger value="variants">Variants</TabsTrigger>
-            </TabsList>
+        <Card>
+          <CardContent className="pt-6">
+            <Tabs defaultValue="details">
+              <TabsList>
+                <TabsTrigger value="details">Details</TabsTrigger>
+                <TabsTrigger value="variants">Variants</TabsTrigger>
+              </TabsList>
 
-            <TabsContent value="details" className="pt-4">
-              <DetailsTab productId={productId} onSaved={onSaved} />
-            </TabsContent>
+              <TabsContent value="details" className="pt-4">
+                <DetailsTab productId={id} />
+              </TabsContent>
 
-            <TabsContent value="variants" className="pt-4">
-              <VariantsTab productId={productId} />
-            </TabsContent>
-          </Tabs>
-        )}
-      </DialogContent>
-    </Dialog>
+              <TabsContent value="variants" className="pt-4">
+                <VariantsTab productId={id} />
+              </TabsContent>
+            </Tabs>
+          </CardContent>
+        </Card>
+      </div>
+    </RoleGate>
   );
 }
 
-function DetailsTab({ productId, onSaved }) {
-  const { form, loading, loadError, submit, submitting, formError, saved } = useEditProduct(productId);
+function DetailsTab({ productId }) {
+  const { form, loading, loadError, submit, submitting, formError, saved } =
+    useEditProduct(productId);
   const { categories, fetchCategories } = useCategories();
   const { brands, fetchBrands } = useBrands();
 
@@ -70,18 +80,11 @@ function DetailsTab({ productId, onSaved }) {
     );
   }
 
-  if (loadError) {
-    return <p className="text-sm text-destructive">{loadError}</p>;
-  }
-
-  const handleSubmit = async (values) => {
-    await submit(values);
-    onSaved?.();
-  };
+  if (loadError) return <p className="text-sm text-destructive">{loadError}</p>;
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleSubmit)} className="grid gap-4" noValidate>
+      <form onSubmit={form.handleSubmit(submit)} className="grid gap-4" noValidate>
         <ProductDetailsFields
           form={form}
           categories={categories}
@@ -179,7 +182,7 @@ function VariantsTab({ productId }) {
       )}
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingVariant ? "Edit variant" : "New variant"}</DialogTitle>
           </DialogHeader>

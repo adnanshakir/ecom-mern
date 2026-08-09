@@ -15,7 +15,7 @@ router.post(
   "/upload",
   authenticate,
   authorize("super_admin", "admin"),
-  upload.single("image"),
+  upload.array("image", 4),
   uploadImage
 );
 

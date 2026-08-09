@@ -4,12 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
-import {
-  getVariants,
-  createVariant,
-  updateVariant,
-  deleteVariant,
-} from "@/services/variants";
+import { getVariants, createVariant, updateVariant, deleteVariant } from "@/services/variants";
 import { variantSchema } from "@/schemas/product";
 
 const EMPTY_VARIANT = { sku: "", price: "", stock: "", salePrice: "", barcode: "" };
@@ -35,9 +30,7 @@ export function useProductVariants(productId) {
     setLoading(true);
     getVariants(productId)
       .then(({ data }) => setVariants(data.data))
-      .catch((err) =>
-        setError(err.response?.data?.message || "Failed to load variants")
-      )
+      .catch((err) => setError(err.response?.data?.message || "Failed to load variants"))
       .finally(() => setLoading(false));
   }, [productId]);
 
@@ -61,7 +54,8 @@ export function useProductVariants(productId) {
       stock: variant.stock,
       salePrice: variant.salePrice || "",
       barcode: variant.barcode || "",
-      weight: variant.weight,
+      weight: variant.weight || undefined,
+      image: variant.image || undefined,
     });
     setDialogOpen(true);
   };
@@ -144,6 +138,7 @@ function cleanPayload(values) {
     ...values,
     salePrice: values.salePrice || undefined,
     barcode: values.barcode || undefined,
-    weight: values.weight || undefined,
+    weight: values.weight?.value ? { value: values.weight.value, unit: values.weight.unit || "g" } : undefined,
+    image: values.image || undefined,
   };
 }

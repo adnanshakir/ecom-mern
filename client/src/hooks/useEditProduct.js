@@ -39,19 +39,16 @@ export function useEditProduct(productId) {
         const product = data.data;
         form.reset({
           name: product.name || "",
-          // category/brand come back populated ({_id, name}) — form only needs the id
           category: product.category?._id || product.category || "",
           brand: product.brand?._id || product.brand || "",
           status: product.status || "draft",
           featured: !!product.featured,
           seoTitle: product.seoTitle || "",
           seoDescription: product.seoDescription || "",
-          images: (product.images || []).join("\n"),
+          images: product.images || [],
         });
       })
-      .catch((err) =>
-        setLoadError(err.response?.data?.message || "Failed to load product")
-      )
+      .catch((err) => setLoadError(err.response?.data?.message || "Failed to load product"))
       .finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [productId]);
@@ -63,9 +60,7 @@ export function useEditProduct(productId) {
 
     const payload = {
       ...values,
-      images: values.images
-        ? values.images.split("\n").map((url) => url.trim()).filter(Boolean)
-        : [],
+      images: values.images || [],
     };
 
     try {

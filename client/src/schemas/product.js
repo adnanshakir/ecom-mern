@@ -14,6 +14,7 @@ export const variantSchema = z.object({
       unit: z.enum(weightUnits).default("g"),
     })
     .optional(),
+  image: z.string().optional(), // single ImageKit URL, matches variant model
 });
 
 export const productSchema = z.object({
@@ -24,10 +25,11 @@ export const productSchema = z.object({
   featured: z.boolean(),
   seoTitle: z.string().optional(),
   seoDescription: z.string().optional(),
-  images: z.string().optional(), // newline-separated URLs in the UI, split into an array on submit
+  images: z
+    .array(z.object({ url: z.string(), fileId: z.string() }))
+    .optional()
+    .default([]),
   variants: z.array(variantSchema).min(1, "At least one variant is required"),
 });
 
-// Used on the Edit page — PUT /products/:id never touches variants,
-// so this mirrors productSchema minus the variants array.
 export const productDetailsSchema = productSchema.omit({ variants: true });

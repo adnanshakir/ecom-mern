@@ -9,16 +9,7 @@ import { productSchema } from "@/schemas/product";
 
 const EMPTY_VARIANT = { sku: "", price: "", stock: "", salePrice: "", barcode: "" };
 
-const DETAILS_FIELDS = [
-  "name",
-  "category",
-  "brand",
-  "status",
-  "featured",
-  "images",
-  "seoTitle",
-  "seoDescription",
-];
+const DETAILS_FIELDS = ["name", "category", "brand", "status", "featured", "images", "seoTitle", "seoDescription"];
 
 const DEFAULTS = {
   name: "",
@@ -28,7 +19,7 @@ const DEFAULTS = {
   featured: false,
   seoTitle: "",
   seoDescription: "",
-  images: "",
+  images: [],
   variants: [EMPTY_VARIANT],
 };
 
@@ -76,14 +67,13 @@ export function useCreateProduct(open, onCreated) {
 
     const payload = {
       ...values,
-      images: values.images
-        ? values.images.split("\n").map((url) => url.trim()).filter(Boolean)
-        : undefined,
+      images: values.images?.length ? values.images : undefined,
       variants: values.variants.map((v) => ({
         ...v,
         salePrice: v.salePrice || undefined,
         barcode: v.barcode || undefined,
         weight: v.weight?.value ? { value: v.weight.value, unit: v.weight.unit || "g" } : undefined,
+        image: v.image || undefined,
       })),
     };
 

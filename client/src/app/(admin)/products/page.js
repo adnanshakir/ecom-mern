@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/table";
+import { ProductCard } from "@/components/products/ProductCard";
 
 const CAN_WRITE_ROLES = ["super_admin", "admin"];
 const STATUS_OPTIONS = ["draft", "active", "archived"];
@@ -43,60 +44,60 @@ export default function ProductsPage() {
       </div>
 
       <div className="flex flex-wrap justify-between gap-2">
-       <div className="flex gap-2">
-         <Input
-          placeholder="Search products..."
-          defaultValue={filters.search}
-          className="w-56"
-          onKeyDown={(e) => {
-            if (e.key === "Enter") setFilter("search", e.currentTarget.value);
-          }}
-        />
+        <div className="flex gap-2">
+          <Input
+            placeholder="Search products..."
+            defaultValue={filters.search}
+            className="w-56"
+            onKeyDown={(e) => {
+              if (e.key === "Enter") setFilter("search", e.currentTarget.value);
+            }}
+          />
 
-        <Select value={filters.category || "all"} onValueChange={(v) => setFilter("category", v === "all" ? "" : v)}>
-          <SelectTrigger className="w-40">
-            <SelectValue placeholder="Category">
-              {filters.category ? categoryById[filters.category] : "All categories"}
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All categories</SelectItem>
-            {categories.map((c) => (
-              <SelectItem key={c._id} value={c._id}>
-                {c.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          <Select value={filters.category || "all"} onValueChange={(v) => setFilter("category", v === "all" ? "" : v)}>
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="Category">
+                {filters.category ? categoryById[filters.category] : "All categories"}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All categories</SelectItem>
+              {categories.map((c) => (
+                <SelectItem key={c._id} value={c._id}>
+                  {c.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-        <Select value={filters.brand || "all"} onValueChange={(v) => setFilter("brand", v === "all" ? "" : v)}>
-          <SelectTrigger className="w-40">
-            <SelectValue placeholder="Brand">{filters.brand ? brandById[filters.brand] : "All brands"}</SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All brands</SelectItem>
-            {brands.map((b) => (
-              <SelectItem key={b._id} value={b._id}>
-                {b.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          <Select value={filters.brand || "all"} onValueChange={(v) => setFilter("brand", v === "all" ? "" : v)}>
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="Brand">{filters.brand ? brandById[filters.brand] : "All brands"}</SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All brands</SelectItem>
+              {brands.map((b) => (
+                <SelectItem key={b._id} value={b._id}>
+                  {b.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-        <Select value={filters.status || "all"} onValueChange={(v) => setFilter("status", v === "all" ? "" : v)}>
-          <SelectTrigger className="w-36">
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All statuses</SelectItem>
-            {STATUS_OPTIONS.map((s) => (
-              <SelectItem key={s} value={s}>
-                {s}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+          <Select value={filters.status || "all"} onValueChange={(v) => setFilter("status", v === "all" ? "" : v)}>
+            <SelectTrigger className="w-36">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All statuses</SelectItem>
+              {STATUS_OPTIONS.map((s) => (
+                <SelectItem key={s} value={s}>
+                  {s}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
         <Button onClick={() => setCreateOpen(true)}>
           <Plus className="size-4" />
@@ -115,44 +116,19 @@ export default function ProductsPage() {
 
       {!loading && !error && (
         <>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead>Brand</TableHead>
-                <TableHead>Status</TableHead>
-                {canWrite && <TableHead className="text-right">Actions</TableHead>}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {products.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={canWrite ? 5 : 4} className="text-muted-foreground">
-                    No products found.
-                  </TableCell>
-                </TableRow>
-              )}
-              {products.map((product) => (
-                <TableRow key={product._id}>
-                  <TableCell>{product.name}</TableCell>
-                  <TableCell className="text-muted-foreground">{resolveName(product.category, categoryById)}</TableCell>
-                  <TableCell className="text-muted-foreground">{resolveName(product.brand, brandById)}</TableCell>
-                  <TableCell className="capitalize">{product.status}</TableCell>
-                  {canWrite && (
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="icon" onClick={() => setEditingProductId(product._id)}>
-                        <Pencil className="size-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" onClick={() => removeProduct(product)}>
-                        <Trash2 className="size-4" />
-                      </Button>
-                    </TableCell>
-                  )}
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            {products.length === 0 && <p className="col-span-full text-sm text-muted-foreground">No products found.</p>}
+            {products.map((product) => (
+              <ProductCard
+                key={product._id}
+                product={product}
+                categoryName={resolveName(product.category, categoryById)}
+                brandName={resolveName(product.brand, brandById)}
+                canWrite={canWrite}
+                onDelete={removeProduct}
+              />
+            ))}
+          </div>
 
           <div className="flex items-center justify-between text-sm text-muted-foreground">
             <span>
