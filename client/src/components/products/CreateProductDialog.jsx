@@ -5,6 +5,7 @@ import { Loader2, Plus, Trash2, ArrowRight, ArrowLeft } from "lucide-react";
 import { useCreateProduct } from "@/hooks/useCreateProduct";
 import { useCategories } from "@/hooks/useCategories";
 import { useBrands } from "@/hooks/useBrands";
+import { ApiErrorSummary } from "@/components/ApiErrorSummary";
 import { ProductDetailsFields } from "@/components/products/ProductDetailsFields";
 import { VariantRowFields } from "@/components/products/VariantRowFields";
 import { Button } from "@/components/ui/button";
@@ -95,11 +96,7 @@ export function CreateProductDialog({ open, onOpenChange, onCreated }) {
                 ))}
                 <FormMessage>{form.formState.errors.variants?.root?.message}</FormMessage>
 
-                {formError && (
-                  <p className="text-sm text-destructive" role="alert">
-                    {formError}
-                  </p>
-                )}
+                <ApiErrorSummary message={formError} />
 
                 <div className="flex gap-2">
                   <Button type="button" variant="outline" onClick={goToDetails}>

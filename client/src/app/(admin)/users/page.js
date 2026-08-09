@@ -6,6 +6,7 @@ import { Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 import { useCreateUser } from "@/hooks/useCreateUser";
 import { useUsers } from "@/hooks/useUsers";
 import { userRoles } from "@/schemas/user";
+import { ApiErrorSummary } from "@/components/ApiErrorSummary";
 import { RoleGate } from "@/components/RoleGate";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -272,11 +273,7 @@ function UsersTable() {
                 }}
               />
 
-              {formError && (
-                <p className="text-sm text-destructive" role="alert">
-                  {formError}
-                </p>
-              )}
+              <ApiErrorSummary message={formError} />
 
               <DialogFooter>
                 <Button type="submit" disabled={submitting}>
@@ -362,11 +359,7 @@ function UsersTable() {
                 )}
               />
 
-              {createFormError && (
-                <p className="text-sm text-destructive" role="alert">
-                  {createFormError}
-                </p>
-              )}
+              <ApiErrorSummary message={createFormError} />
 
               <DialogFooter>
                 <Button type="submit" disabled={creating}>

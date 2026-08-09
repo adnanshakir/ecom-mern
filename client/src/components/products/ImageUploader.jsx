@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Loader2, Plus, X } from "lucide-react";
-import { uploadImage } from "@/services/images";
+import { uploadImages } from "@/services/images";
 
 // images: array of {url, fileId}. multiple=false caps at one image (used
 // for a variant's single optional image); multiple=true allows up to
@@ -11,21 +11,28 @@ export function ImageUploader({ images, onChange, multiple = true, maxImages = 8
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState(null);
 
+  const MAX_PER_REQUEST = 4;
+
   const handleFiles = async (fileList) => {
-    const remaining = multiple ? maxImages - images.length : 1;
-    const files = Array.from(fileList).slice(0, remaining);
+    const remainingSlots = multiple ? maxImages - images.length : 1;
+    const files = Array.from(fileList).slice(0, remainingSlots);
     if (files.length === 0) return;
 
     setUploading(true);
     setError(null);
 
     try {
-      const uploaded = await Promise.all(
-        files.map(async (file) => {
-          const { data } = await uploadImage(file);
-          return { url: data.data.url, fileId: data.data.fileId };
-        })
-      );
+      const batches = [];
+      for (let i = 0; i < files.length; i += MAX_PER_REQUEST) {
+        batches.push(files.slice(i, i + MAX_PER_REQUEST));
+      }
+
+      const uploaded = [];
+      for (const batch of batches) {
+        const { data } = await uploadImages(batch);
+        uploaded.push(...data.data.map((img) => ({ url: img.url, fileId: img.fileId })));
+      }
+
       onChange(multiple ? [...images, ...uploaded] : uploaded);
     } catch (err) {
       setError(err.response?.data?.message || "Failed to upload image");
@@ -41,10 +48,7 @@ export function ImageUploader({ images, onChange, multiple = true, maxImages = 8
     <div className="grid gap-2">
       <div className="flex flex-wrap gap-2">
         {images.map((img, i) => (
-          <div
-            key={img.fileId || i}
-            className="group relative size-20 overflow-hidden rounded-md border"
-          >
+          <div key={img.fileId || i} className="group relative size-20 overflow-hidden rounded-md border">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={img.url} alt="" className="size-full object-cover" />
             <button

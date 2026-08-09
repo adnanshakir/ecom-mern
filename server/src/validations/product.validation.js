@@ -147,9 +147,9 @@ export const createProductSchema = z.object({
 
   images: z.array(imageSchema).optional(),
 
-  seoTitle: z.string().trim().max(60).optional(),
+  seoTitle: z.string().trim().max(120, "SEO Title must be 120 characters or fewer").optional(),
 
-  seoDescription: z.string().trim().max(160).optional(),
+  seoDescription: z.string().trim().max(350, "SEO description must be 200 characters or fewer").optional(),
 
   variants: z.array(nestedCreateVariantSchema).min(1, "At least one variant is required"),
 });

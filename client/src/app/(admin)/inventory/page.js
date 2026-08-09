@@ -8,6 +8,7 @@ import { getVariants } from "@/services/variants";
 import { useProductPicker } from "@/hooks/useProductPicker";
 import { useInventoryMovements } from "@/hooks/useInventoryMovements";
 import { movementTypes } from "@/schemas/inventory";
+import { ApiErrorSummary } from "@/components/ApiErrorSummary";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
@@ -342,11 +343,7 @@ function VariantMovements({ variantId, canWrite, canReconcile }) {
                 )}
               />
 
-              {formError && (
-                <p className="text-sm text-destructive" role="alert">
-                  {formError}
-                </p>
-              )}
+              <ApiErrorSummary message={formError} />
 
               <DialogFooter>
                 <Button type="submit" disabled={submitting}>

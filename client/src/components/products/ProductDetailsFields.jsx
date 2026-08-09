@@ -2,7 +2,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
+import { FormField, FormItem, FormLabel, FormControl } from "@/components/ui/form";
 import { createCategory } from "@/services/categories";
 import { createBrand } from "@/services/brands";
 import { QuickCreateEntityDialog } from "@/components/products/QuickCreateEntityDialog";
@@ -20,7 +20,6 @@ export function ProductDetailsFields({ form, categories, brands }) {
             <FormControl>
               <Input placeholder="Classic Cotton Tee" {...field} />
             </FormControl>
-            <FormMessage />
           </FormItem>
         )}
       />
@@ -58,7 +57,6 @@ export function ProductDetailsFields({ form, categories, brands }) {
                   ))}
                 </SelectContent>
               </Select>
-              <FormMessage />
             </FormItem>
           )}
         />
@@ -95,7 +93,6 @@ export function ProductDetailsFields({ form, categories, brands }) {
                   ))}
                 </SelectContent>
               </Select>
-              <FormMessage />
             </FormItem>
           )}
         />
@@ -120,7 +117,6 @@ export function ProductDetailsFields({ form, categories, brands }) {
                   <SelectItem value="archived">Archived</SelectItem>
                 </SelectContent>
               </Select>
-              <FormMessage />
             </FormItem>
           )}
         />
@@ -148,7 +144,6 @@ export function ProductDetailsFields({ form, categories, brands }) {
             <FormControl>
               <ImageUploader images={field.value || []} onChange={field.onChange} multiple maxImages={8} />
             </FormControl>
-            <FormMessage />
           </FormItem>
         )}
       />
@@ -162,7 +157,6 @@ export function ProductDetailsFields({ form, categories, brands }) {
             <FormControl>
               <Input {...field} />
             </FormControl>
-            <FormMessage />
           </FormItem>
         )}
       />
@@ -176,7 +170,6 @@ export function ProductDetailsFields({ form, categories, brands }) {
             <FormControl>
               <Textarea rows={2} {...field} />
             </FormControl>
-            <FormMessage />
           </FormItem>
         )}
       />

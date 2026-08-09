@@ -5,6 +5,7 @@ import { Loader2, Pencil, Plus, Trash2, ChevronRight, ChevronDown } from "lucide
 
 import { useCategories } from "@/hooks/useCategories";
 import { buildChildrenMap } from "@/lib/categoryTree";
+import { ApiErrorSummary } from "@/components/ApiErrorSummary";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -255,11 +256,7 @@ export default function CategoriesPage() {
                 )}
               />
 
-              {formError && (
-                <p className="text-sm text-destructive" role="alert">
-                  {formError}
-                </p>
-              )}
+              <ApiErrorSummary message={formError} />
 
               <DialogFooter>
                 <Button type="submit" disabled={submitting}>

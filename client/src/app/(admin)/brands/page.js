@@ -4,6 +4,7 @@ import { useSelector } from "react-redux";
 import { Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 
 import { useBrands } from "@/hooks/useBrands";
+import { ApiErrorSummary } from "@/components/ApiErrorSummary";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -154,11 +155,7 @@ export default function BrandsPage() {
                 )}
               />
 
-              {formError && (
-                <p className="text-sm text-destructive" role="alert">
-                  {formError}
-                </p>
-              )}
+              <ApiErrorSummary message={formError} />
 
               <DialogFooter>
                 <Button type="submit" disabled={submitting}>

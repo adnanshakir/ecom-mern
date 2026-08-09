@@ -6,12 +6,13 @@ const STATUS_STYLES = {
   archived: "bg-red-500/10 text-red-500",
 };
 
-export function StatusBadge({ status }) {
+export function StatusBadge({ status, className }) {
   return (
     <span
       className={cn(
         "rounded-full px-2 py-0.5 text-xs font-medium capitalize",
-        STATUS_STYLES[status] || "bg-muted text-muted-foreground"
+        STATUS_STYLES[status] || "bg-muted text-muted-foreground",
+        className
       )}
     >
       {status}

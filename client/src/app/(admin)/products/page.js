@@ -8,11 +8,9 @@ import { useProducts } from "@/hooks/useProducts";
 import { useCategories } from "@/hooks/useCategories";
 import { useBrands } from "@/hooks/useBrands";
 import { CreateProductDialog } from "@/components/products/CreateProductDialog";
-import { EditProductDialog } from "@/components/products/EditProductDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/table";
 import { ProductCard } from "@/components/products/ProductCard";
 
 const CAN_WRITE_ROLES = ["super_admin", "admin"];
@@ -158,12 +156,6 @@ export default function ProductsPage() {
 
       <CreateProductDialog open={createOpen} onOpenChange={setCreateOpen} onCreated={fetchProducts} />
 
-      <EditProductDialog
-        productId={editingProductId}
-        open={!!editingProductId}
-        onOpenChange={(open) => !open && setEditingProductId(null)}
-        onSaved={fetchProducts}
-      />
     </div>
   );
 }
