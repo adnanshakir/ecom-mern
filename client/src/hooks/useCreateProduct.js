@@ -74,6 +74,9 @@ export function useCreateProduct(open, onCreated) {
         barcode: v.barcode || undefined,
         weight: v.weight?.value ? { value: v.weight.value, unit: v.weight.unit || "g" } : undefined,
         image: v.image || undefined,
+        options: v.options?.filter((o) => o.name && o.value)?.length
+          ? v.options.filter((o) => o.name && o.value)
+          : undefined,
       })),
     };
 

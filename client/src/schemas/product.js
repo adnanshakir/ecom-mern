@@ -10,11 +10,23 @@ export const variantSchema = z.object({
   barcode: z.string().optional(),
   weight: z
     .object({
-      value: z.coerce.number().positive(),
+      value: z.coerce.number().optional(),
       unit: z.enum(weightUnits).default("g"),
     })
+    .optional()
+    .refine((w) => !w?.value || w.value > 0, {
+      message: "Weight must be greater than 0",
+      path: ["value"],
+    }),
+  image: z.string().optional(),
+  options: z
+    .array(
+      z.object({
+        name: z.string().min(1, "Required"),
+        value: z.string().min(1, "Required"),
+      })
+    )
     .optional(),
-  image: z.string().optional(), // single ImageKit URL, matches variant model
 });
 
 export const productSchema = z.object({
@@ -24,10 +36,7 @@ export const productSchema = z.object({
   status: z.enum(["draft", "active", "archived"]),
   featured: z.boolean(),
   seoTitle: z.string().max(120, "SEO Title must be 120 characters or fewer").optional(),
-  seoDescription: z
-  .string()
-  .max(350, "SEO description must be 200 characters or fewer")
-  .optional(),
+  seoDescription: z.string().max(350, "SEO description must be 200 characters or fewer").optional(),
   images: z
     .array(z.object({ url: z.string(), fileId: z.string() }))
     .optional()

@@ -1,16 +1,28 @@
+import { useFieldArray } from "react-hook-form";
+import { Plus, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
-import { weightUnits } from "@/schemas/product";
 import { ImageUploader } from "@/components/products/ImageUploader";
+import { weightUnits } from "@/schemas/product";
 
 // name prefix lets this render either `variants.${index}.sku` (inline array,
 // on Create) or just `sku` (single-variant dialog, on Edit).
 export function VariantRowFields({ form, namePrefix = "", stockReadOnly = false }) {
   const field = (name) => (namePrefix ? `${namePrefix}.${name}` : name);
 
+  const {
+    fields: optionFields,
+    append: appendOption,
+    remove: removeOption,
+  } = useFieldArray({
+    control: form.control,
+    name: field("options"),
+  });
+
   return (
-    <>
+    <div className="grid gap-4">
       <div className="grid grid-cols-2 gap-3">
         <FormField
           control={form.control}
@@ -73,10 +85,16 @@ export function VariantRowFields({ form, namePrefix = "", stockReadOnly = false 
           name={field("stock")}
           render={({ field: stockField }) => (
             <FormItem>
-              <FormLabel>Stock{stockReadOnly ? " (adjust via Inventory)" : ""}</FormLabel>
-              <FormControl>
-                <Input type="number" disabled={stockReadOnly} {...stockField} />
-              </FormControl>
+              <FormLabel>Stock</FormLabel>
+              {stockReadOnly ? (
+                <p className="flex h-9 items-center text-sm text-muted-foreground">
+                  {stockField.value} <span className="ml-1 text-xs">(adjust via Inventory)</span>
+                </p>
+              ) : (
+                <FormControl>
+                  <Input type="number" {...stockField} />
+                </FormControl>
+              )}
               <FormMessage />
             </FormItem>
           )}
@@ -128,25 +146,74 @@ export function VariantRowFields({ form, namePrefix = "", stockReadOnly = false 
           />
         </div>
       </div>
-      <div className="col-span-2">
-        <FormField
-          control={form.control}
-          name={field("image")}
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Variant image (optional)</FormLabel>
-              <FormControl>
-                <ImageUploader
-                  images={field.value ? [{ url: field.value, fileId: field.value }] : []}
-                  onChange={(imgs) => field.onChange(imgs[0]?.url)}
-                  multiple={false}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+
+      <div className="grid gap-2">
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium">Options (optional)</span>
+          <Button type="button" variant="outline" size="sm" onClick={() => appendOption({ name: "", value: "" })}>
+            <Plus className="size-4" />
+            Add option
+          </Button>
+        </div>
+
+        {optionFields.length === 0 && (
+          <p className="text-xs text-muted-foreground">
+            e.g. Color: Black, Size: Medium — helps distinguish this variant from others.
+          </p>
+        )}
+
+        {optionFields.map((optionField, i) => (
+          <div key={optionField.id} className="flex items-end gap-2">
+            <FormField
+              control={form.control}
+              name={field(`options.${i}.name`)}
+              render={({ field }) => (
+                <FormItem className="flex-1">
+                  <FormLabel className="text-xs">Name</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Color" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name={field(`options.${i}.value`)}
+              render={({ field }) => (
+                <FormItem className="flex-1">
+                  <FormLabel className="text-xs">Value</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Black" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <Button type="button" variant="ghost" size="icon" className="mb-0.5" onClick={() => removeOption(i)}>
+              <X className="size-4" />
+            </Button>
+          </div>
+        ))}
       </div>
-    </>
+
+      <FormField
+        control={form.control}
+        name={field("image")}
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Variant image (optional)</FormLabel>
+            <FormControl>
+              <ImageUploader
+                images={field.value ? [{ url: field.value, fileId: field.value }] : []}
+                onChange={(imgs) => field.onChange(imgs[0]?.url)}
+                multiple={false}
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+    </div>
   );
 }

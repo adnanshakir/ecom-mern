@@ -44,16 +44,13 @@ export default function ProductDetailPage() {
 
   return (
     <RoleGate allow={["super_admin", "admin"]}>
-      <div className="mx-auto grid max-w-3xl gap-4">
+      <div className="grid w-full gap-4">
         <div className="flex items-center justify-between">
           <Button variant="ghost" size="sm" onClick={() => router.push("/products")}>
             <ArrowLeft className="size-4" />
             Back to products
           </Button>
 
-          {/* Edit button only shows in view mode — the form's own Save
-              changes button is the only way back to view mode, no
-              separate "Done editing" toggle. */}
           {!loading && !error && !editing && (
             <Button size="sm" onClick={() => setEditing(true)}>
               <Pencil className="size-4" />
@@ -62,20 +59,20 @@ export default function ProductDetailPage() {
           )}
         </div>
 
-        <Card>
-          <CardContent className="pt-6">
-            {loading && (
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Loader2 className="size-4 animate-spin" />
-                Loading product...
-              </div>
-            )}
+        {loading && (
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Loader2 className="size-4 animate-spin" />
+            Loading product...
+          </div>
+        )}
 
-            {!loading && error && <p className="text-sm text-destructive">{error}</p>}
+        {!loading && error && <p className="text-sm text-destructive">{error}</p>}
 
-            {!loading && !error && product && !editing && <ProductView product={product} />}
+        {!loading && !error && product && !editing && <ProductView product={product} />}
 
-            {!loading && !error && editing && (
+        {!loading && !error && editing && (
+          <Card className="mx-auto w-full max-w-2xl">
+            <CardContent className="pt-6">
               <Tabs defaultValue="details">
                 <TabsList>
                   <TabsTrigger value="details">Details</TabsTrigger>
@@ -96,9 +93,9 @@ export default function ProductDetailPage() {
                   <VariantsTab productId={id} onChanged={refetch} />
                 </TabsContent>
               </Tabs>
-            )}
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </RoleGate>
   );
