@@ -55,7 +55,7 @@ export function useProductVariants(productId) {
       salePrice: variant.salePrice || "",
       barcode: variant.barcode || "",
       weight: variant.weight || undefined,
-      image: variant.image || undefined,
+      images: variant.images || [],
       options: variant.options || [],
     });
     setDialogOpen(true);
@@ -140,8 +140,10 @@ function cleanPayload(values) {
     ...values,
     salePrice: values.salePrice || undefined,
     barcode: values.barcode || undefined,
-    weight: values.weight?.value ? { value: values.weight.value, unit: values.weight.unit || "g" } : undefined,
-    image: values.image || undefined,
+    weight: values.weight?.value
+      ? { value: values.weight.value, unit: values.weight.unit || "g" }
+      : undefined,
+    images: values.images?.length ? values.images : undefined,
     options: cleanOptions?.length ? cleanOptions : undefined,
   };
 }

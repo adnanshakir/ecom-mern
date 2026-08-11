@@ -42,9 +42,13 @@ const productVariantSchema = new mongoose.Schema(
       value: { type: Number },
       unit: { type: String, enum: ["g", "kg", "lb", "oz"], default: "g" },
     },
-    image: {
-      type: String, // ImageKit URL, optional variant-specific image
-      default: null,
+    images: {
+      type: [String], // ImageKit URLs, up to 4
+      default: [],
+      validate: {
+        validator: (arr) => arr.length <= 4,
+        message: "A variant can have at most 4 images",
+      },
     },
     isActive: {
       type: Boolean,

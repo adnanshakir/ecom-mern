@@ -9,10 +9,21 @@ import { productSchema } from "@/schemas/product";
 
 const EMPTY_VARIANT = { sku: "", price: "", stock: "", salePrice: "", barcode: "" };
 
-const DETAILS_FIELDS = ["name", "category", "brand", "status", "featured", "images", "seoTitle", "seoDescription"];
+const DETAILS_FIELDS = [
+  "name",
+  "description",
+  "category",
+  "brand",
+  "status",
+  "featured",
+  "images",
+  "seoTitle",
+  "seoDescription",
+];
 
 const DEFAULTS = {
   name: "",
+  description: "",
   category: "",
   brand: "",
   status: "draft",
@@ -73,7 +84,7 @@ export function useCreateProduct(open, onCreated) {
         salePrice: v.salePrice || undefined,
         barcode: v.barcode || undefined,
         weight: v.weight?.value ? { value: v.weight.value, unit: v.weight.unit || "g" } : undefined,
-        image: v.image || undefined,
+        images: v.images?.length ? v.images : undefined,
         options: v.options?.filter((o) => o.name && o.value)?.length
           ? v.options.filter((o) => o.name && o.value)
           : undefined,

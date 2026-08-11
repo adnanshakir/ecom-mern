@@ -24,6 +24,19 @@ export function ProductDetailsFields({ form, categories, brands }) {
         )}
       />
 
+      <FormField
+        control={form.control}
+        name="description"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Description (optional)</FormLabel>
+            <FormControl>
+              <Textarea rows={3} placeholder="Product description..." {...field} />
+            </FormControl>
+          </FormItem>
+        )}
+      />
+
       <div className="grid grid-cols-2 gap-4">
         <FormField
           control={form.control}
@@ -142,7 +155,7 @@ export function ProductDetailsFields({ form, categories, brands }) {
           <FormItem>
             <FormLabel>Product images (optional)</FormLabel>
             <FormControl>
-              <ImageUploader images={field.value || []} onChange={field.onChange} multiple maxImages={8} />
+              <ImageUploader images={field.value || []} onChange={field.onChange} maxImages={8} />
             </FormControl>
           </FormItem>
         )}

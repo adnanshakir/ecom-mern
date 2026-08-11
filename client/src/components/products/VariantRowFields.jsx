@@ -199,18 +199,13 @@ export function VariantRowFields({ form, namePrefix = "", stockReadOnly = false 
 
       <FormField
         control={form.control}
-        name={field("image")}
+        name={field("images")}
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Variant image (optional)</FormLabel>
+            <FormLabel>Variant images (optional, up to 4)</FormLabel>
             <FormControl>
-              <ImageUploader
-                images={field.value ? [{ url: field.value, fileId: field.value }] : []}
-                onChange={(imgs) => field.onChange(imgs[0]?.url)}
-                multiple={false}
-              />
+              <ImageUploader images={field.value || []} onChange={field.onChange} maxImages={4} />
             </FormControl>
-            <FormMessage />
           </FormItem>
         )}
       />

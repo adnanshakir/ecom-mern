@@ -6,7 +6,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 
 import { getProduct, updateProduct } from "@/services/products";
 import { productDetailsSchema } from "@/schemas/product";
-import { useRouter } from "next/navigation";
 
 export function useEditProduct(productId) {
   const [loading, setLoading] = useState(true);
@@ -14,19 +13,19 @@ export function useEditProduct(productId) {
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState(null);
   const [saved, setSaved] = useState(false);
-  const router = useRouter();
 
   const form = useForm({
     resolver: zodResolver(productDetailsSchema),
     defaultValues: {
       name: "",
+      description: "",
       category: "",
       brand: "",
       status: "draft",
       featured: false,
       seoTitle: "",
       seoDescription: "",
-      images: "",
+      images: [],
     },
   });
 
@@ -39,6 +38,7 @@ export function useEditProduct(productId) {
         const product = data.data;
         form.reset({
           name: product.name || "",
+          description: product.description || "",
           category: product.category?._id || product.category || "",
           brand: product.brand?._id || product.brand || "",
           status: product.status || "draft",
@@ -66,7 +66,6 @@ export function useEditProduct(productId) {
     try {
       await updateProduct(productId, payload);
       setSaved(true);
-      router.push("/products");
     } catch (err) {
       setFormError(err.response?.data?.message || "Failed to save product");
     } finally {

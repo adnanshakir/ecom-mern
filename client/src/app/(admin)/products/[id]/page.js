@@ -242,7 +242,7 @@ function VariantsTab({ productId, onChanged }) {
       )}
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-h-[85vh] sm:max-w-3xl overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingVariant ? "Edit variant" : "New variant"}</DialogTitle>
           </DialogHeader>

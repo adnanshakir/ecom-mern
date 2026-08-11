@@ -93,7 +93,7 @@ const baseVariantSchema = z.object({
     })
     .optional(),
 
-  image: z.string().url("Invalid image URL").optional(),
+  images: z.array(z.string().url("Invalid image URL")).max(4, "A variant can have at most 4 images").optional(),
 
   isActive: z.boolean().optional(),
 });

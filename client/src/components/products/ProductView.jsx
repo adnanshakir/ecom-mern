@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect } from "react";
 import { ImageIcon, Star } from "lucide-react";
 import { StatusBadge } from "@/components/products/StatusBadge";
 import { cn } from "@/lib/utils";
-import Image from "next/image";
+
 
 export function ProductView({ product }) {
   const variants = product.variants || [];
@@ -15,10 +15,8 @@ export function ProductView({ product }) {
 
   const galleryImages = useMemo(() => {
     const productImages = product.images || [];
-    if (selectedVariant?.image) {
-      return [{ url: selectedVariant.image, isVariantImage: true }, ...productImages];
-    }
-    return productImages;
+    const variantImages = (selectedVariant?.images || []).map((img) => ({ url: img.url, isVariantImage: true }));
+    return [...variantImages, ...productImages];
   }, [product.images, selectedVariant]);
 
   useEffect(() => {
@@ -32,7 +30,6 @@ export function ProductView({ product }) {
       <div className="grid gap-2">
         <div className="flex aspect-square items-center justify-center overflow-hidden rounded-lg bg-muted">
           {galleryImages[activeImage] ? (
-            // eslint-disable-next-line @next/next/no-img-element
             <img src={galleryImages[activeImage].url} alt={product.name} className="size-full object-cover" />
           ) : (
             <ImageIcon className="size-10 text-muted-foreground" />
@@ -50,7 +47,6 @@ export function ProductView({ product }) {
                   activeImage === i ? "border-primary" : "border-transparent"
                 )}
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={img.url} alt="" className="size-full object-cover" />
               </button>
             ))}
@@ -88,8 +84,8 @@ export function ProductView({ product }) {
                     i === selectedVariantIndex ? "border-primary bg-accent" : "hover:bg-accent"
                   )}
                 >
-                  {v.image && (
-                    <Image src={v.image} alt="" width={20} height={20} className="size-5 rounded object-cover" />
+                  {v.images?.[0] && (
+                    <img src={v.images[0].url} alt="" className="size-5 rounded object-cover" />
                   )}
                   <span>{v.options?.length ? v.options.map((o) => o.value).join(" / ") : v.sku}</span>
                 </button>

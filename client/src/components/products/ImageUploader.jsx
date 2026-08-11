@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Loader2, Plus, X } from "lucide-react";
 import { uploadImages } from "@/services/images";
+import Image from "next/image";
 
 // images: array of {url, fileId}. multiple=false caps at one image (used
 // for a variant's single optional image); multiple=true allows up to
@@ -14,8 +15,15 @@ export function ImageUploader({ images, onChange, multiple = true, maxImages = 8
   const MAX_PER_REQUEST = 4;
 
   const handleFiles = async (fileList) => {
-    const remainingSlots = multiple ? maxImages - images.length : 1;
-    const files = Array.from(fileList).slice(0, remainingSlots);
+    const files = Array.from(fileList);
+    const remainingSlots = maxImages - images.length;
+
+    if (files.length > remainingSlots) {
+      setError(
+        `You can upload up to ${maxImages} image${maxImages > 1 ? "s" : ""} here — ${remainingSlots} slot${remainingSlots === 1 ? "" : "s"} left.`
+      );
+      return;
+    }
     if (files.length === 0) return;
 
     setUploading(true);
@@ -33,7 +41,7 @@ export function ImageUploader({ images, onChange, multiple = true, maxImages = 8
         uploaded.push(...data.data.map((img) => ({ url: img.url, fileId: img.fileId })));
       }
 
-      onChange(multiple ? [...images, ...uploaded] : uploaded);
+      onChange([...images, ...uploaded]);
     } catch (err) {
       setError(err.response?.data?.message || "Failed to upload image");
     } finally {
@@ -41,19 +49,17 @@ export function ImageUploader({ images, onChange, multiple = true, maxImages = 8
     }
   };
 
-  const removeAt = (index) => onChange(images.filter((_, i) => i !== index));
-  const canAddMore = multiple ? images.length < maxImages : images.length < 1;
+  const canAddMore = images.length < maxImages;
 
   return (
     <div className="grid gap-2">
       <div className="flex flex-wrap gap-2">
         {images.map((img, i) => (
-          <div key={img.fileId || i} className="group relative size-20 overflow-hidden rounded-md border">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={img.url} alt="" className="size-full object-cover" />
+          <div key={img.fileId || img || i} className="group relative size-20 overflow-hidden rounded-md border">
+            <Image src={img.url || img} alt="" fill className="object-cover" />
             <button
               type="button"
-              onClick={() => removeAt(i)}
+              onClick={() => onChange(images.filter((_, idx) => idx !== i))}
               className="absolute right-1 top-1 rounded-full bg-black/60 p-0.5 text-white opacity-0 transition-opacity group-hover:opacity-100"
             >
               <X className="size-3" />
@@ -74,7 +80,7 @@ export function ImageUploader({ images, onChange, multiple = true, maxImages = 8
             <input
               type="file"
               accept="image/*"
-              multiple={multiple}
+              multiple
               className="hidden"
               disabled={uploading}
               onChange={(e) => {
