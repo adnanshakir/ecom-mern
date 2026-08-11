@@ -29,13 +29,13 @@ import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/comp
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, allow: ["super_admin", "admin", "staff"] },
-  { href: "/products", label: "Products", icon: Package, allow: ["super_admin", "admin", "staff"] },
-  { href: "/categories", label: "Categories", icon: Tags, allow: ["super_admin", "admin", "staff"] },
-  { href: "/brands", label: "Brands", icon: BadgeCheck, allow: ["super_admin", "admin", "staff"] },
-  { href: "/inventory", label: "Inventory", icon: Warehouse, allow: ["super_admin", "admin", "staff"] },
-  { href: "/csv-import", label: "CSV Import", icon: FileUp, allow: ["super_admin", "admin"] },
-  { href: "/users", label: "Users", icon: Users, allow: ["super_admin"] },
+  { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard, allow: ["super_admin", "admin", "staff"] },
+  { href: "/admin/products", label: "Products", icon: Package, allow: ["super_admin", "admin", "staff"] },
+  { href: "/admin/categories", label: "Categories", icon: Tags, allow: ["super_admin", "admin", "staff"] },
+  { href: "/admin/brands", label: "Brands", icon: BadgeCheck, allow: ["super_admin", "admin", "staff"] },
+  { href: "/admin/inventory", label: "Inventory", icon: Warehouse, allow: ["super_admin", "admin", "staff"] },
+  { href: "/admin/csv-import", label: "CSV Import", icon: FileUp, allow: ["super_admin", "admin"] },
+  { href: "/admin/users", label: "Users", icon: Users, allow: ["super_admin"] },
 ];
 
 const COLLAPSE_KEY = "sidebar-collapsed";
@@ -69,7 +69,7 @@ export default function AdminLayout({ children }) {
 
   const handleLogout = async () => {
     await dispatch(logout());
-    router.push("/login");
+    router.push("/admin/login");
   };
 
   // Mobile drawer always shows the full menu, regardless of the desktop
@@ -77,7 +77,7 @@ export default function AdminLayout({ children }) {
   // screens (the hamburger trigger is hidden on sm+), so this is safe.
   const effectiveCollapsed = collapsed && !mobileOpen;
 
-  const visibleNavItems = NAV_ITEMS.filter((item) => !user?.role || item.allow.includes(user.role));
+  const visibleNavItems = NAV_ITEMS.filter((item) => user?.role && item.allow.includes(user.role));
 
   return (
     <TooltipProvider delayDuration={200}>

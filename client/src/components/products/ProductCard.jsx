@@ -11,7 +11,7 @@ export function ProductCard({ product, categoryName, brandName, canWrite, onDele
 
   return (
     <Card className="group relative overflow-hidden p-0">
-      <Link href={`/products/${product._id}`} className="block">
+      <Link href={`/admin/products/${product._id}`} className="block">
         <div className="relative aspect-square bg-muted">
           {thumbnail ? (
             // eslint-disable-next-line @next/next/no-img-element

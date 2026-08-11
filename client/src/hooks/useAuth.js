@@ -40,7 +40,7 @@ export function useAuth() {
     const result = await dispatch(login(values));
 
     if (login.fulfilled.match(result)) {
-      router.push("/dashboard");
+      router.push("/admin/dashboard");
     } else {
       setServerError(result.payload || "Unable to log in");
     }
@@ -58,7 +58,7 @@ export function useAuth() {
   // Logout
   const handleLogout = async () => {
     await dispatch(logout());
-    router.push("/login");
+    router.push("/admin/login");
   };
 
   const clearRegisterStatusAction = () => dispatch(clearRegisterStatus());

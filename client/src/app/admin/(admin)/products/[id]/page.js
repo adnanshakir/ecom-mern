@@ -46,7 +46,7 @@ export default function ProductDetailPage() {
     <RoleGate allow={["super_admin", "admin"]}>
       <div className="grid w-full gap-4">
         <div className="flex items-center justify-between">
-          <Button variant="ghost" size="sm" onClick={() => router.push("/products")}>
+          <Button variant="ghost" size="sm" onClick={() => router.push("/admin/products")}>
             <ArrowLeft className="size-4" />
             Back to products
           </Button>

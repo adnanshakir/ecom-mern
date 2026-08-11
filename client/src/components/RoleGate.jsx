@@ -9,15 +9,19 @@ import { Loader2 } from "lucide-react";
 // Usage: <RoleGate allow={["super_admin"]}>...</RoleGate>
 export function RoleGate({ allow, children }) {
   const router = useRouter();
-  const { user, authReady } = useSelector((state) => state.auth);
+  const { user, authReady, status } = useSelector((state) => state.auth);
 
   const isAllowed = !!user && allow.includes(user.role);
 
   useEffect(() => {
-    if (authReady && !isAllowed) {
-      router.replace("/dashboard");
+    if (authReady) {
+      if (status === "unauthenticated") {
+        router.replace("/admin/login");
+      } else if (!isAllowed) {
+        router.replace("/admin/dashboard");
+      }
     }
-  }, [authReady, isAllowed, router]);
+  }, [authReady, status, isAllowed, router]);
 
   if (!authReady) {
     return (

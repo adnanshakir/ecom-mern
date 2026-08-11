@@ -12,7 +12,7 @@ export default function Home() {
           Frontend scaffold is ready. Build order: Login, then the rest of the modules.
         </p>
         <Button asChild>
-          <Link href="/login">Go to login</Link>
+          <Link href="/admin/login">Go to admin login</Link>
         </Button>
       </Section>
     </PageContainer>
