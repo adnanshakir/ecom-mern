@@ -53,6 +53,12 @@ const productSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    optionTypes: [
+      {
+        name: { type: String, required: true, trim: true },
+        values: { type: [String], required: true },
+      },
+    ],
   },
   { timestamps: true }
 );

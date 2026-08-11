@@ -19,6 +19,7 @@ export function useEditProduct(productId) {
     defaultValues: {
       name: "",
       description: "",
+      optionTypes: [],
       category: "",
       brand: "",
       status: "draft",
@@ -39,6 +40,10 @@ export function useEditProduct(productId) {
         form.reset({
           name: product.name || "",
           description: product.description || "",
+          optionTypes: (product.optionTypes || []).map((ot) => ({
+            name: ot.name,
+            values: (ot.values || []).map((v) => ({ value: v })),
+          })),
           category: product.category?._id || product.category || "",
           brand: product.brand?._id || product.brand || "",
           status: product.status || "draft",
@@ -61,6 +66,11 @@ export function useEditProduct(productId) {
     const payload = {
       ...values,
       images: values.images || [],
+      optionTypes: values.optionTypes?.length
+        ? values.optionTypes
+            .filter((ot) => ot.name && ot.values?.length)
+            .map((ot) => ({ name: ot.name, values: ot.values.map((v) => v.value).filter(Boolean) }))
+        : [],
     };
 
     try {

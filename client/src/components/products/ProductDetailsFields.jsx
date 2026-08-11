@@ -7,6 +7,7 @@ import { createCategory } from "@/services/categories";
 import { createBrand } from "@/services/brands";
 import { QuickCreateEntityDialog } from "@/components/products/QuickCreateEntityDialog";
 import { ImageUploader } from "@/components/products/ImageUploader";
+import { OptionTypesEditor } from "@/components/products/OptionTypesEditor";
 
 export function ProductDetailsFields({ form, categories, brands }) {
   return (
@@ -36,6 +37,8 @@ export function ProductDetailsFields({ form, categories, brands }) {
           </FormItem>
         )}
       />
+
+      <OptionTypesEditor form={form} />
 
       <div className="grid grid-cols-2 gap-4">
         <FormField

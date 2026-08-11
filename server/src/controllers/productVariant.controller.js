@@ -1,19 +1,40 @@
 import ProductVariant from "../models/productVariant.model.js";
-import Product from "../models/product.model.js";
 import ApiError from "../utils/apiError.js";
+import mongoose from "mongoose";
+import { adjustStock } from "../utils/inventory.js";
 
 // ---------------- ADD a variant to an existing product ----------------
 export const createVariant = async (req, res, next) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
   try {
-    const { productId } = req.params;
+    const { stock, ...variantData } = req.body;
 
-    const product = await Product.findById(productId);
-    if (!product) throw new ApiError(404, "Product not found");
+    const [variant] = await ProductVariant.create(
+      [{ ...variantData, product: req.params.productId, stock: 0 }],
+      { session }
+    );
 
-    const variant = await ProductVariant.create({ ...req.body, product: productId });
+    if (stock > 0) {
+      await adjustStock({
+        variantId: variant._id,
+        type: "initial",
+        quantity: stock,
+        reason: "Initial stock on variant creation",
+        userId: req.user.id,
+        session,
+      });
+    }
 
-    res.status(201).json({ success: true, data: variant });
+    await session.commitTransaction();
+    session.endSession();
+
+    const populated = await ProductVariant.findById(variant._id);
+    res.status(201).json({ success: true, data: populated });
   } catch (err) {
+    await session.abortTransaction();
+    session.endSession();
     next(err);
   }
 };

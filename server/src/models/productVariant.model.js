@@ -43,7 +43,12 @@ const productVariantSchema = new mongoose.Schema(
       unit: { type: String, enum: ["g", "kg", "lb", "oz"], default: "g" },
     },
     images: {
-      type: [String], // ImageKit URLs, up to 4
+      type: [
+        {
+          url: { type: String, required: true },
+          fileId: { type: String },
+        },
+      ],
       default: [],
       validate: {
         validator: (arr) => arr.length <= 4,

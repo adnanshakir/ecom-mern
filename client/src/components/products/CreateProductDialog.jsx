@@ -77,23 +77,33 @@ export function CreateProductDialog({ open, onOpenChange, onCreated }) {
                   </Button>
                 </div>
 
-                {variantFields.map((variantField, index) => (
-                  <div key={variantField.id} className="grid gap-3 rounded-md border p-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">Variant {index + 1}</span>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        disabled={variantFields.length <= 1}
-                        onClick={() => removeVariant(index)}
-                      >
-                        <Trash2 className="size-4" />
-                      </Button>
+                {(() => {
+                  const liveOptionTypes = (form.watch("optionTypes") || [])
+                    .filter((ot) => ot.name && ot.values?.length)
+                    .map((ot) => ({ name: ot.name, values: ot.values.map((v) => v.value).filter(Boolean) }));
+
+                  return variantFields.map((variantField, index) => (
+                    <div key={variantField.id} className="grid gap-3 rounded-md border p-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium">Variant {index + 1}</span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          disabled={variantFields.length <= 1}
+                          onClick={() => removeVariant(index)}
+                        >
+                          <Trash2 className="size-4" />
+                        </Button>
+                      </div>
+                      <VariantRowFields
+                        form={form}
+                        namePrefix={`variants.${index}`}
+                        optionTypes={liveOptionTypes}
+                      />
                     </div>
-                    <VariantRowFields form={form} namePrefix={`variants.${index}`} />
-                  </div>
-                ))}
+                  ));
+                })()}
                 <FormMessage>{form.formState.errors.variants?.root?.message}</FormMessage>
 
                 <ApiErrorSummary message={formError} />

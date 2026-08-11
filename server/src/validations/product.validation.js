@@ -93,11 +93,18 @@ const baseVariantSchema = z.object({
     })
     .optional(),
 
-  images: z.array(z.string().url("Invalid image URL")).max(4, "A variant can have at most 4 images").optional(),
+  images: z
+    .array(
+      z.object({
+        url: z.string().url("Invalid image URL"),
+        fileId: z.string().optional(),
+      })
+    )
+    .max(4, "A variant can have at most 4 images")
+    .optional(),
 
   isActive: z.boolean().optional(),
 });
-
 
 // shared check: salePrice, if present, must not exceed price
 const salePriceCheck = (data) => !data.salePrice || data.salePrice <= data.price;
@@ -124,7 +131,6 @@ export const updateVariantSchema = baseVariantSchema
   .partial()
   .refine(salePriceCheck, salePriceCheckOptions);
 
-
 // ------- Product --------
 // Note: slug is auto-generated server-side from `name`, same as Brand/Category.
 
@@ -149,7 +155,20 @@ export const createProductSchema = z.object({
 
   seoTitle: z.string().trim().max(120, "SEO Title must be 120 characters or fewer").optional(),
 
-  seoDescription: z.string().trim().max(350, "SEO description must be 200 characters or fewer").optional(),
+  seoDescription: z
+    .string()
+    .trim()
+    .max(350, "SEO description must be 200 characters or fewer")
+    .optional(),
+
+  optionTypes: z
+    .array(
+      z.object({
+        name: z.string().trim().min(1, "Option type name is required"),
+        values: z.array(z.string().trim().min(1)).min(1, "Add at least one value"),
+      })
+    )
+    .optional(),
 
   variants: z.array(nestedCreateVariantSchema).min(1, "At least one variant is required"),
 });

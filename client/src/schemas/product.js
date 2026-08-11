@@ -41,9 +41,15 @@ export const variantSchema = z
     path: ["salePrice"],
   });
 
+const optionTypeSchema = z.object({
+  name: z.string().min(1, "Required"),
+  values: z.array(z.object({ value: z.string().min(1) })).min(1, "Add at least one value"),
+});
+
 export const productSchema = z.object({
   name: z.string().min(1, "Name is required"),
   description: z.string().optional(),
+  optionTypes: z.array(optionTypeSchema).optional().default([]),
   category: z.string().min(1, "Category is required"),
   brand: z.string().min(1, "Brand is required"),
   status: z.enum(["draft", "active", "archived"]),

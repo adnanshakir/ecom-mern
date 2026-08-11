@@ -24,6 +24,7 @@ const DETAILS_FIELDS = [
 const DEFAULTS = {
   name: "",
   description: "",
+  optionTypes: [],
   category: "",
   brand: "",
   status: "draft",
@@ -79,6 +80,11 @@ export function useCreateProduct(open, onCreated) {
     const payload = {
       ...values,
       images: values.images?.length ? values.images : undefined,
+      optionTypes: values.optionTypes?.length
+        ? values.optionTypes
+            .filter((ot) => ot.name && ot.values?.length)
+            .map((ot) => ({ name: ot.name, values: ot.values.map((v) => v.value).filter(Boolean) }))
+        : undefined,
       variants: values.variants.map((v) => ({
         ...v,
         salePrice: v.salePrice || undefined,

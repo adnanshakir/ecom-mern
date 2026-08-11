@@ -90,7 +90,7 @@ export default function ProductDetailPage() {
                 </TabsContent>
 
                 <TabsContent value="variants" className="pt-4">
-                  <VariantsTab productId={id} onChanged={refetch} />
+                  <VariantsTab productId={id} optionTypes={product?.optionTypes || []} onChanged={refetch} />
                 </TabsContent>
               </Tabs>
             </CardContent>
@@ -159,7 +159,7 @@ function DetailsTab({ productId, onSaved }) {
   );
 }
 
-function VariantsTab({ productId, onChanged }) {
+function VariantsTab({ productId, optionTypes, onChanged }) {
   const {
     variants,
     loading,
@@ -248,7 +248,7 @@ function VariantsTab({ productId, onChanged }) {
           </DialogHeader>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(handleSubmit)} className="grid gap-4" noValidate>
-              <VariantRowFields form={form} stockReadOnly={!!editingVariant} />
+              <VariantRowFields form={form} stockReadOnly={!!editingVariant} optionTypes={optionTypes} />
 
               <FormErrorSummary errors={form.formState.errors} />
 

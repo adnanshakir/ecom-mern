@@ -1,5 +1,4 @@
 import { useFieldArray } from "react-hook-form";
-import { Plus, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
@@ -9,17 +8,8 @@ import { weightUnits } from "@/schemas/product";
 
 // name prefix lets this render either `variants.${index}.sku` (inline array,
 // on Create) or just `sku` (single-variant dialog, on Edit).
-export function VariantRowFields({ form, namePrefix = "", stockReadOnly = false }) {
+export function VariantRowFields({ form, namePrefix = "", stockReadOnly = false, optionTypes = [] }) {
   const field = (name) => (namePrefix ? `${namePrefix}.${name}` : name);
-
-  const {
-    fields: optionFields,
-    append: appendOption,
-    remove: removeOption,
-  } = useFieldArray({
-    control: form.control,
-    name: field("options"),
-  });
 
   return (
     <div className="grid gap-4">
@@ -147,55 +137,7 @@ export function VariantRowFields({ form, namePrefix = "", stockReadOnly = false 
         </div>
       </div>
 
-      <div className="grid gap-2">
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-medium">Options (optional)</span>
-          <Button type="button" variant="outline" size="sm" onClick={() => appendOption({ name: "", value: "" })}>
-            <Plus className="size-4" />
-            Add option
-          </Button>
-        </div>
-
-        {optionFields.length === 0 && (
-          <p className="text-xs text-muted-foreground">
-            e.g. Color: Black, Size: Medium — helps distinguish this variant from others.
-          </p>
-        )}
-
-        {optionFields.map((optionField, i) => (
-          <div key={optionField.id} className="flex items-end gap-2">
-            <FormField
-              control={form.control}
-              name={field(`options.${i}.name`)}
-              render={({ field }) => (
-                <FormItem className="flex-1">
-                  <FormLabel className="text-xs">Name</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Color" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name={field(`options.${i}.value`)}
-              render={({ field }) => (
-                <FormItem className="flex-1">
-                  <FormLabel className="text-xs">Value</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Black" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <Button type="button" variant="ghost" size="icon" className="mb-0.5" onClick={() => removeOption(i)}>
-              <X className="size-4" />
-            </Button>
-          </div>
-        ))}
-      </div>
+      <VariantOptionsFields form={form} namePrefix={namePrefix} optionTypes={optionTypes} />
 
       <FormField
         control={form.control}
@@ -209,6 +151,58 @@ export function VariantRowFields({ form, namePrefix = "", stockReadOnly = false 
           </FormItem>
         )}
       />
+    </div>
+  );
+}
+
+function VariantOptionsFields({ form, namePrefix, optionTypes }) {
+  const field = (name) => (namePrefix ? `${namePrefix}.${name}` : name);
+  const currentOptions = form.watch(field("options")) || [];
+
+  const getValue = (typeName) => currentOptions.find((o) => o.name === typeName)?.value || "";
+
+  const setOptionValue = (typeName, value) => {
+    const existing = form.getValues(field("options")) || [];
+    const filtered = existing.filter((o) => o.name !== typeName);
+    const next = value ? [...filtered, { name: typeName, value }] : filtered;
+    form.setValue(field("options"), next, { shouldDirty: true, shouldValidate: true });
+  };
+
+  if (!optionTypes.length) {
+    return (
+      <p className="text-xs text-muted-foreground">
+        No option types defined on this product yet — add them in Details to map this variant
+        (e.g. Color: Red).
+      </p>
+    );
+  }
+
+  return (
+    <div className="grid gap-2">
+      <span className="text-sm font-medium">Options</span>
+      <div className="grid grid-cols-2 gap-3">
+        {optionTypes.map((optionType) => (
+          <div key={optionType.name} className="grid gap-1.5">
+            <label className="text-xs text-muted-foreground">{optionType.name}</label>
+            <Select
+              value={getValue(optionType.name) || "none"}
+              onValueChange={(v) => setOptionValue(optionType.name, v === "none" ? "" : v)}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder={`Select ${optionType.name}`} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">—</SelectItem>
+                {optionType.values.map((val) => (
+                  <SelectItem key={val} value={val}>
+                    {val}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
