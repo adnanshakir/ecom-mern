@@ -13,6 +13,12 @@ export const authenticate = (req, res, next) => {
     const token = authHeader.split(" ")[1];
     const decoded = jwt.verify(token, config.jwtSecret.secret);
 
+    // Reject customer tokens — they carry type:"customer" and must only be
+    // accepted by authenticateCustomer, not this seller/admin middleware.
+    if (decoded.type === "customer") {
+      throw new ApiError(401, "Invalid token");
+    }
+
     req.user = { id: decoded.id, role: decoded.role };
     next();
   } catch (err) {

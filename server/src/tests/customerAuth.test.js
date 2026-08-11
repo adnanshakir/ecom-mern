@@ -362,17 +362,15 @@ describe("Cross-token rejection", () => {
     expect(res.status).toBe(401);
   });
 
-  it("seller authenticate middleware lets the customer token through (JWT is valid) but the seller controller returns 404 — customer ID not in User collection", async () => {
-    // Note: the seller's `authenticate` middleware only verifies JWT signature —
-    // it does NOT query the DB. So a customer token passes middleware fine.
-    // The seller controller (getMe) then does User.findById(customer._id) → null → 404.
-    // This is safe-but-not-401 behaviour; the assertion documents reality.
+  it("seller authenticate middleware now EXPLICITLY rejects a CUSTOMER token (type:\"customer\" claim) with 401", async () => {
+    // authenticate now checks decoded.type === "customer" and throws ApiError(401)
+    // before ever reaching the controller — no longer fails by coincidence via
+    // User.findById returning null.
     const res = await request(app)
       .get("/api/users/me")
       .set("Authorization", `Bearer ${customerAccessToken}`);
 
-    // Customer's ObjectId won't resolve in the User collection → 404 from getMe
-    expect(res.status).toBe(404);
+    expect(res.status).toBe(401);
   });
 
   it("customer token payload contains type:'customer'; seller token payload does NOT", () => {
