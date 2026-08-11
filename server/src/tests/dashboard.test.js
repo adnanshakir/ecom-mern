@@ -78,12 +78,13 @@ describe("GET /api/dashboard/stats", () => {
     expect(res.body.data.latestActivity[0].description).toMatch(/Created brand/);
   });
 
-  it("still returns placeholders for recentUploads and csvImportStatus", async () => {
+  it("returns empty recentImports and null csvImportStatus when none exist", async () => {
     const res = await request(app)
       .get("/api/dashboard/stats")
       .set("Authorization", `Bearer ${adminToken}`);
 
-    expect(res.body.data.recentUploads).toEqual([]);
+    // field is 'recentImports' in the controller response (not 'recentUploads')
+    expect(res.body.data.recentImports).toEqual([]);
     expect(res.body.data.csvImportStatus).toBeNull();
   });
 });

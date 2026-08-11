@@ -47,17 +47,24 @@ describe("POST /api/images/upload", () => {
     const res = await request(app)
       .post("/api/images/upload")
       .set("Authorization", `Bearer ${adminToken}`)
-      .attach("image", Buffer.from("fake image content"), "test.jpg");
+      .attach("image", Buffer.from("fake image content"), {
+        filename: "test.jpg",
+        contentType: "image/jpeg",
+      });
 
     expect(res.status).toBe(201);
-    expect(res.body.data.url).toBe("https://ik.imagekit.io/test/mock-image.jpg");
-    expect(res.body.data.fileId).toBe("mockFileId123");
+    // controller returns an array — check the first element
+    expect(res.body.data[0].url).toBe("https://ik.imagekit.io/test/mock-image.jpg");
+    expect(res.body.data[0].fileId).toBe("mockFileId123");
   });
 
   it("rejects upload with no token", async () => {
     const res = await request(app)
       .post("/api/images/upload")
-      .attach("image", Buffer.from("fake image content"), "test.jpg");
+      .attach("image", Buffer.from("fake image content"), {
+        filename: "test.jpg",
+        contentType: "image/jpeg",
+      });
 
     expect(res.status).toBe(401);
   });
