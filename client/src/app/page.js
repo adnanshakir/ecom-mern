@@ -2,9 +2,15 @@ import Link from "next/link";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { Section } from "@/components/layout/Section";
 import { Button } from "@/components/ui/button";
+import { Navbar } from "@/components/storefront/Navbar";
+import { Footer } from "@/components/storefront/Footer";
+import { CategoryNav } from "@/components/storefront/CategoryNav";
 
 export default function Home() {
   return (
+    <>
+      <Navbar />
+      <CategoryNav/>
     <PageContainer>
       <Section className="flex flex-col items-center justify-center min-h-screen gap-4 text-center">
         <h1 className="text-2xl font-semibold">Ecom Admin Panel</h1>
@@ -16,5 +22,7 @@ export default function Home() {
         </Button>
       </Section>
     </PageContainer>
+      <Footer/>
+      </>
   );
 }

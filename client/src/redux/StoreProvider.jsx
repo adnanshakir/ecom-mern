@@ -3,8 +3,10 @@
 import { useRef, useEffect } from "react";
 import { Provider } from "react-redux";
 import { makeStore } from "@/redux/store";
-import { injectStore } from "@/services/axios";
+import { injectStore } from "@/services/admin/axios";
+import { injectCustomerStore } from "@/services/storefront/customerAxios";
 import { refreshAccessToken } from "@/redux/slices/authSlice";
+import { refreshCustomerToken } from "@/redux/slices/customerAuthSlice";
 
 export default function StoreProvider({ children }) {
   const storeRef = useRef(null);
@@ -12,12 +14,12 @@ export default function StoreProvider({ children }) {
   if (!storeRef.current) {
     storeRef.current = makeStore();
     injectStore(storeRef.current);
+    injectCustomerStore(storeRef.current);
   }
 
   useEffect(() => {
-    // Access token is in-memory only, so on every full page load we try a
-    // silent refresh against the httpOnly cookie to recover the session.
     storeRef.current.dispatch(refreshAccessToken());
+    storeRef.current.dispatch(refreshCustomerToken());
   }, []);
 
   return <Provider store={storeRef.current}>{children}</Provider>;

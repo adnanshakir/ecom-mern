@@ -4,14 +4,14 @@ import { useState } from "react";
 import { useSelector } from "react-redux";
 import { Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 
-import { useProducts } from "@/hooks/useProducts";
-import { useCategories } from "@/hooks/useCategories";
-import { useBrands } from "@/hooks/useBrands";
-import { CreateProductDialog } from "@/components/products/CreateProductDialog";
+import { useProducts } from "@/hooks/admin/useProducts";
+import { useCategories } from "@/hooks/admin/useCategories";
+import { useBrands } from "@/hooks/admin/useBrands";
+import { CreateProductDialog } from "@/components/admin/products/CreateProductDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-import { ProductCard } from "@/components/products/ProductCard";
+import { ProductCard } from "@/components/admin/products/ProductCard";
 
 const CAN_WRITE_ROLES = ["super_admin", "admin"];
 const STATUS_OPTIONS = ["draft", "active", "archived"];

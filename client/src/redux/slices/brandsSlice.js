@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import { getBrands, createBrand, updateBrand, deleteBrand } from "@/services/brands";
+import { getBrands, createBrand, updateBrand, deleteBrand } from "@/services/admin/brands";
 
 const initialState = {
   items: [],

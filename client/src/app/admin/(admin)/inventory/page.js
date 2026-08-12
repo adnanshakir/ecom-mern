@@ -4,11 +4,11 @@ import { useState } from "react";
 import { useSelector } from "react-redux";
 import { Loader2, Plus, Search } from "lucide-react";
 
-import { getVariants } from "@/services/variants";
-import { useProductPicker } from "@/hooks/useProductPicker";
-import { useInventoryMovements } from "@/hooks/useInventoryMovements";
-import { movementTypes } from "@/schemas/inventory";
-import { ApiErrorSummary } from "@/components/ApiErrorSummary";
+import { getVariants } from "@/services/admin/variants";
+import { useProductPicker } from "@/hooks/admin/useProductPicker";
+import { useInventoryMovements } from "@/hooks/admin/useInventoryMovements";
+import { movementTypes } from "@/schemas/admin/inventory";
+import { ApiErrorSummary } from "@/components/shared/ApiErrorSummary";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";

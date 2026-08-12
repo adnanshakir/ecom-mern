@@ -4,7 +4,7 @@ import {
   createCategory,
   updateCategory,
   deleteCategory,
-} from "@/services/categories";
+} from "@/services/admin/categories";
 
 const initialState = {
   items: [],

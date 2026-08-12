@@ -2,10 +2,10 @@
 
 import { Loader2, Upload } from "lucide-react";
 
-import { useCsvImport } from "@/hooks/useCsvImport";
-import { useRecentImports } from "@/hooks/useRecentImports";
-import { ImportJobsList } from "@/components/csv-import/ImportJobsList";
-import { RoleGate } from "@/components/RoleGate";
+import { useCsvImport } from "@/hooks/admin/useCsvImport";
+import { useRecentImports } from "@/hooks/admin/useRecentImports";
+import { ImportJobsList } from "@/components/admin/csv-import/ImportJobsList";
+import { RoleGate } from "@/components/admin/RoleGate";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import {

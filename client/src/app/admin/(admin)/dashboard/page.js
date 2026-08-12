@@ -3,12 +3,12 @@
 import { useEffect, useState } from "react";
 import { Package, Tags, BadgeCheck, Loader2 } from "lucide-react";
 
-import api from "@/services/axios";
-import { StatCard } from "@/components/dashboard/StatCard";
-import { LowStockList } from "@/components/dashboard/LowStockList";
-import { ActivityLog } from "@/components/dashboard/ActivityLog";
+import api from "@/services/admin/axios";
+import { StatCard } from "@/components/admin/dashboard/StatCard";
+import { LowStockList } from "@/components/admin/dashboard/LowStockList";
+import { ActivityLog } from "@/components/admin/dashboard/ActivityLog";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { ImportJobsList } from "@/components/csv-import/ImportJobsList";
+import { ImportJobsList } from "@/components/admin/csv-import/ImportJobsList";
 
 export default function DashboardPage() {
   const [stats, setStats] = useState(null);

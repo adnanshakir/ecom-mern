@@ -5,7 +5,7 @@ import {
   refreshRequest,
   logoutRequest,
   registerRequest,
-} from "@/services/auth";
+} from "@/services/admin/auth";
 
 // Access token lives only in Redux (in-memory) — never localStorage.
 // It's lost on refresh and recovered via refreshAccessToken() on app mount.

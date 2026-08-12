@@ -3,8 +3,8 @@
 import { useSelector } from "react-redux";
 import { Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 
-import { useBrands } from "@/hooks/useBrands";
-import { ApiErrorSummary } from "@/components/ApiErrorSummary";
+import { useBrands } from "@/hooks/admin/useBrands";
+import { ApiErrorSummary } from "@/components/shared/ApiErrorSummary";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";

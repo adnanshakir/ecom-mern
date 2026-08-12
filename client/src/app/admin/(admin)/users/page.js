@@ -3,11 +3,11 @@
 import { useSelector } from "react-redux";
 import { Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 
-import { useCreateUser } from "@/hooks/useCreateUser";
-import { useUsers } from "@/hooks/useUsers";
-import { userRoles } from "@/schemas/user";
-import { ApiErrorSummary } from "@/components/ApiErrorSummary";
-import { RoleGate } from "@/components/RoleGate";
+import { useCreateUser } from "@/hooks/admin/useCreateUser";
+import { useUsers } from "@/hooks/admin/useUsers";
+import { userRoles } from "@/schemas/admin/user";
+import { ApiErrorSummary } from "@/components/shared/ApiErrorSummary";
+import { RoleGate } from "@/components/admin/RoleGate";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";

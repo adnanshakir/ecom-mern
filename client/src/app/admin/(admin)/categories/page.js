@@ -3,9 +3,9 @@
 import { useSelector } from "react-redux";
 import { Loader2, Pencil, Plus, Trash2, ChevronRight, ChevronDown } from "lucide-react";
 
-import { useCategories } from "@/hooks/useCategories";
+import { useCategories } from "@/hooks/admin/useCategories";
 import { buildChildrenMap } from "@/lib/categoryTree";
-import { ApiErrorSummary } from "@/components/ApiErrorSummary";
+import { ApiErrorSummary } from "@/components/shared/ApiErrorSummary";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";

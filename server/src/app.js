@@ -12,6 +12,7 @@ import imageRoutes from "./routes/image.routes.js";
 import inventoryRoutes from "./routes/inventory.routes.js";
 import userRoutes from "./routes/user.routes.js";
 import customerAuthRoutes from "./routes/customerAuth.routes.js";
+import publicRoutes from "./routes/public.routes.js";
 import { errorHandler, notFound } from './middleware/error.middleware.js';
 
 const app = express();
@@ -49,6 +50,7 @@ app.use("/api/images", imageRoutes);
 app.use("/api/inventory", inventoryRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/customers/auth", customerAuthRoutes);
+app.use("/api/public", publicRoutes);
 
 
 // Global error handling middleware
