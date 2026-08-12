@@ -1,46 +1,50 @@
+"use client";
+
 import Link from "next/link";
 import { ChevronDown } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-} from "@/components/ui/dropdown-menu";
-
-// Placeholder categories — replace with a real fetch once a public,
-// customer-facing categories endpoint exists (current GET /categories
-// requires seller auth, which customers don't have).
-const PLACEHOLDER_CATEGORIES = ["Electronics", "Apparel", "Home & Kitchen", "Books"];
+import { usePublicCategories } from "@/hooks/storefront/usePublicCategories";
+import { buildChildrenMap } from "@/lib/categoryTree";
 
 export function CategoryNav() {
+  const { categories, loading } = usePublicCategories();
+
+  if (loading || categories.length === 0) return null;
+
+  const childrenMap = buildChildrenMap(categories);
+  const topLevel = childrenMap.get(null) || [];
+
   return (
     <nav className="border-b bg-muted/30">
       <div className="mx-auto flex max-w-7xl items-center gap-1 px-4 sm:px-6 lg:px-8">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button className="flex items-center gap-1 px-3 py-2 text-sm font-medium hover:bg-accent">
-              All Categories
-              <ChevronDown className="size-3.5" />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
-            {PLACEHOLDER_CATEGORIES.map((cat) => (
-              <DropdownMenuItem key={cat} asChild>
-                <Link href={`/category/${cat.toLowerCase().replace(/\s+/g, "-")}`}>{cat}</Link>
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+        {topLevel.map((category) => {
+          const subcategories = childrenMap.get(category._id) || [];
 
-        {PLACEHOLDER_CATEGORIES.slice(0, 4).map((cat) => (
-          <Link
-            key={cat}
-            href={`/category/${cat.toLowerCase().replace(/\s+/g, "-")}`}
-            className="px-3 py-2 text-sm text-muted-foreground hover:text-foreground"
-          >
-            {cat}
-          </Link>
-        ))}
+          return (
+            <div key={category._id} className="group relative">
+              <Link
+                href={`/category/${category.slug || category._id}`}
+                className="flex items-center gap-1 px-3 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-foreground"
+              >
+                {category.name}
+                {subcategories.length > 0 && <ChevronDown className="size-3.5" />}
+              </Link>
+
+              {subcategories.length > 0 && (
+                <div className="invisible absolute left-0 top-full z-20 min-w-48 rounded-md border bg-popover py-1 opacity-0 shadow-md transition-opacity group-hover:visible group-hover:opacity-100">
+                  {subcategories.map((sub) => (
+                    <Link
+                      key={sub._id}
+                      href={`/category/${sub.slug || sub._id}`}
+                      className="block px-3 py-2 text-sm hover:bg-accent"
+                    >
+                      {sub.name}
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
     </nav>
   );

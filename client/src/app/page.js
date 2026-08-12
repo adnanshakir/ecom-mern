@@ -1,28 +1,14 @@
 import Link from "next/link";
 import { PageContainer } from "@/components/layout/PageContainer";
-import { Section } from "@/components/layout/Section";
-import { Button } from "@/components/ui/button";
-import { Navbar } from "@/components/storefront/Navbar";
-import { Footer } from "@/components/storefront/Footer";
-import { CategoryNav } from "@/components/storefront/CategoryNav";
+import { ProductGrid } from "@/components/storefront/ProductGrid";
 
 export default function Home() {
   return (
-    <>
-      <Navbar />
-      <CategoryNav/>
     <PageContainer>
-      <Section className="flex flex-col items-center justify-center min-h-screen gap-4 text-center">
-        <h1 className="text-2xl font-semibold">Ecom Admin Panel</h1>
-        <p className="text-muted-foreground">
-          Frontend scaffold is ready. Build order: Login, then the rest of the modules.
-        </p>
-        <Button asChild>
-          <Link href="/admin/login">Go to admin login</Link>
-        </Button>
-      </Section>
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <h1 className="mb-6 text-2xl font-semibold">All Products</h1>
+        <ProductGrid />
+      </div>
     </PageContainer>
-      <Footer/>
-      </>
   );
 }
