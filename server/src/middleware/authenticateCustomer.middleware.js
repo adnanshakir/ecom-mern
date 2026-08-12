@@ -1,7 +1,7 @@
 import jwt from "jsonwebtoken";
 import { config } from "../config/config.js";
 import ApiError from "../utils/apiError.js";
-import Customer from "../models/customer.model.js";
+import Customer from "../models/customer/customer.model.js";
 
 export const authenticateCustomer = async (req, res, next) => {
   try {

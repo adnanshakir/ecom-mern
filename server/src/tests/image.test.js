@@ -1,6 +1,6 @@
 import request from "supertest";
 import { jest } from "@jest/globals";
-import User from "../models/user.model.js";
+import User from "../models/admin/user.model.js";
 import { connectTestDB, closeTestDB, clearTestDB } from "./setup.js";
 
 // Mock the ImageKit SDK BEFORE importing app, so every controller that

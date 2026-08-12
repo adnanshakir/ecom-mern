@@ -1,7 +1,7 @@
-import Category from "../models/category.model.js";
-import Brand from "../models/brand.model.js";
-import Product from "../models/product.model.js";
-import ProductVariant from "../models/productVariant.model.js";
+import Category from "../models/admin/category.model.js";
+import Brand from "../models/admin/brand.model.js";
+import Product from "../models/admin/product.model.js";
+import ProductVariant from "../models/admin/productVariant.model.js";
 import { slugify } from "./slugify.js";
 
 // resolves "Apparel & Accessories > Clothing > T-Shirts" into a Category chain,

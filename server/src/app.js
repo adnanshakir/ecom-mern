@@ -3,16 +3,23 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
-import authRoutes from "./routes/auth.routes.js";
-import brandRoutes from "./routes/brand.routes.js";
-import categoryRoutes from "./routes/category.routes.js";
-import productRoutes from "./routes/product.routes.js";
-import dashboardRoutes from "./routes/dashboard.routes.js";
-import imageRoutes from "./routes/image.routes.js";
-import inventoryRoutes from "./routes/inventory.routes.js";
-import userRoutes from "./routes/user.routes.js";
-import customerAuthRoutes from "./routes/customerAuth.routes.js";
-import publicRoutes from "./routes/public.routes.js";
+
+// Admin routes
+import authRoutes from "./routes/admin/auth.routes.js";
+import brandRoutes from "./routes/admin/brand.routes.js";
+import categoryRoutes from "./routes/admin/category.routes.js";
+import productRoutes from "./routes/admin/product.routes.js";
+import dashboardRoutes from "./routes/admin/dashboard.routes.js";
+import imageRoutes from "./routes/admin/image.routes.js";
+import inventoryRoutes from "./routes/admin/inventory.routes.js";
+import userRoutes from "./routes/admin/user.routes.js";
+
+// Customer routes
+import customerAuthRoutes from "./routes/customer/customerAuth.routes.js";
+import publicRoutes from "./routes/customer/public.routes.js";
+import cartRoutes from "./routes/customer/cart.routes.js";
+import wishlistRoutes from "./routes/customer/wishlist.routes.js";
+
 import { errorHandler, notFound } from './middleware/error.middleware.js';
 
 const app = express();
@@ -40,7 +47,7 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Routes go here
+// ---- Admin routes ----
 app.use("/api/auth", authRoutes);
 app.use("/api/brands", brandRoutes);
 app.use("/api/categories", categoryRoutes);
@@ -49,7 +56,11 @@ app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/images", imageRoutes);
 app.use("/api/inventory", inventoryRoutes);
 app.use("/api/users", userRoutes);
+
+// ---- Customer routes ----
 app.use("/api/customers/auth", customerAuthRoutes);
+app.use("/api/customers/cart", cartRoutes);
+app.use("/api/customers/wishlist", wishlistRoutes);
 app.use("/api/public", publicRoutes);
 
 

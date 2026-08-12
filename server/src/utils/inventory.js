@@ -1,5 +1,5 @@
-import InventoryMovement from "../models/inventoryMovement.model.js";
-import ProductVariant from "../models/productVariant.model.js";
+import InventoryMovement from "../models/admin/inventoryMovement.model.js";
+import ProductVariant from "../models/admin/productVariant.model.js";
 import ApiError from "./apiError.js";
 
 // direction: which movement types increase vs decrease stock

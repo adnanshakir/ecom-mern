@@ -1,8 +1,8 @@
 import request from "supertest";
 import app from "../app.js";
-import User from "../models/user.model.js";
-import Customer from "../models/customer.model.js";
-import CustomerRefreshToken from "../models/customerRefreshToken.model.js";
+import User from "../models/admin/user.model.js";
+import Customer from "../models/customer/customer.model.js";
+import CustomerRefreshToken from "../models/customer/customerRefreshToken.model.js";
 import { connectTestDB, closeTestDB, clearTestDB } from "./setup.js";
 
 // ─── shared fixtures ───────────────────────────────────────────────────────

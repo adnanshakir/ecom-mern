@@ -1,6 +1,6 @@
 import request from "supertest";
 import app from "../app.js";
-import User from "../models/user.model.js";
+import User from "../models/admin/user.model.js";
 import { connectTestDB, closeTestDB, clearTestDB } from "./setup.js";
 
 beforeAll(async () => {

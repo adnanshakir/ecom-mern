@@ -1,7 +1,7 @@
 import request from "supertest";
 import app from "../app.js";
-import User from "../models/user.model.js";
-import Category from "../models/category.model.js";
+import User from "../models/admin/user.model.js";
+import Category from "../models/admin/category.model.js";
 import { connectTestDB, closeTestDB, clearTestDB } from "./setup.js";
 
 let adminToken;

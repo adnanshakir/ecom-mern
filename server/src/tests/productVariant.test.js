@@ -1,10 +1,10 @@
 import request from "supertest";
 import app from "../app.js";
-import User from "../models/user.model.js";
-import Category from "../models/category.model.js";
-import Brand from "../models/brand.model.js";
-import Product from "../models/product.model.js";
-import ProductVariant from "../models/productVariant.model.js";
+import User from "../models/admin/user.model.js";
+import Category from "../models/admin/category.model.js";
+import Brand from "../models/admin/brand.model.js";
+import Product from "../models/admin/product.model.js";
+import ProductVariant from "../models/admin/productVariant.model.js";
 import { connectTestDB, closeTestDB, clearTestDB } from "./setup.js";
 
 let adminToken;

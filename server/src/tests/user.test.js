@@ -1,7 +1,7 @@
 import request from "supertest";
 import app from "../app.js";
-import User from "../models/user.model.js";
-import RefreshToken from "../models/refreshToken.model.js";
+import User from "../models/admin/user.model.js";
+import RefreshToken from "../models/admin/refreshToken.model.js";
 import { connectTestDB, closeTestDB, clearTestDB } from "./setup.js";
 
 let superAdminToken;
