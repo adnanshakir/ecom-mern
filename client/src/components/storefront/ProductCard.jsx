@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ImageIcon, Heart } from "lucide-react";
 import { getDisplayPrice, isInStock } from "@/lib/productPrice";
+import { cn } from "@/lib/utils";
 
 export function ProductCard({ product }) {
   const thumbnail = product.images?.[0]?.url;
@@ -20,7 +21,7 @@ export function ProductCard({ product }) {
         <div className="relative flex aspect-square items-center justify-center overflow-hidden bg-muted">
           {thumbnail ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={thumbnail} alt={product.name} className="size-full object-cover" />
+            <img src={thumbnail} alt={product.name} className={cn("size-full object-cover", !inStock && "opacity-50")} />
           ) : (
             <ImageIcon className="size-8 text-muted-foreground" />
           )}
@@ -32,9 +33,11 @@ export function ProductCard({ product }) {
           )}
 
           {!inStock && (
-            <span className="absolute left-2 top-2 bg-foreground/80 px-2 py-1 text-xs font-medium text-background">
-              Out of stock
-            </span>
+            <div className="absolute inset-0 flex items-center justify-center bg-background/60">
+              <span className="rounded-full bg-red-50 px-3 py-1 text-xs font-medium text-red-600 dark:bg-red-950/60 dark:text-red-400">
+                Out of stock
+              </span>
+            </div>
           )}
         </div>
 

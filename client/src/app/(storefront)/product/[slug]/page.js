@@ -12,14 +12,14 @@ import { QuantitySelector } from "@/components/storefront/QuantitySelector";
 import { RelatedProducts } from "@/components/storefront/RelatedProducts";
 import { Breadcrumbs } from "@/components/storefront/Breadcrumbs";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 export default function ProductPage() {
   const { slug } = useParams();
   const { product, loading, error } = usePublicProduct(slug);
   const [quantity, setQuantity] = useState(1);
 
-  const { optionTypes, selectedOptions, setOption, selectedVariant } =
-    useVariantSelector(product);
+  const { optionTypes, selectedOptions, setOption, selectedVariant } = useVariantSelector(product);
 
   if (loading) {
     return (
@@ -49,10 +49,7 @@ export default function ProductPage() {
       />
 
       <div className="grid gap-8 lg:grid-cols-[440px_1fr]">
-        <ProductGallery
-          productImages={product.images}
-          variantImages={selectedVariant?.images}
-        />
+        <ProductGallery productImages={product.images} variantImages={selectedVariant?.images} />
 
         <div className="grid gap-5">
           <div>
@@ -64,9 +61,7 @@ export default function ProductPage() {
             {hasSale ? (
               <>
                 <span className="text-2xl font-semibold">${price}</span>
-                <span className="text-sm text-muted-foreground line-through">
-                  ${selectedVariant.price}
-                </span>
+                <span className="text-sm text-muted-foreground line-through">${selectedVariant.price}</span>
               </>
             ) : (
               <span className="text-2xl font-semibold">{price != null ? `$${price}` : "—"}</span>
@@ -74,32 +69,23 @@ export default function ProductPage() {
           </div>
 
           <span
-            className={
+            className={cn(
+              "w-fit h-fit rounded-full px-3 py-1 text-xs font-medium",
               inStock
-                ? "w-fit rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-500"
-                : "w-fit rounded-full bg-red-500/10 px-2 py-0.5 text-xs font-medium text-red-500"
-            }
+                ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400"
+                : "bg-red-50 text-red-600 dark:bg-red-950/60 dark:text-red-400"
+            )}
           >
-            {inStock ? `${selectedVariant.stock} in stock` : "Out of stock"}
+            {inStock ? "In stock" : "Out of stock"}
           </span>
 
-          {product.description && (
-            <p className="text-sm text-muted-foreground">{product.description}</p>
-          )}
+          {product.description && <p className="text-sm text-muted-foreground">{product.description}</p>}
 
-          <VariantSelector
-            optionTypes={optionTypes}
-            selectedOptions={selectedOptions}
-            onSelect={setOption}
-          />
+          <VariantSelector optionTypes={optionTypes} selectedOptions={selectedOptions} onSelect={setOption} />
 
           <div className="grid gap-2">
             <span className="text-sm font-medium">Quantity</span>
-            <QuantitySelector
-              value={quantity}
-              onChange={setQuantity}
-              max={selectedVariant?.stock || 1}
-            />
+            <QuantitySelector value={quantity} onChange={setQuantity} max={selectedVariant?.stock || 1} />
           </div>
 
           <div className="flex gap-2">
