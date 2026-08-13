@@ -1,10 +1,7 @@
-import { Navbar } from "@/components/storefront/Navbar";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import StoreProvider from "@/redux/StoreProvider";
 import { Geist, Geist_Mono } from "next/font/google";
-import { CategoryNav } from "@/components/storefront/CategoryNav";
-import { Footer } from "@/components/storefront/Footer";
 import { Toaster } from "sonner";
 
 const geistSans = Geist({
@@ -18,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "Ecom Admin",
-  description: "E-Commerce admin panel",
+  title: "Fibio Wholesale",
+  description: "E-Commerce platform",
 };
 
 export default function RootLayout({ children }) {
@@ -32,14 +29,7 @@ export default function RootLayout({ children }) {
       <body className="min-h-full flex flex-col font-sans">
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false} disableTransitionOnChange>
           <StoreProvider>
-            <div className="flex min-h-screen flex-col">
-              <Navbar />
-              <CategoryNav />
-
-              <main className="flex-1">{children}</main>
-
-              <Footer />
-            </div>
+            {children}
           </StoreProvider>
           <Toaster richColors position="bottom-right" />
         </ThemeProvider>

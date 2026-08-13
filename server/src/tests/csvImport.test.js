@@ -149,6 +149,212 @@ describe("POST /api/products/import/confirm", () => {
     const brands = await Brand.find({ name: "Nike" });
     expect(brands).toHaveLength(1); // not duplicated
   });
+
+  it("reuses an existing category when CSV casing differs from DB (case-insensitive match)", async () => {
+    // DB has "APPAREL" and "HEADWEAR" (all-caps) — CSV has "Apparel > Headwear" (title-case)
+    await Category.create({ name: "APPAREL", slug: "apparel" });
+    const apparel = await Category.findOne({ slug: "apparel" });
+    await Category.create({ name: "HEADWEAR", slug: "headwear", parent: apparel._id });
+    await Brand.create({ name: "Nike", slug: "nike" });
+
+    const previewRes = await request(app)
+      .post("/api/products/import/preview")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .attach("file", Buffer.from(validCsv), "test.csv");
+
+    // Preview should resolve the category despite case mismatch
+    expect(previewRes.body.data.products[0].product.categoryResolved).toBe(true);
+
+    const confirmRes = await request(app)
+      .post("/api/products/import/confirm")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ fileName: "test.csv", products: previewRes.body.data.products });
+
+    expect(confirmRes.status).toBe(201);
+    expect(confirmRes.body.data.successCount).toBe(1);
+
+    // No extra categories should have been created — still exactly 2
+    const categories = await Category.find();
+    expect(categories).toHaveLength(2);
+  });
+
+  it("reuses an existing brand when CSV casing differs from DB (case-insensitive match)", async () => {
+    // DB has "NIKE" (all-caps) — CSV has "Nike" (title-case)
+    await Category.create({ name: "Apparel", slug: "apparel" });
+    const apparel = await Category.findOne({ slug: "apparel" });
+    await Category.create({ name: "Headwear", slug: "headwear", parent: apparel._id });
+    await Brand.create({ name: "NIKE", slug: "nike" });
+
+    const previewRes = await request(app)
+      .post("/api/products/import/preview")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .attach("file", Buffer.from(validCsv), "test.csv");
+
+    // Preview should mark brand as resolved despite case mismatch
+    expect(previewRes.body.data.products[0].product.brandResolved).toBe(true);
+
+    const confirmRes = await request(app)
+      .post("/api/products/import/confirm")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ fileName: "test.csv", products: previewRes.body.data.products });
+
+    expect(confirmRes.status).toBe(201);
+    expect(confirmRes.body.data.successCount).toBe(1);
+
+    // No duplicate brand created — still exactly 1
+    const brands = await Brand.find();
+    expect(brands).toHaveLength(1);
+  });
+
+  it("resolves every level of a multi-level category path case-insensitively", async () => {
+    // Simulate: first import created "APPAREL" and "HEADWEAR" with those exact names.
+    // Second import CSV sends "apparel > headwear" (all lowercase).
+    // Both root AND child levels must be matched CI — not just the leaf.
+    await Category.create({ name: "APPAREL", slug: "apparel" });
+    const apparel = await Category.findOne({ slug: "apparel" });
+    await Category.create({ name: "HEADWEAR", slug: "headwear", parent: apparel._id });
+    await Brand.create({ name: "Nike", slug: "nike" });
+
+    // CSV uses all-lowercase at both levels
+    const lowercaseCategoryCsv = [
+      "Title,URL handle,Description,Vendor,Product category,SKU,Barcode,Option1 name,Option1 value,Price,Compare-at price,Inventory quantity,Weight value (grams),SEO title,SEO description",
+      "Blue Cap,blue-cap,Another cap,Nike,apparel > headwear,CAP-BLUE-001,222,Color,Blue,399,,10,100,Blue Cap,A blue cap",
+    ].join("\n") + "\n";
+
+    const previewRes = await request(app)
+      .post("/api/products/import/preview")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .attach("file", Buffer.from(lowercaseCategoryCsv), "lowercase.csv");
+
+    expect(previewRes.status).toBe(200);
+    // Both levels must be resolved even though casing differs at both root and child
+    expect(previewRes.body.data.products[0].product.categoryResolved).toBe(true);
+
+    const confirmRes = await request(app)
+      .post("/api/products/import/confirm")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ fileName: "lowercase.csv", products: previewRes.body.data.products });
+
+    expect(confirmRes.status).toBe(201);
+    expect(confirmRes.body.data.successCount).toBe(1);
+
+    // Still only 2 categories in total — no duplicates at either level
+    const categories = await Category.find();
+    expect(categories).toHaveLength(2);
+  });
+
+  it("handles two products in the same CSV sharing a category under different casing (intra-CSV)", async () => {
+    // No pre-existing DB data — the category is created by the first product,
+    // and must be found (not re-created) by the second product's row.
+    // First product uses "Apparel > Headwear", second uses "APPAREL > HEADWEAR".
+    // The CI find inside the transaction must read the first product's
+    // newly-created category before attempting a second create.
+    const header =
+      "Title,URL handle,Description,Vendor,Product category,SKU,Barcode,Option1 name,Option1 value,Price,Compare-at price,Inventory quantity,Weight value (grams),SEO title,SEO description";
+    const intraCsv = [
+      header,
+      "Red Cap,red-cap,A cap,Nike,Apparel > Headwear,CAP-RED-001,111,Color,Red,499,,10,100,,",
+      "Blue Cap,blue-cap,Another cap,Nike,APPAREL > HEADWEAR,CAP-BLUE-001,222,Color,Blue,399,,10,100,,",
+    ].join("\n") + "\n";
+
+    const previewRes = await request(app)
+      .post("/api/products/import/preview")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .attach("file", Buffer.from(intraCsv), "intra.csv");
+
+    expect(previewRes.status).toBe(200);
+    expect(previewRes.body.data.totalProducts).toBe(2);
+
+    const confirmRes = await request(app)
+      .post("/api/products/import/confirm")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ fileName: "intra.csv", products: previewRes.body.data.products });
+
+    expect(confirmRes.status).toBe(201);
+    expect(confirmRes.body.data.successCount).toBe(2);
+
+    // Only 2 categories total — "Apparel" and "Headwear", not 4
+    const categories = await Category.find();
+    expect(categories).toHaveLength(2);
+  });
+
+  it("handles two products in the same CSV sharing a brand under different casing (intra-CSV)", async () => {
+    // First product vendor is "Nike", second is "NIKE".
+    // The CI find inside the transaction must read the first product's
+    // newly-created brand before attempting a second create.
+    await Category.create({ name: "Apparel", slug: "apparel" });
+    const apparel = await Category.findOne({ slug: "apparel" });
+    await Category.create({ name: "Headwear", slug: "headwear", parent: apparel._id });
+
+    const header =
+      "Title,URL handle,Description,Vendor,Product category,SKU,Barcode,Option1 name,Option1 value,Price,Compare-at price,Inventory quantity,Weight value (grams),SEO title,SEO description";
+    const intraCsv = [
+      header,
+      "Red Cap,red-cap,A cap,Nike,Apparel > Headwear,CAP-RED-001,111,Color,Red,499,,10,100,,",
+      "Blue Cap,blue-cap,Another cap,NIKE,Apparel > Headwear,CAP-BLUE-001,222,Color,Blue,399,,10,100,,",
+    ].join("\n") + "\n";
+
+    const previewRes = await request(app)
+      .post("/api/products/import/preview")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .attach("file", Buffer.from(intraCsv), "intra-brand.csv");
+
+    expect(previewRes.status).toBe(200);
+
+    const confirmRes = await request(app)
+      .post("/api/products/import/confirm")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ fileName: "intra-brand.csv", products: previewRes.body.data.products });
+
+    expect(confirmRes.status).toBe(201);
+    expect(confirmRes.body.data.successCount).toBe(2);
+
+    // Only 1 brand — "Nike", not 2
+    const brands = await Brand.find();
+    expect(brands).toHaveLength(1);
+  });
+
+  it("creates a child category with a disambiguated slug when a same-named category exists elsewhere in the tree", async () => {
+    // Root "Clothing" already exists (slug: "clothing").
+    // CSV imports "Apparel > Clothing" — a legitimate different category
+    // (different parent) that happens to share the name "Clothing".
+    // generateUniqueSlug must produce "clothing-2" for the nested one
+    // instead of colliding on the unique slug index with E11000.
+    await Category.create({ name: "Clothing", slug: "clothing" });
+    await Brand.create({ name: "Nike", slug: "nike" });
+
+    const header =
+      "Title,URL handle,Description,Vendor,Product category,SKU,Barcode,Option1 name,Option1 value,Price,Compare-at price,Inventory quantity,Weight value (grams),SEO title,SEO description";
+    const csv = [
+      header,
+      "Blue Shirt,blue-shirt,A shirt,Nike,Apparel > Clothing,SHIRT-BLUE-001,333,Color,Blue,299,,5,200,,",
+    ].join("\n") + "\n";
+
+    const previewRes = await request(app)
+      .post("/api/products/import/preview")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .attach("file", Buffer.from(csv), "tree.csv");
+
+    expect(previewRes.status).toBe(200);
+
+    const confirmRes = await request(app)
+      .post("/api/products/import/confirm")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ fileName: "tree.csv", products: previewRes.body.data.products });
+
+    expect(confirmRes.status).toBe(201);
+    expect(confirmRes.body.data.successCount).toBe(1);
+
+    // 3 categories total: pre-existing "Clothing" (slug: "clothing"),
+    // newly-created "Apparel" (slug: "apparel"), and nested "Clothing"
+    // with a disambiguated slug ("clothing-2").
+    const categories = await Category.find().sort({ slug: 1 });
+    expect(categories).toHaveLength(3);
+    const slugs = categories.map((c) => c.slug).sort();
+    expect(slugs).toContain("clothing");
+    expect(slugs).toContain("clothing-2");
+    expect(slugs).toContain("apparel");
+  });
 });
 
 describe("POST /api/products/import/:id/rollback", () => {

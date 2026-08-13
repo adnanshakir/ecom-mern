@@ -7,13 +7,15 @@ export const slugify = (text) => {
     .replace(/^-+|-+$/g, ""); // trim leading/trailing hyphens
 };
 
-// appends -1, -2, etc. if the base slug is already taken
-export const generateUniqueSlug = async (Model, name) => {
+// appends -2, -3, etc. if the base slug is already taken.
+// Pass `session` when calling inside a MongoDB transaction so the uniqueness
+// check can see that transaction's own uncommitted writes (read-your-own-writes).
+export const generateUniqueSlug = async (Model, name, session = null) => {
   const baseSlug = slugify(name);
   let slug = baseSlug;
-  let counter = 1;
+  let counter = 2;
 
-  while (await Model.exists({ slug })) {
+  while (await Model.exists({ slug }, session ? { session } : undefined)) {
     slug = `${baseSlug}-${counter}`;
     counter++;
   }

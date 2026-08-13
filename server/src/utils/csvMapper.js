@@ -2,7 +2,45 @@ import Category from "../models/admin/category.model.js";
 import Brand from "../models/admin/brand.model.js";
 import Product from "../models/admin/product.model.js";
 import ProductVariant from "../models/admin/productVariant.model.js";
-import { slugify } from "./slugify.js";
+import { slugify, generateUniqueSlug } from "./slugify.js";
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+/**
+ * Escapes regex metacharacters so a user-supplied category/brand name is
+ * treated as a literal string inside a $regex query.
+ */
+function escapeRegex(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
+ * Case-insensitive, whitespace-trimmed findOne by name + optional parent.
+ * Uses $regex with ^…$ anchors so "Clothing" and "clothing" and " Clothing "
+ * all resolve to the same document.
+ */
+function findCategoryCI(name, parentId, session) {
+  const trimmed = name.trim();
+  const pattern = `^${escapeRegex(trimmed)}$`;
+  const query = {
+    name: { $regex: pattern, $options: "i" },
+    parent: parentId,
+  };
+  return session
+    ? Category.findOne(query).session(session)
+    : Category.findOne(query);
+}
+
+function findBrandCI(name, session) {
+  const trimmed = name.trim();
+  const pattern = `^${escapeRegex(trimmed)}$`;
+  const query = { name: { $regex: pattern, $options: "i" } };
+  return session
+    ? Brand.findOne(query).session(session)
+    : Brand.findOne(query);
+}
+
+// ── Preview-time helpers (read-only — no session, no create) ─────────────────
 
 // resolves "Apparel & Accessories > Clothing > T-Shirts" into a Category chain,
 // checking which levels already exist vs would need to be created
@@ -15,8 +53,8 @@ const resolveCategoryPath = async (categoryPathString) => {
   let parentId = null;
 
   for (const levelName of levels) {
-    const slug = slugify(levelName);
-    const existing = await Category.findOne({ slug, parent: parentId });
+    // Use case-insensitive match at preview time too so preview and confirm agree
+    const existing = await findCategoryCI(levelName, parentId, null);
     if (existing) {
       path.push({ name: levelName, id: existing._id, existing: true });
       parentId = existing._id;
@@ -32,9 +70,12 @@ const resolveCategoryPath = async (categoryPathString) => {
 
 const resolveBrand = async (vendorName) => {
   if (!vendorName) return { existing: false, id: null };
-  const brand = await Brand.findOne({ name: vendorName.trim() });
+  // Case-insensitive match
+  const brand = await findBrandCI(vendorName, null);
   return brand ? { existing: true, id: brand._id } : { existing: false, id: null };
 };
+
+// ── Row grouping / mapping ────────────────────────────────────────────────────
 
 // groups raw CSV rows into { product, variants[] } structures by "URL handle"
 export const groupRowsByProduct = (rows) => {
@@ -134,7 +175,23 @@ export const mapGroupToProduct = async (group) => {
   };
 };
 
-// like resolveCategoryPath, but actually creates missing levels — used at confirm time, not preview
+// ── Confirm-time helpers (write — session required) ───────────────────────────
+
+/**
+ * findOrCreateCategoryPath: like resolveCategoryPath but actually creates
+ * missing levels inside a transaction session.
+ *
+ * Uses case-insensitive, trimmed matching so "Clothing", "clothing", and
+ * " Clothing " all resolve to the same existing category document rather than
+ * creating a duplicate that would collide on the slug unique index (E11000).
+ *
+ * Within a MongoDB transaction, findCategoryCI reads the session's own
+ * uncommitted writes (read-your-own-writes guarantee), so a category created
+ * earlier in this same transaction is always visible to subsequent find calls.
+ * E11000 should therefore never be reached for same-CSV duplicates.
+ * If a genuine concurrent-import race produces E11000, it propagates to the
+ * outer confirmCsvImport catch which correctly aborts + endSession + next(err).
+ */
 export const findOrCreateCategoryPath = async (categoryPathString, session, createdCategoryIds) => {
   if (!categoryPathString) return null;
 
@@ -143,12 +200,17 @@ export const findOrCreateCategoryPath = async (categoryPathString, session, crea
   let finalCategoryId = null;
 
   for (const levelName of levels) {
-    const slug = slugify(levelName);
-    let category = await Category.findOne({ slug, parent: parentId }).session(session);
+    // Case-insensitive find — also sees this transaction's own uncommitted writes
+    let category = await findCategoryCI(levelName, parentId, session);
 
     if (!category) {
+      // Use generateUniqueSlug with the session so the uniqueness check sees
+      // uncommitted writes from this transaction (read-your-own-writes).
+      // This prevents E11000 when two categories at different tree positions
+      // share the same name (e.g. top-level "Clothing" vs "Apparel > Clothing").
+      const slug = await generateUniqueSlug(Category, levelName, session);
       [category] = await Category.create(
-        [{ name: levelName, slug, parent: parentId }],
+        [{ name: levelName.trim(), slug, parent: parentId }],
         { session }
       );
       createdCategoryIds.push(category._id);
@@ -161,14 +223,23 @@ export const findOrCreateCategoryPath = async (categoryPathString, session, crea
   return finalCategoryId;
 };
 
+/**
+ * findOrCreateBrand: case-insensitive find, create if missing.
+ * Same transaction read-your-own-writes guarantee applies — no E11000
+ * recovery needed. If a genuine concurrent race produces E11000, it
+ * propagates to confirmCsvImport's outer catch.
+ */
 export const findOrCreateBrand = async (vendorName, session, createdBrandIds) => {
   if (!vendorName) return null;
 
-  let brand = await Brand.findOne({ name: vendorName.trim() }).session(session);
+  // Case-insensitive find — also sees this transaction's own uncommitted writes
+  let brand = await findBrandCI(vendorName, session);
 
   if (!brand) {
-    const slug = slugify(vendorName);
-    [brand] = await Brand.create([{ name: vendorName.trim(), slug }], { session });
+    const trimmed = vendorName.trim();
+    // Use generateUniqueSlug with the session for the same collision-safety reason.
+    const slug = await generateUniqueSlug(Brand, trimmed, session);
+    [brand] = await Brand.create([{ name: trimmed, slug }], { session });
     createdBrandIds.push(brand._id);
   }
 
