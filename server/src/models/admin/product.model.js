@@ -39,8 +39,9 @@ const productSchema = new mongoose.Schema(
     },
     images: [
       {
-        url: { type: String, required: true }, // ImageKit's URL of the uploaded image
-        fileId: { type: String, required: true }, // ImageKit's internal reference, needed to delete the file later
+        url: { type: String, required: true },
+        fileId: { type: String, default: null },
+        source: { type: String, enum: ["imagekit", "external"], default: "imagekit" },
         altText: { type: String, default: "" },
         position: { type: Number, default: 0 },
       },

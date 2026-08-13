@@ -101,6 +101,16 @@ export const groupRowsByProduct = (rows) => {
   return Array.from(groups.entries()).map(([handle, group]) => ({ handle, ...group }));
 };
 
+const getRowValue = (row, candidateKeys) => {
+  for (const key of candidateKeys) {
+    if (row[key] !== undefined && row[key] !== null) {
+      const str = String(row[key]).trim();
+      if (str !== "") return str;
+    }
+  }
+  return "";
+};
+
 // converts one grouped { parentRow, variantRows } into your Product/Variant shape,
 // with validation errors attached per field
 export const mapGroupToProduct = async (group) => {
@@ -116,6 +126,44 @@ export const mapGroupToProduct = async (group) => {
 
   if (!parentRow?.Vendor) errors.push("Missing Vendor (Brand)");
   if (!parentRow?.["Product category"]) errors.push("Missing Product category");
+
+  // Extract product-level images (supporting multiple CSV header variants like "Product image URL", "Image Src", etc.)
+  const productImages = [];
+  const seenUrls = new Set();
+
+  const productImageKeys = [
+    "Product image URL",
+    "Product Image URL",
+    "Image Src",
+    "Image SRC",
+    "Image URL",
+    "Image Url",
+  ];
+  const positionKeys = ["Image position", "Image Position", "Position"];
+  const altTextKeys = ["Image alt text", "Image Alt Text", "Alt Text", "Alt text"];
+  const variantImageKeys = [
+    "Variant image URL",
+    "Variant Image URL",
+    "Variant Image",
+    "Variant image",
+    "Variant Image Url",
+  ];
+
+  for (const row of variantRows) {
+    const src = getRowValue(row, productImageKeys);
+    if (src && !seenUrls.has(src)) {
+      seenUrls.add(src);
+      const posRaw = getRowValue(row, positionKeys);
+      const position = posRaw && !isNaN(Number(posRaw)) ? Number(posRaw) : 0;
+      const altText = getRowValue(row, altTextKeys);
+      productImages.push({
+        url: src,
+        position,
+        altText,
+      });
+    }
+  }
+  productImages.sort((a, b) => a.position - b.position);
 
   const variants = variantRows.map((row, index) => {
     const variantErrors = [];
@@ -136,6 +184,8 @@ export const mapGroupToProduct = async (group) => {
       options.push({ name: row["Option3 name"], value: row["Option3 value"] });
     }
 
+    const variantImage = getRowValue(row, variantImageKeys) || null;
+
     return {
       rowIndex: index,
       sku: row.SKU,
@@ -144,6 +194,7 @@ export const mapGroupToProduct = async (group) => {
       salePrice: row["Compare-at price"] ? Number(row["Compare-at price"]) : undefined,
       stock: Number(row["Inventory quantity"]) || 0,
       options,
+      image: variantImage,
       weight: row["Weight value (grams)"]
         ? { value: Number(row["Weight value (grams)"]), unit: "g" }
         : undefined,
@@ -157,6 +208,7 @@ export const mapGroupToProduct = async (group) => {
     description: parentRow?.Description,
     seoTitle: parentRow?.["SEO title"],
     seoDescription: parentRow?.["SEO description"],
+    images: productImages,
     categoryPath: category.path,
     categoryResolved: category.finalExists,
     brandName: parentRow?.Vendor,

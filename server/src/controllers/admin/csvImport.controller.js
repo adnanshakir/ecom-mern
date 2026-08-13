@@ -16,6 +16,41 @@ import { parseCsvBuffer } from "../../utils/csvParser.js";
 import ApiError from "../../utils/apiError.js";
 import { adjustStock } from "../../utils/inventory.js";
 import InventoryMovement from "../../models/admin/inventoryMovement.model.js";
+import imagekit from "../../utils/imagekit.js";
+
+async function uploadExternalImageToImageKit(imageUrl) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+  try {
+    const response = await fetch(imageUrl, { signal: controller.signal });
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status} ${response.statusText}`);
+    }
+
+    const contentType = response.headers.get("content-type");
+    if (contentType && !contentType.includes("image") && !contentType.includes("octet-stream")) {
+      throw new Error(`Invalid content-type: ${contentType}`);
+    }
+
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    const fileName = imageUrl.split("/").pop()?.split("?")[0] || "imported-image.jpg";
+
+    const result = await imagekit.upload({
+      file: buffer.toString("base64"),
+      fileName: fileName.includes(".") ? fileName : `${fileName}.jpg`,
+      folder: "/ecommerce-admin/products",
+    });
+
+    return result;
+  } catch (err) {
+    clearTimeout(timeoutId);
+    throw err;
+  }
+}
 
 export const previewCsvImport = async (req, res, next) => {
   try {
@@ -79,6 +114,69 @@ export const confirmCsvImport = async (req, res, next) => {
     return next(new ApiError(400, "No products provided for import"));
   }
 
+  const errors = [];
+
+  // PHASE 1: Pre-process image uploads outside of DB transaction
+  // (Prevents keeping MongoDB transaction open during long external network operations)
+  const preparedItems = await Promise.all(
+    products.map(async (item) => {
+      if (!item.valid || !item.product?.name || !item.variants?.length) {
+        return { item, preparedProductImages: [], preparedVariantImagesList: [] };
+      }
+
+      // Process product images in parallel
+      const resolvedProductImages = await Promise.all(
+        (item.product.images || []).map(async (img) => {
+          if (!img.url) return null;
+          try {
+            const uploaded = await uploadExternalImageToImageKit(img.url);
+            return {
+              url: uploaded.url,
+              fileId: uploaded.fileId,
+              source: "imagekit",
+              position: img.position || 0,
+              altText: img.altText || "",
+            };
+          } catch (uploadErr) {
+            errors.push(
+              `Image at ${img.url} could not be re-uploaded to ImageKit, stored as an external link instead`
+            );
+            return {
+              url: img.url,
+              fileId: null,
+              source: "external",
+              position: img.position || 0,
+              altText: img.altText || "",
+            };
+          }
+        })
+      );
+
+      // Process variant images in parallel
+      const resolvedVariantImagesList = await Promise.all(
+        (item.variants || []).map(async (v) => {
+          if (!v.image) return [];
+          try {
+            const uploaded = await uploadExternalImageToImageKit(v.image);
+            return [{ url: uploaded.url, fileId: uploaded.fileId }];
+          } catch (uploadErr) {
+            errors.push(
+              `Image at ${v.image} could not be re-uploaded to ImageKit, stored as an external link instead`
+            );
+            return [{ url: v.image }];
+          }
+        })
+      );
+
+      return {
+        item,
+        preparedProductImages: resolvedProductImages.filter(Boolean),
+        preparedVariantImagesList: resolvedVariantImagesList,
+      };
+    })
+  );
+
+  // PHASE 2: Perform DB writes inside MongoDB transaction (completes in <1 sec)
   const session = await mongoose.startSession();
   session.startTransaction();
 
@@ -86,11 +184,12 @@ export const confirmCsvImport = async (req, res, next) => {
   const createdVariantIds = [];
   const createdCategoryIds = [];
   const createdBrandIds = [];
-  const errors = [];
   let successCount = 0;
 
   try {
-    for (const item of products) {
+    for (const prepared of preparedItems) {
+      const { item, preparedProductImages, preparedVariantImagesList } = prepared;
+
       if (!item.valid) {
         errors.push(`Skipped "${item.product?.name || item.handle}": marked invalid`);
         continue;
@@ -112,7 +211,7 @@ export const confirmCsvImport = async (req, res, next) => {
         continue;
       }
 
-      const slug = await generateUniqueSlug(Product, item.product.name);
+      const slug = await generateUniqueSlug(Product, item.product.name, session);
 
       const [product] = await Product.create(
         [
@@ -122,6 +221,7 @@ export const confirmCsvImport = async (req, res, next) => {
             description: item.product.description,
             seoTitle: item.product.seoTitle,
             seoDescription: item.product.seoDescription,
+            images: preparedProductImages,
             category: categoryId,
             brand: brandId,
             status: "draft", // imported products start as draft for admin review
@@ -131,7 +231,7 @@ export const confirmCsvImport = async (req, res, next) => {
       );
       createdProductIds.push(product._id);
 
-      const variantDocs = item.variants.map((v) => ({
+      const variantDocs = item.variants.map((v, index) => ({
         product: product._id,
         sku: v.sku,
         barcode: v.barcode,
@@ -139,6 +239,7 @@ export const confirmCsvImport = async (req, res, next) => {
         salePrice: v.salePrice,
         stock: 0,
         options: v.options,
+        images: preparedVariantImagesList[index] || [],
         weight: v.weight,
       }));
 

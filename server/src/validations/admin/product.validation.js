@@ -6,7 +6,8 @@ const objectId = z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid ObjectId");
 
 const imageSchema = z.object({
   url: z.string().url("Invalid image URL"),
-  fileId: z.string().min(1, "fileId is required"),
+  fileId: z.string().nullable().optional(),
+  source: z.enum(["imagekit", "external"]).optional().default("imagekit"),
   altText: z.string().trim().optional(),
   position: z.number().int().min(0).optional(),
 });

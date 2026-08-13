@@ -1,10 +1,13 @@
 import request from "supertest";
+import { jest } from "@jest/globals";
 import app from "../app.js";
 import User from "../models/admin/user.model.js";
 import Category from "../models/admin/category.model.js";
 import Brand from "../models/admin/brand.model.js";
 import Product from "../models/admin/product.model.js";
+import ProductVariant from "../models/admin/productVariant.model.js";
 import ImportJob from "../models/admin/importJob.model.js";
+import imagekit from "../utils/imagekit.js";
 import { connectTestDB, closeTestDB, clearTestDB } from "./setup.js";
 
 let adminToken;
@@ -354,6 +357,131 @@ describe("POST /api/products/import/confirm", () => {
     expect(slugs).toContain("clothing");
     expect(slugs).toContain("clothing-2");
     expect(slugs).toContain("apparel");
+  });
+
+  it("uploads product-level image URL to ImageKit and stores source: imagekit and fileId", async () => {
+    const fetchSpy = jest.spyOn(global, "fetch").mockResolvedValue({
+      ok: true,
+      headers: new Headers({ "content-type": "image/jpeg" }),
+      arrayBuffer: async () => Buffer.from("fake-image-bytes"),
+    });
+
+    const uploadSpy = jest.spyOn(imagekit, "upload").mockResolvedValue({
+      url: "https://ik.imagekit.io/test/uploaded-img.jpg",
+      fileId: "file_ik_999",
+    });
+
+    const header =
+      "Title,URL handle,Description,Vendor,Product category,SKU,Barcode,Option1 name,Option1 value,Price,Compare-at price,Inventory quantity,Weight value (grams),SEO title,SEO description,Image Src,Image position,Image alt text";
+    const csv = [
+      header,
+      "Red Cap,red-cap,A cap,Nike,Apparel > Headwear,CAP-RED-001,111,Color,Red,499,,20,150,,,https://cdn.example.com/red-cap.jpg,1,Red cap image",
+    ].join("\n") + "\n";
+
+    const previewRes = await request(app)
+      .post("/api/products/import/preview")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .attach("file", Buffer.from(csv), "img.csv");
+
+    expect(previewRes.status).toBe(200);
+
+    const confirmRes = await request(app)
+      .post("/api/products/import/confirm")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ fileName: "img.csv", products: previewRes.body.data.products });
+
+    expect(confirmRes.status).toBe(201);
+
+    const product = await Product.findOne({ slug: "red-cap" });
+    expect(product.images).toHaveLength(1);
+    expect(product.images[0].url).toBe("https://ik.imagekit.io/test/uploaded-img.jpg");
+    expect(product.images[0].fileId).toBe("file_ik_999");
+    expect(product.images[0].source).toBe("imagekit");
+
+    fetchSpy.mockRestore();
+    uploadSpy.mockRestore();
+  });
+
+  it("falls back to storing external image URL when ImageKit upload fails", async () => {
+    const fetchSpy = jest.spyOn(global, "fetch").mockResolvedValue({
+      ok: false,
+      status: 404,
+      statusText: "Not Found",
+      headers: new Headers(),
+    });
+
+    const header =
+      "Title,URL handle,Description,Vendor,Product category,SKU,Barcode,Option1 name,Option1 value,Price,Compare-at price,Inventory quantity,Weight value (grams),SEO title,SEO description,Image Src,Image position,Image alt text";
+    const csv = [
+      header,
+      "Blue Cap,blue-cap,A cap,Nike,Apparel > Headwear,CAP-BLUE-001,111,Color,Blue,499,,20,150,,,https://cdn.example.com/dead-image.jpg,1,Dead cap image",
+    ].join("\n") + "\n";
+
+    const previewRes = await request(app)
+      .post("/api/products/import/preview")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .attach("file", Buffer.from(csv), "dead.csv");
+
+    expect(previewRes.status).toBe(200);
+
+    const confirmRes = await request(app)
+      .post("/api/products/import/confirm")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ fileName: "dead.csv", products: previewRes.body.data.products });
+
+    expect(confirmRes.status).toBe(201);
+    expect(confirmRes.body.data.errors).toContain(
+      "Image at https://cdn.example.com/dead-image.jpg could not be re-uploaded to ImageKit, stored as an external link instead"
+    );
+
+    const product = await Product.findOne({ slug: "blue-cap" });
+    expect(product.images).toHaveLength(1);
+    expect(product.images[0].url).toBe("https://cdn.example.com/dead-image.jpg");
+    expect(product.images[0].fileId).toBeNull();
+    expect(product.images[0].source).toBe("external");
+
+    fetchSpy.mockRestore();
+  });
+
+  it("handles variant-level Variant Image column", async () => {
+    const fetchSpy = jest.spyOn(global, "fetch").mockResolvedValue({
+      ok: true,
+      headers: new Headers({ "content-type": "image/jpeg" }),
+      arrayBuffer: async () => Buffer.from("fake-image-bytes"),
+    });
+
+    const uploadSpy = jest.spyOn(imagekit, "upload").mockResolvedValue({
+      url: "https://ik.imagekit.io/test/uploaded-var-img.jpg",
+      fileId: "var_ik_777",
+    });
+
+    const header =
+      "Title,URL handle,Description,Vendor,Product category,SKU,Barcode,Option1 name,Option1 value,Price,Compare-at price,Inventory quantity,Weight value (grams),SEO title,SEO description,Image Src,Image position,Image alt text,Variant Image";
+    const csv = [
+      header,
+      "Green Cap,green-cap,A cap,Nike,Apparel > Headwear,CAP-GRN-001,111,Color,Green,499,,20,150,,,,,,https://cdn.example.com/variant-green.jpg",
+    ].join("\n") + "\n";
+
+    const previewRes = await request(app)
+      .post("/api/products/import/preview")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .attach("file", Buffer.from(csv), "var-img.csv");
+
+    expect(previewRes.status).toBe(200);
+
+    const confirmRes = await request(app)
+      .post("/api/products/import/confirm")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ fileName: "var-img.csv", products: previewRes.body.data.products });
+
+    expect(confirmRes.status).toBe(201);
+
+    const variant = await ProductVariant.findOne({ sku: "CAP-GRN-001" });
+    expect(variant.images).toHaveLength(1);
+    expect(variant.images[0].url).toBe("https://ik.imagekit.io/test/uploaded-var-img.jpg");
+
+    fetchSpy.mockRestore();
+    uploadSpy.mockRestore();
   });
 });
 
