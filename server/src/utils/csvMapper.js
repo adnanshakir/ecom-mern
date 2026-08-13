@@ -203,12 +203,30 @@ export const mapGroupToProduct = async (group) => {
     };
   });
 
+  // Derive optionTypes from variant options
+  const optionTypesMap = new Map();
+  for (const variant of variants) {
+    for (const opt of variant.options || []) {
+      if (opt.name && opt.value) {
+        if (!optionTypesMap.has(opt.name)) {
+          optionTypesMap.set(opt.name, new Set());
+        }
+        optionTypesMap.get(opt.name).add(opt.value);
+      }
+    }
+  }
+  const optionTypes = Array.from(optionTypesMap.entries()).map(([name, valuesSet]) => ({
+    name,
+    values: Array.from(valuesSet),
+  }));
+
   const productData = {
     name: parentRow?.Title,
     description: parentRow?.Description,
     seoTitle: parentRow?.["SEO title"],
     seoDescription: parentRow?.["SEO description"],
     images: productImages,
+    optionTypes,
     categoryPath: category.path,
     categoryResolved: category.finalExists,
     brandName: parentRow?.Vendor,
