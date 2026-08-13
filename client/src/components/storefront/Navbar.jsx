@@ -31,43 +31,54 @@ export function Navbar() {
 
   return (
     <header className="border-b bg-background">
-      <div className="mx-auto flex max-w-7xl items-center gap-6 px-4 py-3 sm:px-6 lg:px-8">
-        <Link href="/" className="shrink-0">
-          <span className="text-xl font-bold tracking-tight">Fibio</span>
-          <span className="ml-1.5 text-xs text-muted-foreground">Wholesale</span>
-        </Link>
+      <div className="mx-auto max-w-7xl px-4 py-3 sm:px-6 lg:px-8">
+        {/* Desktop Single-Row & Mobile Top Row */}
+        <div className="flex items-center justify-between gap-4 md:gap-6">
+          {/* Logo */}
+          <Link href="/" className="shrink-0">
+            <span className="text-xl font-bold tracking-tight">Fibio</span>
+            <span className="ml-1.5 text-xs text-muted-foreground">Wholesale</span>
+          </Link>
 
-        <div className="relative flex-1">
-          <SearchInputWithSuggestions />
+          {/* Desktop Search Bar (Hidden on Mobile) */}
+          <div className="hidden flex-1 md:block">
+            <SearchInputWithSuggestions />
+          </div>
+
+          {/* Action Icons */}
+          <div className="flex shrink-0 items-center gap-1">
+            <Button variant="ghost" size="icon" asChild title="Track your order">
+              <Link href="/track-order">
+                <Truck className="size-5" />
+              </Link>
+            </Button>
+
+            <Button variant="ghost" size="icon" asChild title="Wishlist">
+              <Link href={isAuthenticated ? "/wishlist" : "/login?from=/wishlist"}>
+                <Heart className="size-5" />
+              </Link>
+            </Button>
+
+            {/* Cart icon with count badge */}
+            <Button variant="ghost" size="icon" className="relative" asChild title="Cart">
+              <Link href={isAuthenticated ? "/cart" : "/login?from=/cart"}>
+                <ShoppingCart className="size-5" />
+                {cartCount > 0 && (
+                  <span className="absolute -right-0.5 -top-0.5 flex min-w-[18px] items-center justify-center rounded-full bg-primary px-1 py-px text-[10px] font-semibold leading-none text-primary-foreground">
+                    {cartCount > 99 ? "99+" : cartCount}
+                  </span>
+                )}
+              </Link>
+            </Button>
+
+            {/* User menu — hover/click to open */}
+            <UserMenu user={user} isAuthenticated={isAuthenticated} onLogout={handleLogout} />
+          </div>
         </div>
 
-        <div className="flex shrink-0 items-center gap-1">
-          <Button variant="ghost" size="icon" asChild title="Track your order">
-            <Link href="/track-order">
-              <Truck className="size-5" />
-            </Link>
-          </Button>
-
-          <Button variant="ghost" size="icon" asChild title="Wishlist">
-            <Link href={isAuthenticated ? "/wishlist" : "/login?from=/wishlist"}>
-              <Heart className="size-5" />
-            </Link>
-          </Button>
-
-          {/* Cart icon with count badge */}
-          <Button variant="ghost" size="icon" className="relative" asChild title="Cart">
-            <Link href={isAuthenticated ? "/cart" : "/login?from=/cart"}>
-              <ShoppingCart className="size-5" />
-              {cartCount > 0 && (
-                <span className="absolute -right-0.5 -top-0.5 flex min-w-[18px] items-center justify-center rounded-full bg-primary px-1 py-px text-[10px] font-semibold leading-none text-primary-foreground">
-                  {cartCount > 99 ? "99+" : cartCount}
-                </span>
-              )}
-            </Link>
-          </Button>
-
-          {/* User menu — hover/click to open */}
-          <UserMenu user={user} isAuthenticated={isAuthenticated} onLogout={handleLogout} />
+        {/* Mobile 2nd Row: Full-Width Search Bar */}
+        <div className="mt-2.5 w-full md:hidden">
+          <SearchInputWithSuggestions />
         </div>
       </div>
     </header>
