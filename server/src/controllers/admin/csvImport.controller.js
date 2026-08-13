@@ -325,9 +325,26 @@ export const rollbackCsvImport = async (req, res, next) => {
     try {
       await ProductVariant.deleteMany({ _id: { $in: importJob.createdVariantIds } }, { session });
       await Product.deleteMany({ _id: { $in: importJob.createdProductIds } }, { session });
-      await Category.deleteMany({ _id: { $in: importJob.createdCategoryIds } }, { session });
-      await Brand.deleteMany({ _id: { $in: importJob.createdBrandIds } }, { session });
       await InventoryMovement.deleteMany({ product: { $in: importJob.createdProductIds } }, { session });
+
+      // Rollback created categories in reverse order (leaf categories first, then parents)
+      const categoryIdsToRollback = [...(importJob.createdCategoryIds || [])].reverse();
+      for (const catId of categoryIdsToRollback) {
+        const inUseByOther = await Product.exists({ category: catId }).session(session);
+        const hasSubcategories = await Category.exists({ parent: catId }).session(session);
+        if (!inUseByOther && !hasSubcategories) {
+          await Category.deleteOne({ _id: catId }, { session });
+        }
+      }
+
+      // Rollback created brands if not referenced by other products
+      const brandIdsToRollback = importJob.createdBrandIds || [];
+      for (const brandId of brandIdsToRollback) {
+        const inUseByOther = await Product.exists({ brand: brandId }).session(session);
+        if (!inUseByOther) {
+          await Brand.deleteOne({ _id: brandId }, { session });
+        }
+      }
 
       importJob.status = "rolled_back";
       await importJob.save({ session });

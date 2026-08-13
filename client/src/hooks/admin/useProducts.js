@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { getProducts, deleteProduct } from "@/services/admin/products";
+import { getProducts, deleteProduct, bulkUpdateProducts, bulkDeleteProducts } from "@/services/admin/products";
 
 const DEFAULT_LIMIT = 20;
 
@@ -98,6 +98,24 @@ export function useProducts() {
     }
   };
 
+  const bulkUpdate = async (ids, updates) => {
+    try {
+      await bulkUpdateProducts(ids, updates);
+      fetchProducts();
+    } catch (err) {
+      alert(err.response?.data?.message || "Failed to update selected products");
+    }
+  };
+
+  const bulkDelete = async (ids) => {
+    try {
+      await bulkDeleteProducts(ids);
+      fetchProducts();
+    } catch (err) {
+      alert(err.response?.data?.message || "Failed to delete selected products");
+    }
+  };
+
   return {
     products,
     pagination,
@@ -108,5 +126,7 @@ export function useProducts() {
     setPage,
     fetchProducts,
     removeProduct,
+    bulkUpdate,
+    bulkDelete,
   };
 }

@@ -206,3 +206,85 @@ export const deleteProduct = async (req, res, next) => {
     message: "Product and its variants deleted",
   });
 };
+
+// ---------------- BULK UPDATE (status, featured) ----------------
+export const bulkUpdateProducts = async (req, res, next) => {
+  try {
+    const { ids, updates } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) {
+      throw new ApiError(400, "No product IDs provided");
+    }
+    if (!updates || typeof updates !== "object") {
+      throw new ApiError(400, "No updates provided");
+    }
+
+    const allowedUpdates = {};
+    if (updates.status && ["draft", "active", "archived"].includes(updates.status)) {
+      allowedUpdates.status = updates.status;
+    }
+    if (typeof updates.featured === "boolean") {
+      allowedUpdates.featured = updates.featured;
+    }
+
+    if (Object.keys(allowedUpdates).length === 0) {
+      throw new ApiError(400, "No valid update fields provided");
+    }
+
+    const result = await Product.updateMany(
+      { _id: { $in: ids } },
+      { $set: allowedUpdates }
+    );
+
+    await logActivity({
+      userId: req.user.id,
+      action: "update",
+      resource: "Product",
+      description: `Bulk updated ${result.modifiedCount} products: ${JSON.stringify(allowedUpdates)}`,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: `Updated ${result.modifiedCount} product(s)`,
+      modifiedCount: result.modifiedCount,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ---------------- BULK DELETE (products + their variants) ----------------
+export const bulkDeleteProducts = async (req, res, next) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    const { ids } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) {
+      throw new ApiError(400, "No product IDs provided");
+    }
+
+    await ProductVariant.deleteMany({ product: { $in: ids } }, { session });
+    const result = await Product.deleteMany({ _id: { $in: ids } }, { session });
+
+    await session.commitTransaction();
+
+    await logActivity({
+      userId: req.user.id,
+      action: "delete",
+      resource: "Product",
+      description: `Bulk deleted ${result.deletedCount} products and their variants`,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: `Deleted ${result.deletedCount} product(s)`,
+      deletedCount: result.deletedCount,
+    });
+  } catch (err) {
+    await session.abortTransaction();
+    return next(err);
+  } finally {
+    session.endSession();
+  }
+};
+

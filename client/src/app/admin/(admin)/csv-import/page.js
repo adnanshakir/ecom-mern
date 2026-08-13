@@ -100,8 +100,8 @@ function CsvImportFlow() {
       )}
 
       <Dialog open={previewDialogOpen} onOpenChange={setPreviewDialogOpen}>
-        <DialogContent className="max-h-[85vh] sm:max-w-4xl overflow-y-auto">
-          <DialogHeader>
+        <DialogContent className="flex max-h-[85vh] flex-col p-0 sm:max-w-4xl">
+          <DialogHeader className="shrink-0 border-b p-6 pb-4">
             <DialogTitle>Review import</DialogTitle>
             <DialogDescription>
               {preview &&
@@ -110,39 +110,41 @@ function CsvImportFlow() {
           </DialogHeader>
 
           {preview && (
-            <div className="grid gap-4">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Handle</TableHead>
-                    <TableHead>Product</TableHead>
-                    <TableHead>Variants</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Errors</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {preview.products.map((row, i) => (
-                    <TableRow key={row.handle || i}>
-                      <TableCell>{row.handle}</TableCell>
-                      <TableCell>{row.product?.name || "—"}</TableCell>
-                      <TableCell>{row.variants?.length ?? 0}</TableCell>
-                      <TableCell>
-                        <span className={row.valid ? "text-emerald-500" : "text-destructive"}>
-                          {row.valid ? "Valid" : "Invalid"}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {row.errors?.length ? row.errors.join("; ") : "—"}
-                      </TableCell>
+            <>
+              <div className="flex-1 overflow-y-auto p-6 py-4">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Handle</TableHead>
+                      <TableHead>Product</TableHead>
+                      <TableHead>Variants</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Errors</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {preview.products.map((row, i) => (
+                      <TableRow key={row.handle || i}>
+                        <TableCell>{row.handle}</TableCell>
+                        <TableCell>{row.product?.name || "—"}</TableCell>
+                        <TableCell>{row.variants?.length ?? 0}</TableCell>
+                        <TableCell>
+                          <span className={row.valid ? "text-emerald-500" : "text-destructive"}>
+                            {row.valid ? "Valid" : "Invalid"}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {row.errors?.length ? row.errors.join("; ") : "—"}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
 
-              {confirmError && <p className="text-sm text-destructive">{confirmError}</p>}
+                {confirmError && <p className="mt-4 text-sm text-destructive">{confirmError}</p>}
+              </div>
 
-              <DialogFooter>
+              <DialogFooter className="shrink-0 border-t bg-muted/20 p-6 pt-4">
                 <Button
                   onClick={async () => {
                     await runConfirm();
@@ -155,7 +157,7 @@ function CsvImportFlow() {
                   Confirm import ({preview.validCount} rows)
                 </Button>
               </DialogFooter>
-            </div>
+            </>
           )}
         </DialogContent>
       </Dialog>

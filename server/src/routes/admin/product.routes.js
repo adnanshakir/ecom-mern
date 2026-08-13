@@ -5,6 +5,8 @@ import {
   getProductById,
   updateProduct,
   deleteProduct,
+  bulkUpdateProducts,
+  bulkDeleteProducts,
 } from "../../controllers/admin/product.controller.js";
 import {
   createVariant,
@@ -42,6 +44,21 @@ const router = express.Router();
  * @access  Private (any authenticated role)
  */
 router.get("/", authenticate, getProducts);
+
+/**
+ * @route   PATCH /api/products/bulk
+ * @desc    Bulk update product status or featured flag
+ * @access  Private (super_admin, admin)
+ */
+router.patch("/bulk", authenticate, authorize("super_admin", "admin"), bulkUpdateProducts);
+
+/**
+ * @route   DELETE /api/products/bulk
+ * @desc    Bulk delete products and their variants
+ * @access  Private (super_admin, admin)
+ */
+router.delete("/bulk", authenticate, authorize("super_admin", "admin"), bulkDeleteProducts);
+
 
 // ---- CSV Import (confirm + rollback) ----
 

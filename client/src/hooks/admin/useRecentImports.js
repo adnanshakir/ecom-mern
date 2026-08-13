@@ -22,9 +22,6 @@ export function useRecentImports() {
   }, [fetchJobs]);
 
   const rollback = async (job) => {
-    if (!window.confirm(`Undo import "${job.fileName}"? This removes the products it created.`))
-      return;
-
     setRollingBackId(job._id);
     try {
       await rollbackImport(job._id);
