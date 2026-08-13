@@ -5,10 +5,11 @@ import { usePublicProducts } from "@/hooks/storefront/usePublicProducts";
 import { ProductCard } from "@/components/storefront/ProductCard";
 import { Button } from "@/components/ui/button";
 
-export function ProductGrid({ category, search }) {
+export function ProductGrid({ category, search, sort }) {
   const { products, pagination, page, setPage, loading, error } = usePublicProducts({
     category,
     search,
+    sort,
   });
 
   if (loading) {

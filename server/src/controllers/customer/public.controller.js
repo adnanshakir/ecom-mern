@@ -11,7 +11,33 @@ export const getPublicProducts = async (req, res, next) => {
 
     // Always restrict to active products
     const filter = { status: "active" };
-    if (category) filter.category = category;
+
+    if (category) {
+      // Find target category + all its subcategory IDs recursively
+      const allCategories = await Category.find({ isActive: true }).select("_id parent slug");
+      const target = allCategories.find(
+        (c) => c._id.toString() === category || c.slug === category
+      );
+
+      if (target) {
+        const categoryIds = [target._id];
+        const queue = [target._id.toString()];
+        while (queue.length > 0) {
+          const parentId = queue.shift();
+          const children = allCategories.filter(
+            (c) => c.parent && c.parent.toString() === parentId
+          );
+          for (const child of children) {
+            categoryIds.push(child._id);
+            queue.push(child._id.toString());
+          }
+        }
+        filter.category = { $in: categoryIds };
+      } else {
+        filter.category = category;
+      }
+    }
+
     if (search) filter.name = { $regex: search, $options: "i" };
 
     // Sort mapping
@@ -104,7 +130,7 @@ export const getPublicProductBySlug = async (req, res, next) => {
     const trimmedVariants = variants.map((v) => {
       const vo = v.toObject();
       return {
-        _id: vo._id,  // needed by the cart endpoint (addToCart sends variantId)
+        _id: vo._id, // needed by the cart endpoint (addToCart sends variantId)
         sku: vo.sku,
         price: vo.price,
         salePrice: vo.salePrice,
@@ -136,7 +162,6 @@ export const getPublicProductBySlug = async (req, res, next) => {
 
 // ---------------- GET /api/public/categories ----------------
 // All active categories as a flat array with parent populated as { _id, name }.
-// The frontend already has tree-building logic and can consume this as-is.
 export const getPublicCategories = async (req, res, next) => {
   try {
     const categories = await Category.find({ isActive: true })
@@ -148,3 +173,69 @@ export const getPublicCategories = async (req, res, next) => {
     next(err);
   }
 };
+
+// ---------------- GET /api/public/search/suggestions ----------------
+// Fast autocomplete suggestions for product names and category names
+export const getPublicSearchSuggestions = async (req, res, next) => {
+  try {
+    const { q } = req.query;
+    if (!q || typeof q !== "string" || q.trim().length < 2) {
+      return res.status(200).json({
+        success: true,
+        data: { products: [], categories: [] },
+      });
+    }
+
+    const searchTerm = q.trim();
+    const regex = new RegExp(searchTerm.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+
+    const [products, categories] = await Promise.all([
+      Product.find({ status: "active", name: regex })
+        .populate("category", "name slug")
+        .select("name slug images category")
+        .limit(6),
+      Category.find({ isActive: true, name: regex })
+        .populate("parent", "name slug")
+        .select("name slug parent")
+        .limit(5),
+    ]);
+
+    const productIds = products.map((p) => p._id);
+    const variants = await ProductVariant.find({ product: { $in: productIds } }, "product price salePrice");
+    const priceMap = {};
+    for (const v of variants) {
+      const pid = v.product.toString();
+      const p = v.salePrice || v.price;
+      if (!priceMap[pid] || p < priceMap[pid]) {
+        priceMap[pid] = p;
+      }
+    }
+
+    const formattedProducts = products.map((p) => ({
+      _id: p._id,
+      name: p.name,
+      slug: p.slug,
+      image: p.images?.[0]?.url || null,
+      categoryName: p.category?.name || null,
+      price: priceMap[p._id.toString()] || null,
+    }));
+
+    const formattedCategories = categories.map((c) => ({
+      _id: c._id,
+      name: c.name,
+      slug: c.slug || c._id,
+      parentName: c.parent?.name || null,
+    }));
+
+    res.status(200).json({
+      success: true,
+      data: {
+        products: formattedProducts,
+        categories: formattedCategories,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+

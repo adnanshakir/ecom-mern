@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { getPublicProducts } from "@/services/storefront/publicCatalog";
 
-export function usePublicProducts({ category, search, limit = 12 } = {}) {
+export function usePublicProducts({ category, search, sort, limit = 12 } = {}) {
   const [products, setProducts] = useState([]);
   const [pagination, setPagination] = useState({ total: 0, page: 1, pages: 1 });
   const [page, setPage] = useState(1);
@@ -18,6 +18,7 @@ export function usePublicProducts({ category, search, limit = 12 } = {}) {
       limit,
       ...(category && { category }),
       ...(search && { search }),
+      ...(sort && { sort }),
     })
       .then(({ data }) => {
         setProducts(data.data);
@@ -25,7 +26,7 @@ export function usePublicProducts({ category, search, limit = 12 } = {}) {
       })
       .catch((err) => setError(err.response?.data?.message || "Failed to load products"))
       .finally(() => setLoading(false));
-  }, [category, search, page, limit]);
+  }, [category, search, sort, page, limit]);
 
   useEffect(() => {
     fetchProducts();
@@ -33,7 +34,7 @@ export function usePublicProducts({ category, search, limit = 12 } = {}) {
 
   useEffect(() => {
     setPage(1);
-  }, [category, search]);
+  }, [category, search, sort]);
 
   return { products, pagination, page, setPage, loading, error };
 }
