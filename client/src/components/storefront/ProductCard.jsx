@@ -1,12 +1,23 @@
+"use client";
+
 import Link from "next/link";
-import { ImageIcon, Heart } from "lucide-react";
+import { ImageIcon, Heart, Loader2 } from "lucide-react";
+import { useSelector } from "react-redux";
+import { toast } from "sonner";
 import { getDisplayPrice, isInStock } from "@/lib/productPrice";
 import { cn } from "@/lib/utils";
+import { useWishlist } from "@/hooks/storefront/useWishlist";
 
 export function ProductCard({ product }) {
   const thumbnail = product.images?.[0]?.url;
   const price = getDisplayPrice(product.variants);
   const inStock = isInStock(product.variants);
+
+  const isCustomerAuthed = useSelector(
+    (state) => state.customerAuth.status === "authenticated"
+  );
+
+  const { isWishlisted, isPending, toggle } = useWishlist(product._id);
 
   // Show a discount badge only when at least one variant actually has a
   // salePrice below its price — otherwise there's nothing real to show.
@@ -14,6 +25,15 @@ export function ProductCard({ product }) {
   const discountPercent = discountedVariant
     ? Math.round((1 - discountedVariant.salePrice / discountedVariant.price) * 100)
     : null;
+
+  const handleWishlist = (e) => {
+    e.preventDefault();
+    if (!isCustomerAuthed) {
+      toast.error("Please log in to save items to your wishlist.");
+      return;
+    }
+    toggle();
+  };
 
   return (
     <div className="group relative flex flex-col border">
@@ -58,12 +78,23 @@ export function ProductCard({ product }) {
         </div>
       </Link>
 
+      {/* Wishlist heart — visible on hover (and always when wishlisted) */}
       <button
-        title="Wishlist"
-        className="absolute right-2 top-2 flex size-7 items-center justify-center bg-background/90 text-foreground opacity-0 shadow-sm transition-opacity group-hover:opacity-100"
-        onClick={(e) => e.preventDefault()} // not wired up yet — wishlist backend pending
+        title={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
+        disabled={isPending}
+        className={cn(
+          "absolute right-2 top-2 flex size-7 items-center justify-center bg-background/90 shadow-sm transition-opacity",
+          isWishlisted ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+        )}
+        onClick={handleWishlist}
       >
-        <Heart className="size-4" />
+        {isPending ? (
+          <Loader2 className="size-3.5 animate-spin" />
+        ) : (
+          <Heart
+            className={cn("size-4", isWishlisted && "fill-current text-rose-500")}
+          />
+        )}
       </button>
     </div>
   );

@@ -50,13 +50,16 @@ export const refreshCustomerToken = createAsyncThunk(
   }
 );
 
-export const customerLogout = createAsyncThunk("customerAuth/logout", async () => {
-  try {
-    await logoutCustomerRequest();
-  } catch {
-    return rejectWithValue(err.response?.data?.message || "Logout failed");
+export const customerLogout = createAsyncThunk(
+  "customerAuth/logout",
+  async (_, { rejectWithValue }) => {
+    try {
+      await logoutCustomerRequest();
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || "Logout failed");
+    }
   }
-});
+);
 
 const customerAuthSlice = createSlice({
   name: "customerAuth",
@@ -95,6 +98,7 @@ const customerAuthSlice = createSlice({
       .addCase(refreshCustomerToken.fulfilled, (state, action) => {
         state.status = "authenticated";
         state.accessToken = action.payload.accessToken;
+        state.user = action.payload.user;
         state.authReady = true;
       })
       .addCase(refreshCustomerToken.rejected, (state) => {

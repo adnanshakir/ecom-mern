@@ -4,34 +4,32 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useDispatch, useSelector } from "react-redux";
-import { Search, Heart, ShoppingCart, User, Truck, ChevronDown } from "lucide-react";
+import { Search, Heart, ShoppingCart, User, Truck } from "lucide-react";
 
 import { customerLogout } from "@/redux/slices/customerAuthSlice";
+import { resetCart } from "@/redux/slices/cartSlice";
+import { resetWishlist } from "@/redux/slices/wishlistSlice";
+import { selectCartCount } from "@/redux/slices/cartSlice";
 import { useDebouncedValue } from "@/hooks/shared/useDebouncedValue";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu";
 
 export function Navbar() {
   const dispatch = useDispatch();
   const router = useRouter();
   const user = useSelector((state) => state.customerAuth.user);
+  const status = useSelector((state) => state.customerAuth.status);
+  const isAuthenticated = status === "authenticated";
+  const cartCount = useSelector(selectCartCount);
 
   const [searchTerm, setSearchTerm] = useState("");
   const debouncedSearch = useDebouncedValue(searchTerm, 400);
-
-  // Fires only once the debounced value settles — wire this to a real
-  // search/products fetch once the customer-facing product endpoints exist.
-  // useEffect(() => { if (debouncedSearch) { ... } }, [debouncedSearch]);
+  void debouncedSearch;
 
   const handleLogout = async () => {
     await dispatch(customerLogout());
+    dispatch(resetCart());
+    dispatch(resetWishlist());
     router.push("/");
   };
 
@@ -61,47 +59,98 @@ export function Navbar() {
           </Button>
 
           <Button variant="ghost" size="icon" asChild title="Wishlist">
-            <Link href="/wishlist">
+            <Link href={isAuthenticated ? "/wishlist" : "/login?from=/wishlist"}>
               <Heart className="size-5" />
             </Link>
           </Button>
 
-          <Button variant="ghost" size="icon" asChild title="Cart">
-            <Link href="/cart">
+          {/* Cart icon with count badge */}
+          <Button variant="ghost" size="icon" className="relative" asChild title="Cart">
+            <Link href={isAuthenticated ? "/cart" : "/login?from=/cart"}>
               <ShoppingCart className="size-5" />
+              {cartCount > 0 && (
+                <span className="absolute -right-0.5 -top-0.5 flex min-w-[18px] items-center justify-center rounded-full bg-primary px-1 py-px text-[10px] font-semibold leading-none text-primary-foreground">
+                  {cartCount > 99 ? "99+" : cartCount}
+                </span>
+              )}
             </Link>
           </Button>
 
-          {user ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" title={user.name}>
-                  <User className="size-5" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem asChild>
-                  <Link href="/account/orders">Your orders</Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/account/addresses">Addresses</Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/contact-us">Contact us</Link>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout}>Logout</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : (
-            <Button variant="ghost" size="icon" asChild title="Login">
-              <Link href="/login">
-                <User className="size-5" />
-              </Link>
-            </Button>
-          )}
+          {/* User menu — hover/click to open */}
+          <UserMenu user={user} isAuthenticated={isAuthenticated} onLogout={handleLogout} />
         </div>
       </div>
     </header>
+  );
+}
+
+function UserMenu({ user, isAuthenticated, onLogout }) {
+  const [open, setOpen] = useState(false);
+  const isLoggedIn = isAuthenticated || !!user;
+
+  return (
+    <div className="relative" onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)}>
+      {/* Trigger icon */}
+      {isLoggedIn ? (
+        <button
+          className="inline-flex size-9 items-center justify-center rounded-md text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+          title={user?.name || "Account"}
+          onClick={() => setOpen((prev) => !prev)}
+        >
+          <User className="size-5" />
+        </button>
+      ) : (
+        <Link
+          href="/login"
+          className="inline-flex size-9 items-center justify-center rounded-md text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+          title="Login"
+        >
+          <User className="size-5" />
+        </Link>
+      )}
+
+      {/* Dropdown panel */}
+      {open && (
+        <div className="absolute right-0 top-full z-50 mt-1 w-44 overflow-hidden rounded-md border bg-popover py-1 shadow-md">
+          {isLoggedIn ? (
+            <>
+              <div className="px-3 py-1.5 text-xs font-medium text-muted-foreground truncate">{user?.name || "Account"}</div>
+              <div className="my-1 h-px bg-border" />
+              <MenuItem href="/account/orders">Your orders</MenuItem>
+              <MenuItem href="/account/addresses">Addresses</MenuItem>
+              <MenuItem href="/contact-us">Contact us</MenuItem>
+              <div className="my-1 h-px bg-border" />
+              <button
+                onClick={onLogout}
+                className="w-full px-3 py-1.5 text-left text-sm text-destructive transition-colors hover:bg-accent"
+              >
+                Logout
+              </button>
+            </>
+          ) : (
+            <>
+              <MenuItem href="/contact-us">Contact us</MenuItem>
+              <div className="my-1 h-px bg-border" />
+              <MenuItem href="/login" highlight>
+                Login
+              </MenuItem>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MenuItem({ href, children, highlight }) {
+  return (
+    <Link
+      href={href}
+      className={`block px-3 py-1.5 text-sm transition-colors hover:bg-accent ${
+        highlight ? "font-medium text-primary" : "text-foreground"
+      }`}
+    >
+      {children}
+    </Link>
   );
 }

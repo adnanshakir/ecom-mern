@@ -104,6 +104,7 @@ export const getPublicProductBySlug = async (req, res, next) => {
     const trimmedVariants = variants.map((v) => {
       const vo = v.toObject();
       return {
+        _id: vo._id,  // needed by the cart endpoint (addToCart sends variantId)
         sku: vo.sku,
         price: vo.price,
         salePrice: vo.salePrice,

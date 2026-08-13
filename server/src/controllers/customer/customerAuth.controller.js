@@ -127,7 +127,10 @@ export const refreshCustomer = async (req, res, next) => {
 
     res.status(200).json({
       success: true,
-      data: { accessToken: newAccessToken },
+      data: {
+        accessToken: newAccessToken,
+        user: { id: customer._id, name: customer.name, email: customer.email },
+      },
     });
   } catch (err) {
     next(err);

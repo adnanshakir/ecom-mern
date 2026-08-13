@@ -2,10 +2,14 @@
 
 import { useState } from "react";
 import { useParams } from "next/navigation";
-import { Loader2, ImageIcon, Heart, ShoppingCart } from "lucide-react";
+import { Loader2, Heart, ShoppingCart } from "lucide-react";
+import { useSelector } from "react-redux";
+import { toast } from "sonner";
 
 import { usePublicProduct } from "@/hooks/storefront/usePublicProduct";
 import { useVariantSelector } from "@/hooks/storefront/useVariantSelector";
+import { useCart } from "@/hooks/storefront/useCart";
+import { useWishlist } from "@/hooks/storefront/useWishlist";
 import { ProductGallery } from "@/components/storefront/ProductGallery";
 import { VariantSelector } from "@/components/storefront/VariantSelector";
 import { QuantitySelector } from "@/components/storefront/QuantitySelector";
@@ -20,6 +24,16 @@ export default function ProductPage() {
   const [quantity, setQuantity] = useState(1);
 
   const { optionTypes, selectedOptions, setOption, selectedVariant } = useVariantSelector(product);
+
+  // Auth guard — only dispatch cart/wishlist actions when logged in
+  const isCustomerAuthed = useSelector(
+    (state) => state.customerAuth.status === "authenticated"
+  );
+
+  const { addItem, isPending: isCartPending } = useCart();
+  const { isWishlisted, isPending: isWishlistPending, toggle: toggleWishlist } = useWishlist(
+    product?._id
+  );
 
   if (loading) {
     return (
@@ -37,6 +51,29 @@ export default function ProductPage() {
   const inStock = (selectedVariant?.stock || 0) > 0;
   const price = selectedVariant?.salePrice || selectedVariant?.price;
   const hasSale = !!selectedVariant?.salePrice;
+
+  const handleAddToCart = async () => {
+    if (!isCustomerAuthed) {
+      toast.error("Please log in to add items to your cart.");
+      return;
+    }
+    if (!selectedVariant?._id) return;
+    const result = await addItem(selectedVariant._id, quantity);
+    if (result?.payload?.message) {
+      // Backend clamped the quantity — surface it
+      toast.warning(result.payload.message);
+    } else if (!result?.error) {
+      toast.success("Added to cart!");
+    }
+  };
+
+  const handleToggleWishlist = () => {
+    if (!isCustomerAuthed) {
+      toast.error("Please log in to save items to your wishlist.");
+      return;
+    }
+    toggleWishlist();
+  };
 
   return (
     <div className="mx-auto grid max-w-6xl gap-6 px-4 py-6 sm:px-6 lg:px-8">
@@ -89,12 +126,29 @@ export default function ProductPage() {
           </div>
 
           <div className="flex gap-2">
-            <Button className="flex-1" disabled={!inStock} title="Cart isn't wired up yet">
-              <ShoppingCart className="size-4" />
+            <Button
+              className="flex-1"
+              disabled={!inStock || isCartPending(selectedVariant?._id)}
+              onClick={handleAddToCart}
+            >
+              {isCartPending(selectedVariant?._id) ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <ShoppingCart className="size-4" />
+              )}
               Add to cart
             </Button>
-            <Button variant="outline" size="icon" title="Wishlist isn't wired up yet">
-              <Heart className="size-4" />
+
+            <Button
+              variant="outline"
+              size="icon"
+              disabled={isWishlistPending}
+              onClick={handleToggleWishlist}
+              title={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
+            >
+              <Heart
+                className={cn("size-4", isWishlisted && "fill-current text-rose-500")}
+              />
             </Button>
           </div>
         </div>

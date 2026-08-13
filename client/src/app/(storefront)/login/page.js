@@ -1,13 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useDispatch, useSelector } from "react-redux";
 import { Loader2, X } from "lucide-react";
 
 import { loginCustomer, registerCustomer } from "@/redux/slices/customerAuthSlice";
+import { fetchCart } from "@/redux/slices/cartSlice";
+import { fetchWishlist } from "@/redux/slices/wishlistSlice";
 import { customerLoginSchema, customerRegisterSchema } from "@/schemas/storefront/customerAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,6 +26,9 @@ import { ApiErrorSummary } from "@/components/shared/ApiErrorSummary";
 
 export default function CustomerLoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const authStatus = useSelector((state) => state.customerAuth.status);
+  const authReady = useSelector((state) => state.customerAuth.authReady);
 
   // Lock background scroll while this "modal-styled" page is mounted.
   useEffect(() => {
@@ -33,11 +38,29 @@ export default function CustomerLoginPage() {
     };
   }, []);
 
+  // If already authenticated, redirect away immediately
+  useEffect(() => {
+    if (authReady && authStatus === "authenticated") {
+      const from = searchParams.get("from") || "/";
+      router.replace(from);
+    }
+  }, [authReady, authStatus, router, searchParams]);
+
+  // While auth status is resolving, show nothing (avoids flash of login UI)
+  if (!authReady) return null;
+  if (authStatus === "authenticated") return null;
+
+  const handleClose = () => {
+    const from = searchParams.get("from");
+    // Don't go back to a protected page — go home
+    router.push(from && !from.startsWith("/cart") && !from.startsWith("/wishlist") ? from : "/");
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
       <div className="relative w-full max-w-sm rounded-lg border bg-background p-6 shadow-lg">
         <button
-          onClick={() => router.push("/")}
+          onClick={handleClose}
           className="absolute right-4 top-4 text-muted-foreground hover:text-foreground"
         >
           <X className="size-4" />
@@ -73,6 +96,7 @@ export default function CustomerLoginPage() {
 function LoginForm() {
   const dispatch = useDispatch();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const status = useSelector((state) => state.customerAuth.status);
   const [formError, setFormError] = useState(null);
 
@@ -85,7 +109,11 @@ function LoginForm() {
     setFormError(null);
     const result = await dispatch(loginCustomer(values));
     if (loginCustomer.fulfilled.match(result)) {
-      router.push("/");
+      // Hydrate cart + wishlist now that the user is authenticated
+      dispatch(fetchCart());
+      dispatch(fetchWishlist());
+      const from = searchParams.get("from") || "/";
+      router.push(from);
     } else {
       setFormError(result.payload || "Unable to log in");
     }
@@ -96,39 +124,39 @@ function LoginForm() {
       <p className="mb-3 text-sm text-muted-foreground">Welcome back — log in to continue shopping.</p>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4" noValidate>
-        <FormField
-          control={form.control}
-          name="email"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Email</FormLabel>
-              <FormControl>
-                <Input type="email" autoComplete="email" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="password"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Password</FormLabel>
-              <FormControl>
-                <Input type="password" autoComplete="current-password" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+          <FormField
+            control={form.control}
+            name="email"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Email</FormLabel>
+                <FormControl>
+                  <Input type="email" autoComplete="email" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="password"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Password</FormLabel>
+                <FormControl>
+                  <Input type="password" autoComplete="current-password" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-        {/* <ApiErrorSummary message={formError} /> */}
+          <ApiErrorSummary message={formError} />
 
-        <Button type="submit" className="w-full" disabled={status === "loading"}>
-          {status === "loading" && <Loader2 className="animate-spin" />}
-          Log in
-        </Button>
+          <Button type="submit" className="w-full" disabled={status === "loading"}>
+            {status === "loading" && <Loader2 className="animate-spin" />}
+            Log in
+          </Button>
         </form>
       </Form>
     </>
@@ -138,6 +166,7 @@ function LoginForm() {
 function RegisterForm() {
   const dispatch = useDispatch();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const status = useSelector((state) => state.customerAuth.status);
   const [formError, setFormError] = useState(null);
 
@@ -150,7 +179,11 @@ function RegisterForm() {
     setFormError(null);
     const result = await dispatch(registerCustomer(values));
     if (registerCustomer.fulfilled.match(result)) {
-      router.push("/");
+      // Hydrate cart + wishlist now that the user is authenticated
+      dispatch(fetchCart());
+      dispatch(fetchWishlist());
+      const from = searchParams.get("from") || "/";
+      router.push(from);
     } else {
       setFormError(result.payload || "Unable to register");
     }
@@ -161,65 +194,65 @@ function RegisterForm() {
       <p className="mb-3 text-sm text-muted-foreground">Create an account and start shopping with us.</p>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4" noValidate>
-        <FormField
-          control={form.control}
-          name="name"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Name</FormLabel>
-              <FormControl>
-                <Input autoComplete="name" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="email"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Email</FormLabel>
-              <FormControl>
-                <Input type="email" autoComplete="email" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="password"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Password</FormLabel>
-              <FormControl>
-                <Input type="password" autoComplete="new-password" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="phone"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Phone (optional)</FormLabel>
-              <FormControl>
-                <Input type="tel" autoComplete="tel" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+          <FormField
+            control={form.control}
+            name="name"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Name</FormLabel>
+                <FormControl>
+                  <Input autoComplete="name" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="email"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Email</FormLabel>
+                <FormControl>
+                  <Input type="email" autoComplete="email" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="password"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Password</FormLabel>
+                <FormControl>
+                  <Input type="password" autoComplete="new-password" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="phone"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Phone (optional)</FormLabel>
+                <FormControl>
+                  <Input type="tel" autoComplete="tel" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-        <ApiErrorSummary message={formError} />
+          <ApiErrorSummary message={formError} />
 
-        <Button type="submit" className="w-full" disabled={status === "loading"}>
-          {status === "loading" && <Loader2 className="animate-spin" />}
-          Create account
-        </Button>
+          <Button type="submit" className="w-full" disabled={status === "loading"}>
+            {status === "loading" && <Loader2 className="animate-spin" />}
+            Create account
+          </Button>
         </form>
       </Form>
     </>

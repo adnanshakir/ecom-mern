@@ -1,21 +1,51 @@
 import Wishlist from "../../models/customer/wishlist.model.js";
+import ProductVariant from "../../models/admin/productVariant.model.js";
 import Product from "../../models/admin/product.model.js";
 import ApiError from "../../utils/apiError.js";
+
+// ── Shared helper: attach lightweight variant data to populated products ──────
+async function attachVariants(products) {
+  if (!products.length) return products;
+  const productIds = products.map((p) => p._id);
+  const variants = await ProductVariant.find(
+    { product: { $in: productIds } },
+    "_id product price salePrice stock"
+  );
+  const variantMap = {};
+  for (const v of variants) {
+    const key = v.product.toString();
+    if (!variantMap[key]) variantMap[key] = [];
+    variantMap[key].push({ _id: v._id, price: v.price, salePrice: v.salePrice, stock: v.stock });
+  }
+  return products.map((p) => ({
+    ...p,
+    variants: variantMap[p._id.toString()] || [],
+  }));
+}
+
+// ── Shared helper: populate + attach variants, return plain object ─────────────
+async function populatedWishlist(wishlistId) {
+  const doc = await Wishlist.findById(wishlistId).populate(
+    "products",
+    "name slug images brand category status"
+  );
+  const obj = doc.toObject();
+  obj.products = await attachVariants(obj.products);
+  return obj;
+}
 
 // ---------------- GET /api/customers/wishlist ----------------
 export const getWishlist = async (req, res, next) => {
   try {
-    let wishlist = await Wishlist.findOne({ customer: req.customer.id }).populate(
-      "products",
-      "name slug images brand category"
-    );
+    let wishlist = await Wishlist.findOne({ customer: req.customer.id });
 
     if (!wishlist) {
       // find-or-create: return empty wishlist instead of 404
       wishlist = await Wishlist.create({ customer: req.customer.id, products: [] });
     }
 
-    res.status(200).json({ success: true, data: wishlist });
+    const data = await populatedWishlist(wishlist._id);
+    res.status(200).json({ success: true, data });
   } catch (err) {
     next(err);
   }
@@ -44,12 +74,8 @@ export const addToWishlist = async (req, res, next) => {
       await wishlist.save();
     }
 
-    const populated = await Wishlist.findById(wishlist._id).populate(
-      "products",
-      "name slug images brand category"
-    );
-
-    res.status(200).json({ success: true, data: populated });
+    const data = await populatedWishlist(wishlist._id);
+    res.status(200).json({ success: true, data });
   } catch (err) {
     next(err);
   }
@@ -68,12 +94,8 @@ export const removeFromWishlist = async (req, res, next) => {
     );
     await wishlist.save();
 
-    const populated = await Wishlist.findById(wishlist._id).populate(
-      "products",
-      "name slug images brand category"
-    );
-
-    res.status(200).json({ success: true, data: populated });
+    const data = await populatedWishlist(wishlist._id);
+    res.status(200).json({ success: true, data });
   } catch (err) {
     next(err);
   }

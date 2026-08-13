@@ -5,6 +5,7 @@ import StoreProvider from "@/redux/StoreProvider";
 import { Geist, Geist_Mono } from "next/font/google";
 import { CategoryNav } from "@/components/storefront/CategoryNav";
 import { Footer } from "@/components/storefront/Footer";
+import { Toaster } from "sonner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -40,6 +41,7 @@ export default function RootLayout({ children }) {
               <Footer />
             </div>
           </StoreProvider>
+          <Toaster richColors position="bottom-right" />
         </ThemeProvider>
       </body>
     </html>
