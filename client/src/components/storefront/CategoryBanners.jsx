@@ -10,7 +10,7 @@ export function CategoryBanners() {
       title: "Jewellery",
       subtitle: "Premium collection for every occasion",
       image: "/Jewellery_banner.png",
-      href: "/catalog?category=Jewellery",
+      href: "/catalog/jewellery",
       bgGradient: "from-amber-500/10 via-rose-500/5 to-transparent",
     },
     {
@@ -18,7 +18,7 @@ export function CategoryBanners() {
       title: "Mobile Accessories",
       subtitle: "Trendy accessories for smart devices",
       image: "/Mobile_accessories_banner.png",
-      href: "/catalog?category=Mobile%20Accessories",
+      href: "/catalog/mobile-accessories",
       bgGradient: "from-sky-500/10 via-slate-500/5 to-transparent",
     },
   ];

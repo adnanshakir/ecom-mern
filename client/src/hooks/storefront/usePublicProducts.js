@@ -3,10 +3,9 @@
 import { useState, useEffect, useCallback } from "react";
 import { getPublicProducts } from "@/services/storefront/publicCatalog";
 
-export function usePublicProducts({ category, search, sort, limit = 12 } = {}) {
+export function usePublicProducts({ category, search, sort, minPrice, maxPrice, page = 1, limit = 12 } = {}) {
   const [products, setProducts] = useState([]);
   const [pagination, setPagination] = useState({ total: 0, page: 1, pages: 1 });
-  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -19,6 +18,8 @@ export function usePublicProducts({ category, search, sort, limit = 12 } = {}) {
       ...(category && { category }),
       ...(search && { search }),
       ...(sort && { sort }),
+      ...(minPrice !== undefined && minPrice !== "" && { minPrice }),
+      ...(maxPrice !== undefined && maxPrice !== "" && { maxPrice }),
     })
       .then(({ data }) => {
         setProducts(data.data);
@@ -26,15 +27,11 @@ export function usePublicProducts({ category, search, sort, limit = 12 } = {}) {
       })
       .catch((err) => setError(err.response?.data?.message || "Failed to load products"))
       .finally(() => setLoading(false));
-  }, [category, search, sort, page, limit]);
+  }, [category, search, sort, minPrice, maxPrice, page, limit]);
 
   useEffect(() => {
     fetchProducts();
   }, [fetchProducts]);
 
-  useEffect(() => {
-    setPage(1);
-  }, [category, search, sort]);
-
-  return { products, pagination, page, setPage, loading, error };
+  return { products, pagination, loading, error };
 }

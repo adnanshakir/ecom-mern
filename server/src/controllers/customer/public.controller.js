@@ -7,7 +7,7 @@ import ApiError from "../../utils/apiError.js";
 // Browsable product list — active products only, trimmed shape.
 export const getPublicProducts = async (req, res, next) => {
   try {
-    const { category, search, page = 1, limit = 20, sort } = req.query;
+    const { category, search, page = 1, limit = 20, sort, minPrice, maxPrice } = req.query;
 
     // Always restrict to active products
     const filter = { status: "active" };
@@ -40,9 +40,24 @@ export const getPublicProducts = async (req, res, next) => {
 
     if (search) filter.name = { $regex: search, $options: "i" };
 
+    // Price range filtering via variants
+    if (minPrice || maxPrice) {
+      const priceQuery = {};
+      if (minPrice) priceQuery.$gte = Number(minPrice);
+      if (maxPrice) priceQuery.$lte = Number(maxPrice);
+
+      const matchingVariants = await ProductVariant.find(
+        { price: priceQuery },
+        "product"
+      );
+      const matchedProductIds = [...new Set(matchingVariants.map((v) => v.product.toString()))];
+      filter._id = { $in: matchedProductIds };
+    }
+
     // Sort mapping
     let sortOption = { createdAt: -1 }; // default: newest
-    if (sort === "price_asc") sortOption = { "variants.price": 1 };
+    if (sort === "featured") sortOption = { featured: -1, createdAt: -1 };
+    else if (sort === "price_asc") sortOption = { "variants.price": 1 };
     else if (sort === "price_desc") sortOption = { "variants.price": -1 };
     // "newest" is already the default above
 

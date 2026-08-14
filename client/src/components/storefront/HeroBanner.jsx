@@ -38,7 +38,7 @@ export function HeroBanner() {
             size="lg"
             className="h-12 rounded-full bg-white px-8 text-base font-bold text-[#033936] shadow-lg transition-all duration-200 hover:bg-slate-100 hover:scale-105 active:scale-95"
           >
-            <Link href="/catalog" className="flex items-center gap-2">
+            <Link href="/catalog/all" className="flex items-center gap-2">
               Shop Now
               <div className="flex size-6 items-center justify-center rounded-full bg-[#033936] text-white">
                 <ArrowRight className="size-3.5" />

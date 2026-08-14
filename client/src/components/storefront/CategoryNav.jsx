@@ -39,6 +39,9 @@ export function CategoryNav() {
     setHoverId(null);
   }, [pathname]);
 
+  // Render ONLY on homepage ("/")
+  if (pathname !== "/") return null;
+
   if (loading || categories.length === 0) return null;
 
   const childrenMap = buildChildrenMap(categories);
@@ -54,10 +57,10 @@ export function CategoryNav() {
     <nav ref={containerRef} className="hidden lg:block relative z-30 border-b bg-muted/30">
       <div className="mx-auto flex max-w-7xl items-center gap-1 px-4 py-1 sm:px-6 lg:px-8 whitespace-nowrap">
         <Link
-          href="/"
+          href="/catalog/all"
           className="shrink-0 rounded-md px-3 py-2 text-sm font-semibold text-foreground hover:bg-accent"
         >
-          All Products
+          All Categories
         </Link>
 
         {/* Visible Categories */}
@@ -69,7 +72,7 @@ export function CategoryNav() {
             return (
               <Link
                 key={category._id}
-                href={`/category/${category.slug || category._id}`}
+                href={`/catalog/${category.slug || category._id}`}
                 className="shrink-0 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
               >
                 {category.name}
@@ -86,7 +89,7 @@ export function CategoryNav() {
             >
               <div className="flex items-center">
                 <Link
-                  href={`/category/${category.slug || category._id}`}
+                  href={`/catalog/${category.slug || category._id}`}
                   className="rounded-l-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
                   onClick={() => {
                     setOpenId(null);
@@ -118,7 +121,7 @@ export function CategoryNav() {
                 )}
               >
                 <Link
-                  href={`/category/${category.slug || category._id}`}
+                  href={`/catalog/${category.slug || category._id}`}
                   onClick={() => {
                     setOpenId(null);
                     setHoverId(null);
@@ -130,7 +133,7 @@ export function CategoryNav() {
                 {subcategories.map((sub) => (
                   <Link
                     key={sub._id}
-                    href={`/category/${sub.slug || sub._id}`}
+                    href={`/catalog/${sub.slug || sub._id}`}
                     onClick={() => {
                       setOpenId(null);
                       setHoverId(null);
@@ -210,7 +213,7 @@ function MoreCategoriesDropdown({
             <div key={category._id} className="border-b border-border/40 last:border-0">
               <div className="flex items-center justify-between px-3 py-2 text-sm font-medium hover:bg-accent">
                 <Link
-                  href={`/category/${category.slug || category._id}`}
+                  href={`/catalog/${category.slug || category._id}`}
                   onClick={() => {
                     setOpenId(null);
                     setHoverId(null);
@@ -241,7 +244,7 @@ function MoreCategoriesDropdown({
                   {subcategories.map((sub) => (
                     <Link
                       key={sub._id}
-                      href={`/category/${sub.slug || sub._id}`}
+                      href={`/catalog/${sub.slug || sub._id}`}
                       onClick={() => {
                         setOpenId(null);
                         setHoverId(null);

@@ -1,6 +1,7 @@
 import { Navbar } from "@/components/storefront/Navbar";
 import { CategoryNav } from "@/components/storefront/CategoryNav";
 import { Footer } from "@/components/storefront/Footer";
+import { ScrollToTop } from "@/components/storefront/ScrollToTop";
 
 export default function StorefrontLayout({ children }) {
   return (
@@ -9,6 +10,7 @@ export default function StorefrontLayout({ children }) {
       <CategoryNav />
       <main className="flex-1">{children}</main>
       <Footer />
+      <ScrollToTop />
     </div>
   );
 }
