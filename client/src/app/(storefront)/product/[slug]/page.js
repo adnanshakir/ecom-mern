@@ -14,6 +14,7 @@ import { ProductGallery } from "@/components/storefront/ProductGallery";
 import { VariantSelector } from "@/components/storefront/VariantSelector";
 import { QuantitySelector } from "@/components/storefront/QuantitySelector";
 import { RelatedProducts } from "@/components/storefront/RelatedProducts";
+import { ExploreProducts } from "@/components/storefront/ExploreProducts";
 import { Breadcrumbs } from "@/components/storefront/Breadcrumbs";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -38,7 +39,7 @@ export default function ProductPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center gap-2 py-20 text-muted-foreground">
-        <Loader2 className="size-5 animate-spin" />
+        <Loader2 className="size-5 animate-spin text-[#033936]" />
         Loading...
       </div>
     );
@@ -76,11 +77,11 @@ export default function ProductPage() {
   };
 
   return (
-    <div className="mx-auto grid max-w-6xl gap-6 px-4 py-6 sm:px-6 lg:px-8">
+    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 space-y-12">
       <Breadcrumbs
         items={[
           { label: "Home", href: "/" },
-          { label: product.category?.name, href: `/category/${product.category?._id || ""}` },
+          { label: product.category?.name, href: `/catalog/${product.category?.slug || product.category?._id || ""}` },
           { label: product.name },
         ]}
       />
@@ -127,7 +128,7 @@ export default function ProductPage() {
 
           <div className="flex gap-2">
             <Button
-              className="flex-1"
+              className="flex-1 bg-[#033936] text-white hover:bg-[#022826]"
               disabled={!inStock || isCartPending(selectedVariant?._id)}
               onClick={handleAddToCart}
             >
@@ -154,7 +155,11 @@ export default function ProductPage() {
         </div>
       </div>
 
+      {/* Section 1: Related Products */}
       <RelatedProducts categoryId={product.category?._id} excludeProductId={product._id} />
+
+      {/* Section 2: Explore Other Products */}
+      <ExploreProducts excludeProductId={product._id} excludeCategoryId={product.category?._id} />
     </div>
   );
 }
