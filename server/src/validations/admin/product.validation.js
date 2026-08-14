@@ -43,6 +43,13 @@ export const createCategorySchema = z.object({
   parent: objectId.nullable().optional(),
 
   isActive: z.boolean().optional(),
+
+  image: z
+    .object({
+      url: z.string().optional().or(z.literal("")),
+      fileId: z.string().optional().or(z.literal("")),
+    })
+    .optional(),
 });
 
 export const updateCategorySchema = createCategorySchema.partial();

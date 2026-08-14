@@ -56,6 +56,25 @@ describe("POST /api/categories", () => {
     expect(res.body.data.parent).toBe(parent._id.toString());
   });
 
+  it("creates a category with an image payload", async () => {
+    const res = await request(app)
+      .post("/api/categories")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({
+        name: "Jewellery",
+        image: {
+          url: "https://ik.imagekit.io/test/jewellery.jpg",
+          fileId: "jewellery_123",
+        },
+      });
+
+    expect(res.status).toBe(201);
+    expect(res.body.data.image).toEqual({
+      url: "https://ik.imagekit.io/test/jewellery.jpg",
+      fileId: "jewellery_123",
+    });
+  });
+
   it("rejects a non-existent parent id", async () => {
     const res = await request(app)
       .post("/api/categories")
@@ -63,6 +82,30 @@ describe("POST /api/categories", () => {
       .send({ name: "T-Shirts", parent: "64b000000000000000000000" });
 
     expect(res.status).toBe(400);
+  });
+});
+
+describe("PUT /api/categories/:id", () => {
+  it("updates a category name and image", async () => {
+    const category = await Category.create({ name: "Footwear", slug: "footwear" });
+
+    const res = await request(app)
+      .put(`/api/categories/${category._id}`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({
+        name: "Footwear & Shoes",
+        image: {
+          url: "https://ik.imagekit.io/test/shoes.jpg",
+          fileId: "shoes_456",
+        },
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.name).toBe("Footwear & Shoes");
+    expect(res.body.data.image).toEqual({
+      url: "https://ik.imagekit.io/test/shoes.jpg",
+      fileId: "shoes_456",
+    });
   });
 });
 

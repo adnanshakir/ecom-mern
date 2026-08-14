@@ -44,7 +44,7 @@ export function useCategories() {
 
   const form = useForm({
     resolver: zodResolver(categorySchema),
-    defaultValues: { name: "", parent: "", isActive: true },
+    defaultValues: { name: "", parent: "", isActive: true, image: { url: "", fileId: "" } },
   });
 
   useEffect(() => {
@@ -83,7 +83,7 @@ export function useCategories() {
   const openCreateDialog = () => {
     setEditingCategory(null);
     setFormError(null);
-    form.reset({ name: "", parent: "", isActive: true });
+    form.reset({ name: "", parent: "", isActive: true, image: { url: "", fileId: "" } });
     setDialogOpen(true);
   };
 
@@ -94,6 +94,7 @@ export function useCategories() {
       name: category.name,
       parent: category.parent?._id || category.parent || "",
       isActive: !!category.isActive,
+      image: category.image ? { url: category.image.url || "", fileId: category.image.fileId || "" } : { url: "", fileId: "" },
     });
     setDialogOpen(true);
   };

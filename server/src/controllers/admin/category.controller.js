@@ -6,7 +6,7 @@ import { logActivity } from "../../utils/activityLogger.js";
 
 export const createCategory = async (req, res, next) => {
   try {
-    const { name, parent, isActive } = req.body;
+    const { name, parent, isActive, image } = req.body;
 
     if (parent) {
       const parentExists = await Category.findById(parent);
@@ -15,7 +15,13 @@ export const createCategory = async (req, res, next) => {
 
     const slug = await generateUniqueSlug(Category, name);
 
-    const category = await Category.create({ name, slug, parent: parent || null, isActive });
+    const category = await Category.create({
+      name,
+      slug,
+      parent: parent || null,
+      isActive,
+      image: image || { url: "", fileId: "" },
+    });
 
     await logActivity({
       userId: req.user.id,

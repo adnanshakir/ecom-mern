@@ -23,6 +23,10 @@ const categorySchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    image: {
+      url: { type: String, default: "" },
+      fileId: { type: String, default: "" },
+    },
   },
   { timestamps: true }
 );
