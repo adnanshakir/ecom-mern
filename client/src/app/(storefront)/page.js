@@ -1,14 +1,22 @@
-import Link from "next/link";
 import { PageContainer } from "@/components/layout/PageContainer";
-import { ProductGrid } from "@/components/storefront/ProductGrid";
+import { HeroBanner } from "@/components/storefront/HeroBanner";
+import { CategoryBanners } from "@/components/storefront/CategoryBanners";
+import { PopularProductsSection } from "@/components/storefront/PopularProductsSection";
+import { BrandLogos } from "@/components/storefront/BrandLogos";
+import { BottomBanner } from "@/components/storefront/BottomBanner";
+import { TrustFeaturesBar } from "@/components/storefront/TrustFeaturesBar";
 
 export default function Home() {
   return (
-    <PageContainer>
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <h1 className="mb-6 text-2xl font-semibold">All Products</h1>
-        <ProductGrid />
-      </div>
-    </PageContainer>
+    <div className="space-y-10 pb-12">
+      <HeroBanner />
+      <PageContainer className="space-y-10">
+        <CategoryBanners />
+        <PopularProductsSection />
+        <BrandLogos />
+        <BottomBanner />
+        <TrustFeaturesBar />
+      </PageContainer>
+    </div>
   );
 }

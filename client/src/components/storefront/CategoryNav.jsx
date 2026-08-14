@@ -51,8 +51,8 @@ export function CategoryNav() {
   };
 
   return (
-    <nav ref={containerRef} className="relative z-30 border-b bg-muted/30">
-      <div className="mx-auto flex max-w-7xl items-center gap-1 overflow-x-auto px-4 py-1 [scrollbar-width:none] sm:px-6 [&::-webkit-scrollbar]:hidden lg:px-8 whitespace-nowrap">
+    <nav ref={containerRef} className="hidden lg:block relative z-30 border-b bg-muted/30">
+      <div className="mx-auto flex max-w-7xl items-center gap-1 px-4 py-1 sm:px-6 lg:px-8 whitespace-nowrap">
         <Link
           href="/"
           className="shrink-0 rounded-md px-3 py-2 text-sm font-semibold text-foreground hover:bg-accent"
