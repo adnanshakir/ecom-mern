@@ -1,28 +1,19 @@
-"use client";
-
-import { Suspense } from "react";
-import { useSearchParams } from "next/navigation";
-import { Loader2 } from "lucide-react";
 import { ProductCatalogFilterView } from "@/components/storefront/ProductCatalogFilterView";
 
-export default function SearchPage() {
-  return (
-    <Suspense
-      fallback={
-        <div className="flex items-center justify-center gap-2 py-20 text-muted-foreground">
-          <Loader2 className="size-5 animate-spin text-[#033936]" />
-          Loading search results...
-        </div>
-      }
-    >
-      <SearchResultsContent />
-    </Suspense>
-  );
+export async function generateMetadata({ searchParams }) {
+  const { q } = await searchParams;
+  const query = q || "";
+  const title = query ? `Search: "${query}" | Fibio Wholesale` : "Search Products | Fibio Wholesale";
+
+  return {
+    title,
+    description: `Search results for ${query || "wholesale products"} at Fibio Wholesale.`,
+  };
 }
 
-function SearchResultsContent() {
-  const searchParams = useSearchParams();
-  const query = searchParams.get("q") || "";
+export default async function SearchPage({ searchParams }) {
+  const { q } = await searchParams;
+  const query = q || "";
 
   return <ProductCatalogFilterView initialSearch={query} />;
 }

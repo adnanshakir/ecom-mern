@@ -149,6 +149,28 @@ export const mapGroupToProduct = async (group) => {
     "Variant Image Url",
   ];
 
+  const categoryImageKeys = [
+    "Category image URL",
+    "Category Image URL",
+    "Category image",
+    "Category Image",
+    "Category Image Url",
+    "Category image url",
+    "Category Img",
+    "Category img",
+    "Category Image Link",
+    "Category image link",
+  ];
+
+  let categoryImage = null;
+  for (const row of variantRows) {
+    const imgUrl = getRowValue(row, categoryImageKeys);
+    if (imgUrl) {
+      categoryImage = imgUrl;
+      break;
+    }
+  }
+
   for (const row of variantRows) {
     const src = getRowValue(row, productImageKeys);
     if (src && !seenUrls.has(src)) {
@@ -229,6 +251,7 @@ export const mapGroupToProduct = async (group) => {
     optionTypes,
     categoryPath: category.path,
     categoryResolved: category.finalExists,
+    categoryImage,
     brandName: parentRow?.Vendor,
     brandResolved: brand.existing,
     brandId: brand.id,
@@ -262,14 +285,22 @@ export const mapGroupToProduct = async (group) => {
  * If a genuine concurrent-import race produces E11000, it propagates to the
  * outer confirmCsvImport catch which correctly aborts + endSession + next(err).
  */
-export const findOrCreateCategoryPath = async (categoryPathString, session, createdCategoryIds) => {
+export const findOrCreateCategoryPath = async (
+  categoryPathString,
+  session,
+  createdCategoryIds,
+  categoryImage = null
+) => {
   if (!categoryPathString) return null;
 
   const levels = categoryPathString.split(">").map((s) => s.trim());
   let parentId = null;
   let finalCategoryId = null;
 
-  for (const levelName of levels) {
+  for (let i = 0; i < levels.length; i++) {
+    const levelName = levels[i];
+    const isLeaf = i === levels.length - 1;
+
     // Case-insensitive find — also sees this transaction's own uncommitted writes
     let category = await findCategoryCI(levelName, parentId, session);
 
@@ -279,11 +310,17 @@ export const findOrCreateCategoryPath = async (categoryPathString, session, crea
       // This prevents E11000 when two categories at different tree positions
       // share the same name (e.g. top-level "Clothing" vs "Apparel > Clothing").
       const slug = await generateUniqueSlug(Category, levelName, session);
-      [category] = await Category.create(
-        [{ name: levelName.trim(), slug, parent: parentId }],
-        { session }
-      );
+      const catDoc = { name: levelName.trim(), slug, parent: parentId };
+
+      if (isLeaf && categoryImage && categoryImage.url) {
+        catDoc.image = categoryImage;
+      }
+
+      [category] = await Category.create([catDoc], { session });
       createdCategoryIds.push(category._id);
+    } else if (isLeaf && categoryImage && categoryImage.url && (!category.image || !category.image.url)) {
+      category.image = categoryImage;
+      await category.save({ session });
     }
 
     parentId = category._id;

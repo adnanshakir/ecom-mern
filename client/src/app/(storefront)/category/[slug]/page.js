@@ -1,28 +1,41 @@
-"use client";
-
-import { useParams } from "next/navigation";
-import { Loader2 } from "lucide-react";
-import { usePublicCategories } from "@/hooks/storefront/usePublicCategories";
 import { ProductCatalogFilterView } from "@/components/storefront/ProductCatalogFilterView";
+import { getPublicCategories } from "@/services/storefront/publicCatalog";
 
-export default function CategoryPage() {
-  const { slug } = useParams();
-  const { categories, loading: categoriesLoading } = usePublicCategories();
-
-  if (categoriesLoading) {
-    return (
-      <div className="flex items-center justify-center gap-2 py-20 text-muted-foreground">
-        <Loader2 className="size-5 animate-spin text-[#033936]" />
-        Loading category...
-      </div>
-    );
+async function fetchCategoryBySlug(slug) {
+  if (!slug || slug === "all" || slug === "allcategories") return null;
+  try {
+    const res = await getPublicCategories();
+    const categories = res.data?.data || [];
+    return categories.find((c) => c.slug === slug || c._id === slug) || null;
+  } catch {
+    return null;
   }
+}
 
+export async function generateMetadata({ params }) {
+  const { slug } = await params;
   const activeCategorySlug = (slug === "allcategories" || slug === "all") ? null : slug;
 
-  const currentCategory = categories.find(
-    (c) => c.slug === activeCategorySlug || c._id === activeCategorySlug
-  );
+  if (!activeCategorySlug) {
+    return {
+      title: "All Wholesale Products | Fibio Wholesale",
+      description: "Browse all wholesale products across all categories.",
+    };
+  }
+
+  const currentCategory = await fetchCategoryBySlug(activeCategorySlug);
+  const categoryName = currentCategory ? currentCategory.name : activeCategorySlug;
+
+  return {
+    title: `${categoryName} Wholesale Products | Fibio Wholesale`,
+    description: `Shop bulk ${categoryName} at unbeatable wholesale prices.`,
+  };
+}
+
+export default async function CategoryPage({ params }) {
+  const { slug } = await params;
+  const activeCategorySlug = (slug === "allcategories" || slug === "all") ? null : slug;
+  const currentCategory = await fetchCategoryBySlug(activeCategorySlug);
 
   return (
     <ProductCatalogFilterView

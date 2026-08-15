@@ -168,10 +168,25 @@ export const confirmCsvImport = async (req, res, next) => {
         })
       );
 
+      // Process category image if present
+      let preparedCategoryImage = null;
+      if (item.product?.categoryImage) {
+        try {
+          const uploaded = await uploadExternalImageToImageKit(item.product.categoryImage);
+          preparedCategoryImage = { url: uploaded.url, fileId: uploaded.fileId };
+        } catch (uploadErr) {
+          errors.push(
+            `Category image at ${item.product.categoryImage} could not be re-uploaded to ImageKit, stored as an external link instead`
+          );
+          preparedCategoryImage = { url: item.product.categoryImage, fileId: null };
+        }
+      }
+
       return {
         item,
         preparedProductImages: resolvedProductImages.filter(Boolean),
         preparedVariantImagesList: resolvedVariantImagesList,
+        preparedCategoryImage,
       };
     })
   );
@@ -188,7 +203,7 @@ export const confirmCsvImport = async (req, res, next) => {
 
   try {
     for (const prepared of preparedItems) {
-      const { item, preparedProductImages, preparedVariantImagesList } = prepared;
+      const { item, preparedProductImages, preparedVariantImagesList, preparedCategoryImage } = prepared;
 
       if (!item.valid) {
         errors.push(`Skipped "${item.product?.name || item.handle}": marked invalid`);
@@ -202,7 +217,8 @@ export const confirmCsvImport = async (req, res, next) => {
       const categoryId = await findOrCreateCategoryPath(
         item.product.categoryPath?.map((p) => p.name).join(">"),
         session,
-        createdCategoryIds
+        createdCategoryIds,
+        preparedCategoryImage
       );
       const brandId = await findOrCreateBrand(item.product.brandName, session, createdBrandIds);
 
@@ -320,6 +336,42 @@ export const rollbackCsvImport = async (req, res, next) => {
       throw new ApiError(400, "This import has already been rolled back");
     }
 
+    // Collect ImageKit fileIds to delete before removing documents from DB
+    const [productsToDelete, variantsToDelete, categoriesToRollbackDocs] = await Promise.all([
+      Product.find({ _id: { $in: importJob.createdProductIds } }).select("images"),
+      ProductVariant.find({ _id: { $in: importJob.createdVariantIds } }).select("images"),
+      Category.find({ _id: { $in: importJob.createdCategoryIds } }).select("image"),
+    ]);
+
+    const fileIdsToDelete = [];
+
+    for (const p of productsToDelete) {
+      for (const img of p.images || []) {
+        if (img.fileId) fileIdsToDelete.push(img.fileId);
+      }
+    }
+
+    for (const v of variantsToDelete) {
+      for (const img of v.images || []) {
+        if (img.fileId) fileIdsToDelete.push(img.fileId);
+      }
+    }
+
+    for (const c of categoriesToRollbackDocs) {
+      if (c.image?.fileId) {
+        fileIdsToDelete.push(c.image.fileId);
+      }
+    }
+
+    // Delete uploaded image files from ImageKit
+    for (const fileId of fileIdsToDelete) {
+      try {
+        await imagekit.deleteFile(fileId);
+      } catch (ikErr) {
+        // Ignore ImageKit deletion errors during rollback
+      }
+    }
+
     const session = await mongoose.startSession();
     session.startTransaction();
 
@@ -335,6 +387,8 @@ export const rollbackCsvImport = async (req, res, next) => {
         const hasSubcategories = await Category.exists({ parent: catId }).session(session);
         if (!inUseByOther && !hasSubcategories) {
           await Category.deleteOne({ _id: catId }, { session });
+        } else if (!inUseByOther) {
+          await Category.updateOne({ _id: catId }, { $set: { image: { url: "", fileId: "" } } }, { session });
         }
       }
 

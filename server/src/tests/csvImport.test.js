@@ -1,4 +1,5 @@
-import request from "supertest";
+
+ import request from "supertest";
 import { jest } from "@jest/globals";
 import app from "../app.js";
 import User from "../models/admin/user.model.js";
@@ -478,7 +479,50 @@ describe("POST /api/products/import/confirm", () => {
 
     const variant = await ProductVariant.findOne({ sku: "CAP-GRN-001" });
     expect(variant.images).toHaveLength(1);
-    expect(variant.images[0].url).toBe("https://ik.imagekit.io/test/uploaded-var-img.jpg");
+    fetchSpy.mockRestore();
+    uploadSpy.mockRestore();
+  });
+
+  it("extracts category image URL from CSV, uploads to ImageKit, and attaches it to the created category", async () => {
+    const fetchSpy = jest.spyOn(global, "fetch").mockResolvedValue({
+      ok: true,
+      headers: new Headers({ "content-type": "image/jpeg" }),
+      arrayBuffer: async () => Buffer.from("fake-image-bytes"),
+    });
+
+    const uploadSpy = jest.spyOn(imagekit, "upload").mockResolvedValue({
+      url: "https://ik.imagekit.io/test/uploaded-cat-img.jpg",
+      fileId: "cat_ik_888",
+    });
+
+    const header =
+      "Title,URL handle,Description,Vendor,Product category,Category image URL,SKU,Barcode,Option1 name,Option1 value,Price,Compare-at price,Inventory quantity,Weight value (grams),SEO title,SEO description";
+    const csv = [
+      header,
+      "Yellow Cap,yellow-cap,A cap,Nike,Apparel > Headwear,https://cdn.example.com/headwear-banner.jpg,CAP-YEL-001,111,Color,Yellow,499,,20,150,,",
+    ].join("\n") + "\n";
+
+    const previewRes = await request(app)
+      .post("/api/products/import/preview")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .attach("file", Buffer.from(csv), "cat-img.csv");
+
+    expect(previewRes.status).toBe(200);
+    expect(previewRes.body.data.products[0].product.categoryImage).toBe(
+      "https://cdn.example.com/headwear-banner.jpg"
+    );
+
+    const confirmRes = await request(app)
+      .post("/api/products/import/confirm")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ fileName: "cat-img.csv", products: previewRes.body.data.products });
+
+    expect(confirmRes.status).toBe(201);
+
+    const category = await Category.findOne({ name: "Headwear" });
+    expect(category).not.toBeNull();
+    expect(category.image.url).toBe("https://ik.imagekit.io/test/uploaded-cat-img.jpg");
+    expect(category.image.fileId).toBe("cat_ik_888");
 
     fetchSpy.mockRestore();
     uploadSpy.mockRestore();
@@ -534,5 +578,50 @@ describe("POST /api/products/import/:id/rollback", () => {
       .set("Authorization", `Bearer ${adminToken}`);
 
     expect(secondAttempt.status).toBe(400);
+  });
+
+  it("deletes uploaded category and product images from ImageKit during rollback", async () => {
+    const fetchSpy = jest.spyOn(global, "fetch").mockResolvedValue({
+      ok: true,
+      headers: new Headers({ "content-type": "image/jpeg" }),
+      arrayBuffer: async () => Buffer.from("fake-image-bytes"),
+    });
+
+    const uploadSpy = jest.spyOn(imagekit, "upload").mockResolvedValue({
+      url: "https://ik.imagekit.io/test/uploaded-rollback.jpg",
+      fileId: "file_ik_to_delete_001",
+    });
+
+    const deleteSpy = jest.spyOn(imagekit, "deleteFile").mockResolvedValue(true);
+
+    const header =
+      "Title,URL handle,Description,Vendor,Product category,Category image URL,SKU,Barcode,Option1 name,Option1 value,Price,Compare-at price,Inventory quantity,Weight value (grams),SEO title,SEO description";
+    const csv = [
+      header,
+      "Rollback Product,rollback-prod,Desc,Nike,Apparel > Hats,https://cdn.example.com/hats.jpg,SKU-RB-001,111,Color,Red,100,,10,50,,",
+    ].join("\n") + "\n";
+
+    const previewRes = await request(app)
+      .post("/api/products/import/preview")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .attach("file", Buffer.from(csv), "rb.csv");
+
+    const confirmRes = await request(app)
+      .post("/api/products/import/confirm")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ fileName: "rb.csv", products: previewRes.body.data.products });
+
+    const importJobId = confirmRes.body.data.importJobId;
+
+    const rollbackRes = await request(app)
+      .post(`/api/products/import/${importJobId}/rollback`)
+      .set("Authorization", `Bearer ${adminToken}`);
+
+    expect(rollbackRes.status).toBe(200);
+    expect(deleteSpy).toHaveBeenCalledWith("file_ik_to_delete_001");
+
+    fetchSpy.mockRestore();
+    uploadSpy.mockRestore();
+    deleteSpy.mockRestore();
   });
 });
