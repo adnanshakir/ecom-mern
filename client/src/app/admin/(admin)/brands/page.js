@@ -63,48 +63,50 @@ export default function BrandsPage() {
       {!loading && error && <p className="text-sm text-destructive">{error}</p>}
 
       {!loading && !error && (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Status</TableHead>
-              {canWrite && <TableHead className="text-right">Actions</TableHead>}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {brands.length === 0 && (
+        <div className="w-full overflow-x-auto rounded-lg border bg-card">
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={canWrite ? 3 : 2} className="text-muted-foreground">
-                  No brands yet.
-                </TableCell>
+                <TableHead>Name</TableHead>
+                <TableHead>Status</TableHead>
+                {canWrite && <TableHead className="text-right">Actions</TableHead>}
               </TableRow>
-            )}
-            {brands.map((brand) => (
-              <TableRow key={brand._id}>
-                <TableCell>{brand.name}</TableCell>
-                <TableCell>
-                  <span className={brand.isActive ? "text-emerald-500" : "text-muted-foreground"}>
-                    {brand.isActive ? "Active" : "Inactive"}
-                  </span>
-                </TableCell>
-                {canWrite && (
-                  <TableCell className="text-right">
-                    <Button variant="ghost" size="icon" onClick={() => openEditDialog(brand)}>
-                      <Pencil className="size-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleDelete(brand)}>
-                      <Trash2 className="size-4" />
-                    </Button>
+            </TableHeader>
+            <TableBody>
+              {brands.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={canWrite ? 3 : 2} className="text-muted-foreground">
+                    No brands yet.
                   </TableCell>
-                )}
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+                </TableRow>
+              )}
+              {brands.map((brand) => (
+                <TableRow key={brand._id}>
+                  <TableCell>{brand.name}</TableCell>
+                  <TableCell>
+                    <span className={brand.isActive ? "text-emerald-500" : "text-muted-foreground"}>
+                      {brand.isActive ? "Active" : "Inactive"}
+                    </span>
+                  </TableCell>
+                  {canWrite && (
+                    <TableCell className="text-right">
+                      <Button variant="ghost" size="icon" onClick={() => openEditDialog(brand)}>
+                        <Pencil className="size-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" onClick={() => handleDelete(brand)}>
+                        <Trash2 className="size-4" />
+                      </Button>
+                    </TableCell>
+                  )}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       )}
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent>
+        <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-md max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingBrand ? "Edit brand" : "New brand"}</DialogTitle>
             <DialogDescription>

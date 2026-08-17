@@ -100,10 +100,10 @@ function CsvImportFlow() {
       )}
 
       <Dialog open={previewDialogOpen} onOpenChange={setPreviewDialogOpen}>
-        <DialogContent className="flex max-h-[85vh] flex-col p-0 sm:max-w-4xl">
-          <DialogHeader className="shrink-0 border-b p-6 pb-4">
+        <DialogContent className="flex max-h-[85vh] w-[95vw] max-w-[95vw] sm:max-w-4xl flex-col p-0">
+          <DialogHeader className="shrink-0 border-b p-4 sm:p-6 pb-4">
             <DialogTitle>Review import</DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="text-xs sm:text-sm">
               {preview &&
                 `${preview.validCount} valid, ${preview.invalidCount} invalid, out of ${preview.totalProducts} products (${preview.totalRows} rows)`}
             </DialogDescription>
@@ -111,7 +111,7 @@ function CsvImportFlow() {
 
           {preview && (
             <>
-              <div className="flex-1 overflow-y-auto p-6 py-4">
+              <div className="flex-1 overflow-x-auto overflow-y-auto p-4 sm:p-6 py-4">
                 <Table>
                   <TableHeader>
                     <TableRow>

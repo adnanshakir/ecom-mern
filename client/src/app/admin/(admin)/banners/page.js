@@ -374,12 +374,12 @@ export default function AdminBannersPage() {
                   )}
                 </CardContent>
 
-                <CardFooter className="flex items-center justify-between border-t px-6 py-4">
+                <CardFooter className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-t p-4 sm:px-6 sm:py-4">
                   <span className="text-xs text-muted-foreground">
                     Key: <code className="rounded bg-muted px-1.5 py-0.5 font-mono">{cfg.key}</code>
                   </span>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center justify-end gap-2 w-full sm:w-auto">
                     {/* Undo Changes Button */}
                     <Button
                       type="button"

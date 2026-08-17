@@ -123,64 +123,66 @@ function UsersTable() {
 
       {!loading && !error && (
         <>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {users.length === 0 && (
+          <div className="w-full overflow-x-auto rounded-lg border bg-card">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={5} className="text-muted-foreground">
-                    No users found.
-                  </TableCell>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
-              )}
-              {users.map((user) => {
-                const isSelf = user._id === currentUserId;
-                return (
-                  <TableRow key={user._id}>
-                    <TableCell>
-                      {user.name}
-                      {isSelf && <span className="ml-2 text-xs text-muted-foreground">(you)</span>}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">{user.email}</TableCell>
-                    <TableCell className="capitalize">{user.role}</TableCell>
-                    <TableCell>
-                      <span className={user.isActive ? "text-emerald-500" : "text-muted-foreground"}>
-                        {user.isActive ? "Active" : "Inactive"}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="icon" onClick={() => openEditDialog(user)}>
-                        <Pencil className="size-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        disabled={isSelf}
-                        title={isSelf ? "You can't delete your own account" : undefined}
-                        onClick={() => remove(user)}
-                      >
-                        <Trash2 className="size-4" />
-                      </Button>
+              </TableHeader>
+              <TableBody>
+                {users.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-muted-foreground">
+                      No users found.
                     </TableCell>
                   </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+                )}
+                {users.map((user) => {
+                  const isSelf = user._id === currentUserId;
+                  return (
+                    <TableRow key={user._id}>
+                      <TableCell>
+                        {user.name}
+                        {isSelf && <span className="ml-2 text-xs text-muted-foreground">(you)</span>}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">{user.email}</TableCell>
+                      <TableCell className="capitalize">{user.role}</TableCell>
+                      <TableCell>
+                        <span className={user.isActive ? "text-emerald-500" : "text-muted-foreground"}>
+                          {user.isActive ? "Active" : "Inactive"}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button variant="ghost" size="icon" onClick={() => openEditDialog(user)}>
+                          <Pencil className="size-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          disabled={isSelf}
+                          title={isSelf ? "You can't delete your own account" : undefined}
+                          onClick={() => remove(user)}
+                        >
+                          <Trash2 className="size-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
 
-          <div className="flex items-center justify-between text-sm text-muted-foreground">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-muted-foreground">
             <span>
               Page {pagination.page} of {pagination.pages || 1} ({pagination.total} total)
             </span>
-            <div className="flex gap-2">
+            <div className="flex gap-2 w-full sm:w-auto justify-end">
               <Button
                 variant="outline"
                 size="sm"
@@ -203,7 +205,7 @@ function UsersTable() {
       )}
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent>
+        <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit user</DialogTitle>
             <DialogDescription>
@@ -287,7 +289,7 @@ function UsersTable() {
       </Dialog>
 
       <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-        <DialogContent>
+        <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Create user</DialogTitle>
             <DialogDescription>Add a new admin or staff account.</DialogDescription>

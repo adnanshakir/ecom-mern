@@ -58,7 +58,7 @@ export function QuickCreateEntityDialog({ label, createFn, onCreated }) {
           </Button>
         }
       />
-      <DialogContent>
+      <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-md">
         <DialogHeader>
           <DialogTitle>New {label.toLowerCase()}</DialogTitle>
           <DialogDescription>Quickly add a {label.toLowerCase()} without leaving this form.</DialogDescription>

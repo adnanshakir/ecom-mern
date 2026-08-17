@@ -46,16 +46,16 @@ export function ImportJobsList({ jobs, showRollback, rollingBackId, onRollback }
           return (
             <li
               key={job._id}
-              className="flex items-center justify-between gap-3 rounded-md px-2 py-2 text-sm"
+              className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-lg border bg-muted/20 p-2.5 text-sm"
             >
-              <div className="min-w-0">
-                <p className="truncate font-medium">{job.fileName}</p>
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-semibold">{job.fileName}</p>
                 <p className="text-xs text-muted-foreground">
                   {job.successCount} imported, {job.skippedCount} skipped ·{" "}
                   {new Date(job.createdAt).toLocaleString()}
                 </p>
               </div>
-              <div className="flex shrink-0 items-center gap-2">
+              <div className="flex shrink-0 items-center justify-between sm:justify-end gap-2 w-full sm:w-auto pt-1 sm:pt-0 border-t sm:border-0 border-border/40">
                 <span
                   className={cn(
                     "rounded-full px-2 py-0.5 text-xs font-medium capitalize",

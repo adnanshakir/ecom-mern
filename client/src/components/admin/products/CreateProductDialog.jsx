@@ -41,7 +41,7 @@ export function CreateProductDialog({ open, onOpenChange, onCreated }) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[85vh] sm:max-w-3xl overflow-y-auto">
+      <DialogContent className="max-h-[85vh] w-[95vw] max-w-[95vw] sm:max-w-3xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle>New product</DialogTitle>
           <DialogDescription>

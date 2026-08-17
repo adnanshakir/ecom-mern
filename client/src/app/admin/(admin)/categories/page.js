@@ -164,29 +164,33 @@ export default function CategoriesPage() {
       {!loading && error && <p className="text-sm text-destructive">{error}</p>}
 
       {!loading && !error && (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Status</TableHead>
-              {canWrite && <TableHead className="text-right">Actions</TableHead>}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {categories.length === 0 && (
+        <div className="w-full overflow-x-auto rounded-lg border bg-card">
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={canWrite ? 3 : 2} className="text-muted-foreground">
-                  No categories yet.
-                </TableCell>
+                <TableHead className="w-12" />
+                <TableHead>Category</TableHead>
+                <TableHead>Slug</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
-            )}
-            {renderRows(roots, 0)}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {categories.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-muted-foreground">
+                    No categories found.
+                  </TableCell>
+                </TableRow>
+              )}
+              {renderRows(roots, 0)}
+            </TableBody>
+          </Table>
+        </div>
       )}
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-md w-full ">
+        <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-md max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingCategory ? "Edit category" : "New category"}</DialogTitle>
             <DialogDescription>

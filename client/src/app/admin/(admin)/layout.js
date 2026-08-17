@@ -63,6 +63,17 @@ export default function AdminLayout({ children }) {
     }
   }, []);
 
+  useEffect(() => {
+    if (adminTheme === "dark") {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+    return () => {
+      document.documentElement.classList.remove("dark");
+    };
+  }, [adminTheme]);
+
   const toggleTheme = () => {
     const nextTheme = adminTheme === "dark" ? "light" : "dark";
     setAdminTheme(nextTheme);
