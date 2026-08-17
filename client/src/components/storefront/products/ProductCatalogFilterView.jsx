@@ -46,7 +46,7 @@ export function ProductCatalogFilterView({
   // Filters State
   const [selectedCategory, setSelectedCategory] = useState(initialCategory);
   const [sort, setSort] = useState("newest");
-  
+
   // Confirmed Filter State (used for API calls)
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
@@ -551,14 +551,14 @@ export function ProductCatalogFilterView({
               <Loader2 className="size-8 animate-spin text-[#033936]" />
               <p className="text-sm font-medium">Loading catalog products...</p>
             </div>
-          ) : error ? (
-            <div className="py-16 text-center text-sm text-destructive">{error}</div>
-          ) : allProducts.length === 0 ? (
-            <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed py-20 text-center text-muted-foreground">
+          ) : error || allProducts.length === 0 ? (
+            <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed py-20 text-center text-muted-foreground">
               <PackageX className="mb-3 size-12 text-muted-foreground/50" />
               <h3 className="text-base font-bold text-foreground">No products found</h3>
               <p className="mt-1 text-xs text-muted-foreground max-w-sm">
-                No items match your current filter criteria. Try adjusting your search term or price filters.
+                {selectedCategory
+                  ? `No items found under "${currentCategoryObj?.name || selectedCategory}". Try exploring other categories or clearing your filters.`
+                  : "No items match your current filter criteria. Try adjusting your search term or price filters."}
               </p>
               {hasActiveFilters && (
                 <Button

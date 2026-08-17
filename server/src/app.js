@@ -13,6 +13,7 @@ import dashboardRoutes from "./routes/admin/dashboard.routes.js";
 import imageRoutes from "./routes/admin/image.routes.js";
 import inventoryRoutes from "./routes/admin/inventory.routes.js";
 import userRoutes from "./routes/admin/user.routes.js";
+import bannerRoutes from "./routes/admin/banner.routes.js";
 
 // Customer routes
 import customerAuthRoutes from "./routes/customer/customerAuth.routes.js";
@@ -56,6 +57,7 @@ app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/images", imageRoutes);
 app.use("/api/inventory", inventoryRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/banners", bannerRoutes);
 
 // ---- Customer routes ----
 app.use("/api/customers/auth", customerAuthRoutes);

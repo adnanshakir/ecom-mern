@@ -3,32 +3,54 @@
 import Link from "next/link";
 import { ArrowRight, Tag, Package, Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { usePublicBanners } from "@/hooks/storefront/usePublicBanners";
 
 export function HeroBanner() {
+  const { banners } = usePublicBanners();
+  const hero = banners.hero || {};
+
+  const imageUrl = hero.image?.url || "/hero-banner.png";
+  const title = hero.title || "TRUSTED BY MILLIONS";
+  const subtitle = hero.subtitle || "Discover trending products, limited-time offers, and everyday essentials at unbeatable wholesale prices.";
+  const href = hero.href || "/catalog/all";
+  const ctaText = hero.ctaText || "Shop Now";
+  const showGradient = hero.showGradient ?? true;
+  const overlayColor = hero.overlayColor || "#033936";
+
   return (
-    <section className="relative w-full overflow-hidden mx-auto max-w-[1800px] bg-[#033936] text-white">
+    <section
+      className="relative w-full overflow-hidden mx-auto max-w-[1800px] text-white"
+      style={{ backgroundColor: overlayColor }}
+    >
       {/* Background Image Container */}
       <div className="absolute inset-0 z-0">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src="/hero-banner.png"
-          alt="Fibio Wholesale Banner"
+          src={imageUrl}
+          alt={title}
           className="size-full object-cover object-center opacity-90"
         />
-        {/* Gradient overlays to make text readable and blend edges */}
-        <div className="absolute inset-0 bg-gradient-to-r from-[#033936]/60 via-[#033936]/40 to-[#033936]/60 lg:via-[#033936]/40" />
+        {/* Conditional Gradient overlay */}
+        {showGradient && (
+          <div
+            className="absolute inset-0 transition-opacity"
+            style={{
+              background: `linear-gradient(to right, ${overlayColor}B3, ${overlayColor}66, ${overlayColor}B3)`,
+            }}
+          />
+        )}
       </div>
 
       {/* Content Container */}
       <div className="relative z-10 mx-auto flex min-h-[420px] max-w-7xl flex-col items-center justify-center px-4 py-12 text-center sm:min-h-[480px] sm:px-6 md:py-20 lg:px-8">
         {/* Main Heading */}
         <h1 className="mb-4 text-3xl font-black tracking-tight text-white sm:text-5xl md:text-6xl lg:text-7xl uppercase drop-shadow-md">
-          Trusted By Millions
+          {title}
         </h1>
 
         {/* Subtitle */}
         <p className="mb-8 max-w-2xl text-sm font-normal text-slate-200 sm:text-base md:text-lg">
-          Discover trending products, limited-time offers, and everyday essentials at unbeatable wholesale prices.
+          {subtitle}
         </p>
 
         {/* CTA Button */}
@@ -38,8 +60,8 @@ export function HeroBanner() {
             size="lg"
             className="h-12 rounded-full bg-white px-8 text-base font-bold text-[#033936] shadow-lg transition-all duration-200 hover:bg-slate-100 hover:scale-105 active:scale-95"
           >
-            <Link href="/catalog/all" className="flex items-center gap-2">
-              Shop Now
+            <Link href={href} className="flex items-center gap-2">
+              {ctaText}
               <div className="flex size-6 items-center justify-center rounded-full bg-[#033936] text-white">
                 <ArrowRight className="size-3.5" />
               </div>

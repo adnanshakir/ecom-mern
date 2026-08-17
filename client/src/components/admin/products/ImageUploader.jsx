@@ -139,29 +139,46 @@ export function ImageUploader({
 
       {/* Image Preview Cards */}
       {currentImages.length > 0 && (
-        <div className="flex flex-wrap gap-2 pt-1">
-          {currentImages.map((img, i) => (
-            <div
-              key={img.fileId || img.url || i}
-              className="group relative size-20 overflow-hidden rounded-md border bg-background shrink-0"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={img.url} alt="" className="size-full object-cover" />
-              <button
-                type="button"
-                onClick={() => handleRemove(i)}
-                className="absolute right-1 top-1 rounded-full bg-black/70 p-1 text-white opacity-0 transition-opacity group-hover:opacity-100"
-                title="Remove image"
+        <div className="flex flex-wrap gap-3 pt-1">
+          {currentImages.map((img, i) => {
+            const isSingle = singleImage || effectiveMax === 1;
+
+            return (
+              <div
+                key={img.fileId || img.url || i}
+                className={
+                  isSingle
+                    ? "group relative w-full max-w-lg h-48 sm:h-60 overflow-hidden rounded-lg border bg-muted/30 shrink-0 flex items-center justify-center"
+                    : "group relative size-20 overflow-hidden rounded-md border bg-background shrink-0"
+                }
               >
-                <X className="size-3" />
-              </button>
-              {img.fileId && (
-                <span className="absolute bottom-1 left-1 rounded bg-black/60 px-1 text-[9px] text-white">
-                  IK
-                </span>
-              )}
-            </div>
-          ))}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={img.url}
+                  alt=""
+                  className={isSingle ? "size-full object-contain" : "size-full object-cover"}
+                />
+                <button
+                  type="button"
+                  onClick={() => handleRemove(i)}
+                  className={
+                    isSingle
+                      ? "absolute right-2.5 top-2.5 flex items-center gap-1.5 rounded-full bg-black/75 px-3 py-1 text-xs font-medium text-white shadow-md transition-opacity hover:bg-destructive"
+                      : "absolute right-1 top-1 rounded-full bg-black/70 p-1 text-white opacity-0 transition-opacity group-hover:opacity-100"
+                  }
+                  title="Remove image"
+                >
+                  <X className="size-3.5" />
+                  {isSingle && <span>Remove</span>}
+                </button>
+                {img.fileId && (
+                  <span className="absolute bottom-2.5 left-2.5 rounded bg-black/75 px-2 py-0.5 text-[10px] font-semibold text-white">
+                    ImageKit
+                  </span>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
 

@@ -80,9 +80,7 @@ export function PopularProductsSection() {
           <Loader2 className="size-7 animate-spin text-[#033936]" />
           <p className="text-sm font-medium">Loading products...</p>
         </div>
-      ) : error ? (
-        <div className="py-12 text-center text-sm text-destructive">{error}</div>
-      ) : products.length === 0 ? (
+      ) : error || products.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center text-muted-foreground">
           <PackageX className="mb-2 size-10 text-muted-foreground/60" />
           <p className="text-sm font-medium">No products found in this category.</p>

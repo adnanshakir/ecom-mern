@@ -78,8 +78,30 @@ export const getProducts = async (req, res, next) => {
     const { category, brand, status, featured, search, page = 1, limit = 20 } = req.query;
 
     const filter = {};
-    if (category) filter.category = category;
-    if (brand) filter.brand = brand;
+    if (category) {
+      if (mongoose.Types.ObjectId.isValid(category)) {
+        filter.category = category;
+      } else {
+        return res.status(200).json({
+          success: true,
+          data: [],
+          pagination: { total: 0, page: Number(page), pages: 0 },
+        });
+      }
+    }
+
+    if (brand) {
+      if (mongoose.Types.ObjectId.isValid(brand)) {
+        filter.brand = brand;
+      } else {
+        return res.status(200).json({
+          success: true,
+          data: [],
+          pagination: { total: 0, page: Number(page), pages: 0 },
+        });
+      }
+    }
+
     if (status) filter.status = status;
     if (featured !== undefined) filter.featured = featured === "true";
     if (search) filter.name = { $regex: search, $options: "i" };

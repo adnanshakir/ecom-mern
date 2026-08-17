@@ -21,11 +21,7 @@ export function ProductGrid({ category, search, sort }) {
     );
   }
 
-  if (error) {
-    return <p className="py-12 text-center text-sm text-destructive">{error}</p>;
-  }
-
-  if (products.length === 0) {
+  if (error || products.length === 0) {
     return <p className="py-12 text-center text-sm text-muted-foreground">No products found.</p>;
   }
 

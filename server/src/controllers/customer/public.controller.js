@@ -1,6 +1,9 @@
+import mongoose from "mongoose";
 import Product from "../../models/admin/product.model.js";
 import ProductVariant from "../../models/admin/productVariant.model.js";
 import Category from "../../models/admin/category.model.js";
+import { Banner } from "../../models/admin/banner.model.js";
+import { DEFAULT_BANNERS } from "../admin/banner.controller.js";
 import ApiError from "../../utils/apiError.js";
 
 // ---------------- GET /api/public/products ----------------
@@ -33,8 +36,19 @@ export const getPublicProducts = async (req, res, next) => {
           }
         }
         filter.category = { $in: categoryIds };
-      } else {
+      } else if (mongoose.Types.ObjectId.isValid(category)) {
         filter.category = category;
+      } else {
+        // Unknown category slug or non-existent category -> Return 0 products cleanly!
+        return res.status(200).json({
+          success: true,
+          data: [],
+          pagination: {
+            total: 0,
+            page: Number(page),
+            pages: 0,
+          },
+        });
       }
     }
 
@@ -253,4 +267,37 @@ export const getPublicSearchSuggestions = async (req, res, next) => {
     next(err);
   }
 };
+
+// ---------------- GET /api/public/banners ----------------
+// Returns active banner configurations for the storefront
+export const getPublicBanners = async (req, res, next) => {
+  try {
+    const dbBanners = await Banner.find({ isActive: true }).lean();
+    const bannerMap = {};
+
+    dbBanners.forEach((b) => {
+      bannerMap[b.key] = b;
+    });
+
+    const keys = ["hero", "secondary-left", "secondary-right", "bottom"];
+    const result = {};
+
+    keys.forEach((key) => {
+      if (bannerMap[key]) {
+        result[key] = {
+          ...DEFAULT_BANNERS[key],
+          ...bannerMap[key],
+          image: bannerMap[key].image?.url ? bannerMap[key].image : DEFAULT_BANNERS[key].image,
+        };
+      } else {
+        result[key] = DEFAULT_BANNERS[key];
+      }
+    });
+
+    res.status(200).json({ success: true, data: result });
+  } catch (err) {
+    next(err);
+  }
+};
+
 

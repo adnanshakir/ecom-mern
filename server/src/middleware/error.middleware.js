@@ -6,7 +6,21 @@ export const notFound = (req, res, next) => {
 };
 
 export const errorHandler = (err, req, res, next) => {
-  const statusCode = err.statusCode || 500;
+  let statusCode = err.statusCode || 500;
+  let message = err.message || 'Internal Server Error';
+
+  // Handle Mongoose CastError (e.g. invalid ObjectId format)
+  if (err.name === 'CastError') {
+    statusCode = 400;
+    message = `Invalid format for field '${err.path}': ${err.value}`;
+  }
+
+  // Handle Mongoose Duplicate Key Error (E11000)
+  if (err.code === 11000) {
+    statusCode = 400;
+    const field = Object.keys(err.keyValue || {})[0] || 'field';
+    message = `Duplicate value for ${field}. Please use another value.`;
+  }
 
   if (process.env.NODE_ENV !== 'production') {
     console.error(err);
@@ -14,7 +28,7 @@ export const errorHandler = (err, req, res, next) => {
 
   res.status(statusCode).json({
     success: false,
-    message: err.message || 'Internal Server Error',
+    message,
     ...(process.env.NODE_ENV !== 'production' && {
       stack: err.stack,
     }),
