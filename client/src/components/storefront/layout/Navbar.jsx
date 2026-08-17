@@ -11,6 +11,7 @@ import { resetCart } from "@/redux/slices/cartSlice";
 import { resetWishlist } from "@/redux/slices/wishlistSlice";
 import { selectCartCount } from "@/redux/slices/cartSlice";
 import { useSearchSuggestions } from "@/hooks/storefront/useSearchSuggestions";
+import { formatPrice } from "@/lib/formatCurrency";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -216,7 +217,7 @@ function SearchInputWithSuggestions() {
                         </div>
 
                         {prod.price != null && (
-                          <span className="shrink-0 text-xs font-semibold">${prod.price}</span>
+                          <span className="shrink-0 text-xs font-semibold">{formatPrice(prod.price)}</span>
                         )}
                       </button>
                     ))}

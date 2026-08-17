@@ -8,6 +8,7 @@ import { Loader2, Heart, Trash2 } from "lucide-react";
 
 import { removeFromWishlist, selectWishlistPending } from "@/redux/slices/wishlistSlice";
 import { getDisplayPrice, isInStock } from "@/lib/productPrice";
+import { formatPrice } from "@/lib/formatCurrency";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { addToCart } from "@/redux/slices/cartSlice";
@@ -128,15 +129,15 @@ export function WishlistView() {
                     {discountedVariant ? (
                       <>
                         <span className="text-sm font-bold text-red-600">
-                          ${discountedVariant.salePrice}
+                          {formatPrice(discountedVariant.salePrice)}
                         </span>
                         <span className="text-xs text-muted-foreground line-through">
-                          ${discountedVariant.price}
+                          {formatPrice(discountedVariant.price)}
                         </span>
                       </>
                     ) : (
                       <span className="text-sm font-bold">
-                        {price != null ? `$${price}` : "—"}
+                        {formatPrice(price)}
                       </span>
                     )}
                   </div>

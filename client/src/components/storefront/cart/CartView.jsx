@@ -7,6 +7,7 @@ import Link from "next/link";
 import { Loader2, Trash2, ShoppingBag, Plus, Minus } from "lucide-react";
 
 import { useCart } from "@/hooks/storefront/useCart";
+import { formatPrice } from "@/lib/formatCurrency";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 
@@ -139,11 +140,11 @@ export function CartView() {
 
                       <div className="flex items-baseline gap-1.5">
                         <span className="text-sm font-semibold">
-                          ${(unitPrice * item.quantity).toFixed(2)}
+                          {formatPrice(unitPrice * item.quantity)}
                         </span>
                         {hasSale && (
                           <span className="text-xs text-muted-foreground line-through">
-                            ${(variant.price * item.quantity).toFixed(2)}
+                            {formatPrice(variant.price * item.quantity)}
                           </span>
                         )}
                       </div>
@@ -172,7 +173,7 @@ export function CartView() {
                 <span className="text-muted-foreground">
                   Subtotal ({count} {count === 1 ? "item" : "items"})
                 </span>
-                <span className="font-medium">${subtotal.toFixed(2)}</span>
+                <span className="font-medium">{formatPrice(subtotal)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Shipping</span>
@@ -184,7 +185,7 @@ export function CartView() {
 
             <div className="flex justify-between text-base font-semibold">
               <span>Total</span>
-              <span>${subtotal.toFixed(2)}</span>
+              <span>{formatPrice(subtotal)}</span>
             </div>
 
             <Button className="w-full bg-[#033936] text-white hover:bg-[#022826]" size="lg" asChild>

@@ -5,6 +5,7 @@ import { ImageIcon, Heart, Loader2 } from "lucide-react";
 import { useSelector } from "react-redux";
 import { toast } from "sonner";
 import { getDisplayPrice, isInStock } from "@/lib/productPrice";
+import { formatPrice } from "@/lib/formatCurrency";
 import { cn } from "@/lib/utils";
 import { useWishlist } from "@/hooks/storefront/useWishlist";
 
@@ -72,11 +73,11 @@ export function ProductCard({ product }) {
           <div className="mt-1 flex items-baseline gap-2">
             {discountedVariant ? (
               <>
-                <span className="text-base font-bold text-red-600">${discountedVariant.salePrice}</span>
-                <span className="text-xs text-muted-foreground line-through">${discountedVariant.price}</span>
+                <span className="text-base font-bold text-red-600">{formatPrice(discountedVariant.salePrice)}</span>
+                <span className="text-xs text-muted-foreground line-through">{formatPrice(discountedVariant.price)}</span>
               </>
             ) : (
-              <span className="text-base font-bold">{price != null ? `$${price}` : "—"}</span>
+              <span className="text-base font-bold">{formatPrice(price)}</span>
             )}
           </div>
         </div>

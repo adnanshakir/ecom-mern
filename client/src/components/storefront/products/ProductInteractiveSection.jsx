@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { useVariantSelector } from "@/hooks/storefront/useVariantSelector";
 import { useCart } from "@/hooks/storefront/useCart";
 import { useWishlist } from "@/hooks/storefront/useWishlist";
+import { formatPrice } from "@/lib/formatCurrency";
 import { VariantSelector } from "@/components/storefront/products/VariantSelector";
 import { QuantitySelector } from "@/components/storefront/products/QuantitySelector";
 import { Button } from "@/components/ui/button";
@@ -61,14 +62,14 @@ export function ProductInteractiveSection({ product }) {
       <div className="flex items-baseline gap-2">
         {hasSale ? (
           <>
-            <span className="text-2xl font-semibold">${price}</span>
+            <span className="text-2xl font-semibold">{formatPrice(price)}</span>
             <span className="text-sm text-muted-foreground line-through">
-              ${selectedVariant.price}
+              {formatPrice(selectedVariant.price)}
             </span>
           </>
         ) : (
           <span className="text-2xl font-semibold">
-            {price != null ? `$${price}` : "—"}
+            {formatPrice(price)}
           </span>
         )}
       </div>
