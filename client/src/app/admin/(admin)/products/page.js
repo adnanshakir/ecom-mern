@@ -101,19 +101,19 @@ function ProductsContent() {
         <h1 className="text-xl font-semibold">Products</h1>
       </div>
 
-      <div className="flex flex-wrap justify-between gap-2">
-        <div className="flex gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex flex-col sm:flex-row flex-wrap gap-2 w-full sm:w-auto">
           <Input
             placeholder="Search products..."
             defaultValue={filters.search}
-            className="w-56"
+            className="w-full sm:w-56"
             onKeyDown={(e) => {
               if (e.key === "Enter") setFilter("search", e.currentTarget.value);
             }}
           />
 
           <Select value={filters.category || "all"} onValueChange={(v) => setFilter("category", v === "all" ? "" : v)}>
-            <SelectTrigger className="w-40">
+            <SelectTrigger className="w-full sm:w-40">
               <SelectValue placeholder="Category">
                 {filters.category ? categoryById[filters.category] : "All categories"}
               </SelectValue>
@@ -129,7 +129,7 @@ function ProductsContent() {
           </Select>
 
           <Select value={filters.brand || "all"} onValueChange={(v) => setFilter("brand", v === "all" ? "" : v)}>
-            <SelectTrigger className="w-40">
+            <SelectTrigger className="w-full sm:w-40">
               <SelectValue placeholder="Brand">{filters.brand ? brandById[filters.brand] : "All brands"}</SelectValue>
             </SelectTrigger>
             <SelectContent>
@@ -143,7 +143,7 @@ function ProductsContent() {
           </Select>
 
           <Select value={filters.status || "all"} onValueChange={(v) => setFilter("status", v === "all" ? "" : v)}>
-            <SelectTrigger className="w-36">
+            <SelectTrigger className="w-full sm:w-36">
               <SelectValue placeholder="Status">
                 {filters.status
                   ? STATUS_OPTIONS.find((s) => s.value === filters.status)?.label || filters.status
