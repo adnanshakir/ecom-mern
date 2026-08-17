@@ -1,5 +1,4 @@
 import "./globals.css";
-import { ThemeProvider } from "@/components/theme-provider";
 import StoreProvider from "@/redux/StoreProvider";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "sonner";
@@ -27,12 +26,10 @@ export default function RootLayout({ children }) {
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col font-sans">
-        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false} disableTransitionOnChange>
-          <StoreProvider>
-            {children}
-          </StoreProvider>
-          <Toaster richColors position="bottom-right" />
-        </ThemeProvider>
+        <StoreProvider>
+          {children}
+        </StoreProvider>
+        <Toaster richColors position="bottom-right" />
       </body>
     </html>
   );
