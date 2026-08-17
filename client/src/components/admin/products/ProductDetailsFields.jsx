@@ -156,9 +156,9 @@ export function ProductDetailsFields({ form, categories, brands }) {
         name="images"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Product images (optional)</FormLabel>
+            <FormLabel>Product images (optional, up to 4)</FormLabel>
             <FormControl>
-              <ImageUploader images={field.value || []} onChange={field.onChange} maxImages={8} />
+              <ImageUploader images={field.value || []} onChange={field.onChange} maxImages={4} />
             </FormControl>
           </FormItem>
         )}

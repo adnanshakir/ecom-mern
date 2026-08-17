@@ -1,12 +1,11 @@
 "use client";
 
 import { usePublicProducts } from "@/hooks/storefront/usePublicProducts";
-import { ProductCard } from "@/components/storefront/ProductCard";
+import { ProductCard } from "@/components/storefront/products/ProductCard";
 
 export function ExploreProducts({ excludeProductId, excludeCategoryId }) {
   const { products, loading } = usePublicProducts({ limit: 16, sort: "newest" });
 
-  // Filter out current product and products from the current category if possible
   const otherCategoryProducts = products.filter(
     (p) =>
       p._id !== excludeProductId &&
@@ -14,7 +13,6 @@ export function ExploreProducts({ excludeProductId, excludeCategoryId }) {
       p.category !== excludeCategoryId
   );
 
-  // Fallback to any other products if not enough from other categories
   const displayProducts =
     otherCategoryProducts.length >= 4
       ? otherCategoryProducts

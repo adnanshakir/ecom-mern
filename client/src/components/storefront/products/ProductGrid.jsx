@@ -2,7 +2,7 @@
 
 import { Loader2 } from "lucide-react";
 import { usePublicProducts } from "@/hooks/storefront/usePublicProducts";
-import { ProductCard } from "@/components/storefront/ProductCard";
+import { ProductCard } from "@/components/storefront/products/ProductCard";
 import { Button } from "@/components/ui/button";
 
 export function ProductGrid({ category, search, sort }) {

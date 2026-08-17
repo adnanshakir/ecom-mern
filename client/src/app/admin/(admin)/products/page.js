@@ -21,7 +21,11 @@ import {
 import { ProductCard } from "@/components/admin/products/ProductCard";
 
 const CAN_WRITE_ROLES = ["super_admin", "admin"];
-const STATUS_OPTIONS = ["draft", "active", "archived"];
+const STATUS_OPTIONS = [
+  { value: "draft", label: "Draft" },
+  { value: "active", label: "Active" },
+  { value: "archived", label: "Archived" },
+];
 
 export default function ProductsPage() {
   const [createOpen, setCreateOpen] = useState(false);
@@ -142,13 +146,17 @@ export default function ProductsPage() {
 
           <Select value={filters.status || "all"} onValueChange={(v) => setFilter("status", v === "all" ? "" : v)}>
             <SelectTrigger className="w-36">
-              <SelectValue placeholder="Status" />
+              <SelectValue placeholder="Status">
+                {filters.status
+                  ? STATUS_OPTIONS.find((s) => s.value === filters.status)?.label || filters.status
+                  : "All statuses"}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All statuses</SelectItem>
               {STATUS_OPTIONS.map((s) => (
-                <SelectItem key={s} value={s}>
-                  {s}
+                <SelectItem key={s.value} value={s.value}>
+                  {s.label}
                 </SelectItem>
               ))}
             </SelectContent>

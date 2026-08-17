@@ -1,4 +1,4 @@
-import { ProductCatalogFilterView } from "@/components/storefront/ProductCatalogFilterView";
+import { ProductCatalogFilterView } from "@/components/storefront/products/ProductCatalogFilterView";
 
 export async function generateMetadata({ searchParams }) {
   const { q } = await searchParams;

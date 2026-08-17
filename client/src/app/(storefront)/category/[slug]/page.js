@@ -1,4 +1,4 @@
-import { ProductCatalogFilterView } from "@/components/storefront/ProductCatalogFilterView";
+import { ProductCatalogFilterView } from "@/components/storefront/products/ProductCatalogFilterView";
 import { getPublicCategories } from "@/services/storefront/publicCatalog";
 
 async function fetchCategoryBySlug(slug) {

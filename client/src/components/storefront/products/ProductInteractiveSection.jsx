@@ -7,8 +7,8 @@ import { toast } from "sonner";
 import { useVariantSelector } from "@/hooks/storefront/useVariantSelector";
 import { useCart } from "@/hooks/storefront/useCart";
 import { useWishlist } from "@/hooks/storefront/useWishlist";
-import { VariantSelector } from "@/components/storefront/VariantSelector";
-import { QuantitySelector } from "@/components/storefront/QuantitySelector";
+import { VariantSelector } from "@/components/storefront/products/VariantSelector";
+import { QuantitySelector } from "@/components/storefront/products/QuantitySelector";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 

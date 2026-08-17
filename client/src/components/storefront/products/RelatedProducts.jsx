@@ -1,7 +1,7 @@
 "use client";
 
 import { usePublicProducts } from "@/hooks/storefront/usePublicProducts";
-import { ProductCard } from "@/components/storefront/ProductCard";
+import { ProductCard } from "@/components/storefront/products/ProductCard";
 
 export function RelatedProducts({ categoryId, excludeProductId }) {
   const { products, loading } = usePublicProducts({ category: categoryId, limit: 10 });

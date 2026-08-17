@@ -25,7 +25,6 @@ export function WishlistView() {
   const pendingWishlist = useSelector(selectWishlistPending);
   const pendingCart = useSelector(selectCartPendingVariants);
 
-  // Redirect unauthenticated users to login
   useEffect(() => {
     if (authReady && authStatus !== "authenticated") {
       router.replace("/login");
@@ -43,7 +42,6 @@ export function WishlistView() {
   if (authStatus !== "authenticated") return null;
 
   const handleAddToCart = async (product) => {
-    // Add the cheapest in-stock variant to cart
     const variants = product.variants || [];
     const candidate = variants.find((v) => v.stock > 0);
     if (!candidate?._id) {
@@ -68,7 +66,6 @@ export function WishlistView() {
           Loading wishlist…
         </div>
       ) : products.length === 0 ? (
-        /* ── Empty state ─────────────────────────────────────────────────── */
         <div className="flex flex-col items-center gap-4 py-24 text-center">
           <Heart className="size-12 text-muted-foreground/40" />
           <div>
@@ -82,7 +79,6 @@ export function WishlistView() {
           </Button>
         </div>
       ) : (
-        /* ── Product grid ────────────────────────────────────────────────── */
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
           {products.map((product) => {
             const thumbnail = product.images?.[0]?.url;
@@ -92,7 +88,6 @@ export function WishlistView() {
               (v) => v.salePrice && v.salePrice < v.price
             );
             const isRemovePending = pendingWishlist.includes(product._id?.toString());
-            // Find in-stock variant for add-to-cart
             const inStockVariant = product.variants?.find((v) => v.stock > 0);
             const isCartPending = inStockVariant && pendingCart.includes(inStockVariant._id?.toString());
 
@@ -102,7 +97,6 @@ export function WishlistView() {
                 className="group relative flex flex-col rounded-lg border overflow-hidden transition-opacity"
                 style={{ opacity: isRemovePending ? 0.5 : 1 }}
               >
-                {/* Image */}
                 <Link href={`/product/${product.slug}`} className="relative block">
                   <div className="relative flex aspect-square items-center justify-center bg-muted overflow-hidden">
                     {thumbnail ? (
@@ -126,7 +120,6 @@ export function WishlistView() {
                   </div>
                 </Link>
 
-                {/* Info */}
                 <div className="flex flex-1 flex-col gap-2 p-3">
                   <Link href={`/product/${product.slug}`} className="line-clamp-1 text-sm font-medium hover:underline">
                     {product.name}
@@ -148,7 +141,6 @@ export function WishlistView() {
                     )}
                   </div>
 
-                  {/* Actions */}
                   <div className="mt-auto flex gap-2 pt-1">
                     <Button
                       size="sm"

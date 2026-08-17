@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ArrowUpRight, Image } from "lucide-react";
 import { getPublicCategories } from "@/services/storefront/publicCatalog";
 import { PageContainer } from "@/components/layout/PageContainer";
-import { Breadcrumbs } from "@/components/storefront/Breadcrumbs";
+import { Breadcrumbs } from "@/components/storefront/layout/Breadcrumbs";
 
 export const metadata = {
   title: "Category Catalog | Fibio Wholesale",

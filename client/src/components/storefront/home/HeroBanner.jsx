@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Tag, Package, Truck, Sparkles } from "lucide-react";
+import { ArrowRight, Tag, Package, Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export function HeroBanner() {
@@ -11,7 +11,7 @@ export function HeroBanner() {
       <div className="absolute inset-0 z-0">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src="/banner.png"
+          src="/hero-banner.png"
           alt="Fibio Wholesale Banner"
           className="size-full object-cover object-center opacity-90"
         />

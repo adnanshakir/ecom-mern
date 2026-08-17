@@ -1,7 +1,7 @@
-import { Navbar } from "@/components/storefront/Navbar";
-import { CategoryNav } from "@/components/storefront/CategoryNav";
-import { Footer } from "@/components/storefront/Footer";
-import { ScrollToTop } from "@/components/storefront/ScrollToTop";
+import { Navbar } from "@/components/storefront/layout/Navbar";
+import { CategoryNav } from "@/components/storefront/layout/CategoryNav";
+import { Footer } from "@/components/storefront/layout/Footer";
+import { ScrollToTop } from "@/components/storefront/layout/ScrollToTop";
 
 export default function StorefrontLayout({ children }) {
   return (

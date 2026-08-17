@@ -1,10 +1,10 @@
 import { PageContainer } from "@/components/layout/PageContainer";
-import { HeroBanner } from "@/components/storefront/HeroBanner";
-import { CategoryBanners } from "@/components/storefront/CategoryBanners";
-import { PopularProductsSection } from "@/components/storefront/PopularProductsSection";
-import { BrandLogos } from "@/components/storefront/BrandLogos";
-import { BottomBanner } from "@/components/storefront/BottomBanner";
-import { TrustFeaturesBar } from "@/components/storefront/TrustFeaturesBar";
+import { HeroBanner } from "@/components/storefront/home/HeroBanner";
+import { CategoryBanners } from "@/components/storefront/home/CategoryBanners";
+import { PopularProductsSection } from "@/components/storefront/home/PopularProductsSection";
+import { BrandLogos } from "@/components/storefront/home/BrandLogos";
+import { BottomBanner } from "@/components/storefront/home/BottomBanner";
+import { TrustFeaturesBar } from "@/components/storefront/home/TrustFeaturesBar";
 
 export default function Home() {
   return (

@@ -17,7 +17,7 @@ import {
 
 import { useCategories } from "@/hooks/admin/useCategories";
 import { buildChildrenMap } from "@/lib/categoryTree";
-import { uploadImages } from "@/services/admin/images";
+import { ImageUploader } from "@/components/admin/products/ImageUploader";
 import { ApiErrorSummary } from "@/components/shared/ApiErrorSummary";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -243,8 +243,21 @@ export default function CategoriesPage() {
                 )}
               />
 
-              {/* Category Image Field (Upload via ImageKit or Direct URL) */}
-              <CategoryImageUploader form={form} />
+              <FormField
+                control={form.control}
+                name="image"
+                render={({ field }) => (
+                  <FormItem>
+                    <ImageUploader
+                      value={field.value}
+                      onChange={field.onChange}
+                      maxImages={1}
+                      singleImage
+                      label="Category Image (Optional)"
+                    />
+                  </FormItem>
+                )}
+              />
 
               <FormField
                 control={form.control}
@@ -271,127 +284,6 @@ export default function CategoriesPage() {
           </Form>
         </DialogContent>
       </Dialog>
-    </div>
-  );
-}
-
-function CategoryImageUploader({ form }) {
-  const [mode, setMode] = useState("file"); // "file" or "url"
-  const [uploading, setUploading] = useState(false);
-  const [uploadError, setUploadError] = useState(null);
-
-  const currentImage = form.watch("image");
-  const imageUrl = currentImage?.url || "";
-
-  const handleFileUpload = async (e) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-
-    try {
-      setUploading(true);
-      setUploadError(null);
-      const { data } = await uploadImages(files);
-      if (data.data && data.data.length > 0) {
-        const uploaded = data.data[0];
-        form.setValue("image", { url: uploaded.url, fileId: uploaded.fileId }, { shouldValidate: true });
-      }
-    } catch (err) {
-      setUploadError(err.response?.data?.message || "Failed to upload image to ImageKit");
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const handleClearImage = () => {
-    form.setValue("image", { url: "", fileId: "" }, { shouldValidate: true });
-  };
-
-  return (
-    <div className="w-full space-y-2 rounded-lg border p-3 bg-muted/20 overflow-hidden">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Category Image (Optional)
-        </label>
-
-        <div className="flex items-center gap-1 bg-background border rounded-md p-0.5 text-xs">
-          <button
-            type="button"
-            onClick={() => setMode("file")}
-            className={`flex items-center gap-1 rounded px-2 py-1 transition-colors ${
-              mode === "file"
-                ? "bg-primary text-primary-foreground font-medium"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <Upload className="size-3 shrink-0" />
-            <span>Upload (ImageKit)</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setMode("url")}
-            className={`flex items-center gap-1 rounded px-2 py-1 transition-colors ${
-              mode === "url"
-                ? "bg-primary text-primary-foreground font-medium"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <LinkIcon className="size-3 shrink-0" />
-            <span>URL</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Image Preview Container */}
-      {imageUrl ? (
-        <div className="relative flex items-center gap-3 rounded-md border bg-background p-2 w-full overflow-hidden">
-          <div className="relative size-14 shrink-0 overflow-hidden rounded border bg-muted">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={imageUrl} alt="Category preview" className="size-full object-cover" />
-          </div>
-          <div className="min-w-0 flex-1 overflow-hidden">
-            <p className="text-xs font-medium text-foreground truncate break-all">{imageUrl}</p>
-            <p className="text-[10px] text-emerald-600 font-semibold mt-0.5">Image Ready</p>
-          </div>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            onClick={handleClearImage}
-            className="size-7 shrink-0 text-muted-foreground hover:text-destructive"
-          >
-            <X className="size-4" />
-          </Button>
-        </div>
-      ) : mode === "file" ? (
-        <div className="flex flex-col items-center justify-center rounded-md border border-dashed p-4 text-center bg-background">
-          {uploading ? (
-            <div className="flex items-center gap-2 py-2 text-xs text-muted-foreground">
-              <Loader2 className="size-4 animate-spin text-primary" />
-              Uploading to ImageKit...
-            </div>
-          ) : (
-            <label className="flex cursor-pointer flex-col items-center justify-center gap-1.5 w-full">
-              <Upload className="size-5 text-muted-foreground" />
-              <span className="text-xs font-medium text-foreground">Click to upload file</span>
-              <span className="text-[10px] text-muted-foreground">PNG, JPG, WEBP up to 5MB</span>
-              <input type="file" accept="image/*" onChange={handleFileUpload} className="hidden" disabled={uploading} />
-            </label>
-          )}
-        </div>
-      ) : (
-        <div className="space-y-1 w-full overflow-hidden">
-          <Input
-            placeholder="https://example.com/category-image.png"
-            value={imageUrl}
-            onChange={(e) => form.setValue("image", { url: e.target.value, fileId: "" }, { shouldValidate: true })}
-            className="text-xs w-full truncate"
-          />
-          <p className="text-[10px] text-muted-foreground">Paste a direct public image URL.</p>
-        </div>
-      )}
-
-      {uploadError && <p className="text-xs text-destructive">{uploadError}</p>}
     </div>
   );
 }

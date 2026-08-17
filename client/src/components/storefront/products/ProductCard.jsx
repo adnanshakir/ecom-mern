@@ -19,8 +19,6 @@ export function ProductCard({ product }) {
 
   const { isWishlisted, isPending, toggle } = useWishlist(product._id);
 
-  // Show a discount badge only when at least one variant actually has a
-  // salePrice below its price — otherwise there's nothing real to show.
   const discountedVariant = product.variants?.find((v) => v.salePrice && v.salePrice < v.price);
   const discountPercent = discountedVariant
     ? Math.round((1 - discountedVariant.salePrice / discountedVariant.price) * 100)
@@ -78,7 +76,6 @@ export function ProductCard({ product }) {
         </div>
       </Link>
 
-      {/* Wishlist heart — visible on hover (and always when wishlisted) */}
       <button
         title={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
         disabled={isPending}

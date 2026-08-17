@@ -36,8 +36,6 @@ export function ProductGallery({ productImages, variantImages }) {
 
   const [active, setActive] = useState(0);
 
-  // Jump back to the lead image whenever the variant's own images change
-  // (i.e. the person picked a different variant with a different photo).
   useEffect(() => {
     setActive(0);
   }, [variantImages]);

@@ -1,4 +1,4 @@
-import { CartView } from "@/components/storefront/CartView";
+import { CartView } from "@/components/storefront/cart/CartView";
 
 export const metadata = {
   title: "Shopping Cart | Fibio Wholesale",

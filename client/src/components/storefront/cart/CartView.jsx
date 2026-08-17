@@ -17,14 +17,12 @@ export function CartView() {
 
   const { items, count, status, updateItem, removeItem, clear, isPending } = useCart();
 
-  // Redirect unauthenticated users to login
   useEffect(() => {
     if (authReady && authStatus !== "authenticated") {
       router.replace("/login");
     }
   }, [authReady, authStatus, router]);
 
-  // While auth is resolving, show a spinner
   if (!authReady || authStatus === "loading") {
     return (
       <div className="flex items-center justify-center gap-2 py-32 text-muted-foreground">
@@ -35,7 +33,6 @@ export function CartView() {
 
   if (authStatus !== "authenticated") return null;
 
-  // Compute order totals
   const subtotal = items.reduce((sum, item) => {
     const unitPrice = item.variant?.salePrice ?? item.variant?.price ?? 0;
     return sum + unitPrice * item.quantity;
@@ -61,7 +58,6 @@ export function CartView() {
           Loading cart…
         </div>
       ) : items.length === 0 ? (
-        /* ── Empty state ─────────────────────────────────────────────────── */
         <div className="flex flex-col items-center gap-4 py-24 text-center">
           <ShoppingBag className="size-12 text-muted-foreground/40" />
           <div>
@@ -75,9 +71,7 @@ export function CartView() {
           </Button>
         </div>
       ) : (
-        /* ── Cart layout ─────────────────────────────────────────────────── */
         <div className="grid gap-6 lg:grid-cols-[1fr_280px]">
-          {/* Line items */}
           <div className="grid gap-0 divide-y divide-border rounded-lg border">
             {items.map((item) => {
               const variant = item.variant;
@@ -93,7 +87,6 @@ export function CartView() {
                   className="flex gap-4 p-4 transition-opacity"
                   style={{ opacity: pending ? 0.6 : 1 }}
                 >
-                  {/* Thumbnail */}
                   <Link
                     href={`/product/${product?.slug || ""}`}
                     className="block shrink-0"
@@ -114,7 +107,6 @@ export function CartView() {
                     </div>
                   </Link>
 
-                  {/* Details */}
                   <div className="flex flex-1 flex-col gap-1 min-w-0">
                     <Link
                       href={`/product/${product?.slug || ""}`}
@@ -125,7 +117,6 @@ export function CartView() {
                     <p className="text-xs text-muted-foreground">SKU: {variant?.sku}</p>
 
                     <div className="mt-auto flex items-center justify-between gap-4 pt-2">
-                      {/* Quantity controls */}
                       <div className="flex items-center gap-1 rounded-md border">
                         <button
                           className="flex size-7 items-center justify-center rounded-l-md hover:bg-muted disabled:opacity-40"
@@ -146,7 +137,6 @@ export function CartView() {
                         </button>
                       </div>
 
-                      {/* Price */}
                       <div className="flex items-baseline gap-1.5">
                         <span className="text-sm font-semibold">
                           ${(unitPrice * item.quantity).toFixed(2)}
@@ -158,7 +148,6 @@ export function CartView() {
                         )}
                       </div>
 
-                      {/* Remove */}
                       <button
                         className="text-muted-foreground hover:text-destructive transition-colors disabled:opacity-40"
                         disabled={pending}
@@ -174,7 +163,6 @@ export function CartView() {
             })}
           </div>
 
-          {/* Order summary */}
           <div className="h-fit rounded-lg border bg-card p-5 grid gap-4">
             <h2 className="font-semibold">Order summary</h2>
             <Separator />

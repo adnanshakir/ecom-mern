@@ -1,9 +1,9 @@
 import { getPublicProductBySlug } from "@/services/storefront/publicCatalog";
-import { ProductGallery } from "@/components/storefront/ProductGallery";
-import { ProductInteractiveSection } from "@/components/storefront/ProductInteractiveSection";
-import { RelatedProducts } from "@/components/storefront/RelatedProducts";
-import { ExploreProducts } from "@/components/storefront/ExploreProducts";
-import { Breadcrumbs } from "@/components/storefront/Breadcrumbs";
+import { ProductGallery } from "@/components/storefront/products/ProductGallery";
+import { ProductInteractiveSection } from "@/components/storefront/products/ProductInteractiveSection";
+import { RelatedProducts } from "@/components/storefront/products/RelatedProducts";
+import { ExploreProducts } from "@/components/storefront/products/ExploreProducts";
+import { Breadcrumbs } from "@/components/storefront/layout/Breadcrumbs";
 
 async function fetchProduct(slug) {
   try {

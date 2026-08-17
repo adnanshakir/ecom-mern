@@ -1,4 +1,4 @@
-import { WishlistView } from "@/components/storefront/WishlistView";
+import { WishlistView } from "@/components/storefront/wishlist/WishlistView";
 
 export const metadata = {
   title: "My Wishlist | Fibio Wholesale",

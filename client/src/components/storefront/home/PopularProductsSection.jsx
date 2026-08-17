@@ -5,7 +5,7 @@ import Link from "next/link";
 import { ChevronRight, Loader2, PackageX } from "lucide-react";
 import { usePublicProducts } from "@/hooks/storefront/usePublicProducts";
 import { usePublicCategories } from "@/hooks/storefront/usePublicCategories";
-import { ProductCard } from "@/components/storefront/ProductCard";
+import { ProductCard } from "@/components/storefront/products/ProductCard";
 import { Button } from "@/components/ui/button";
 
 export function PopularProductsSection() {

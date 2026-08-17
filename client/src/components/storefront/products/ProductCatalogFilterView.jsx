@@ -15,8 +15,8 @@ import {
 import { usePublicProducts } from "@/hooks/storefront/usePublicProducts";
 import { usePublicCategories } from "@/hooks/storefront/usePublicCategories";
 import { buildChildrenMap } from "@/lib/categoryTree";
-import { ProductCard } from "@/components/storefront/ProductCard";
-import { Breadcrumbs } from "@/components/storefront/Breadcrumbs";
+import { ProductCard } from "@/components/storefront/products/ProductCard";
+import { Breadcrumbs } from "@/components/storefront/layout/Breadcrumbs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
