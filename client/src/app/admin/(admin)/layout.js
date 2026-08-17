@@ -122,7 +122,12 @@ export default function AdminLayout({ children }) {
             )}
           >
             {/* Header */}
-            <div className="flex items-center justify-between px-4 py-4 border-b">
+            <div
+              className={cn(
+                "flex items-center border-b p-3",
+                effectiveCollapsed && !mobileOpen ? "justify-center" : "justify-between"
+              )}
+            >
               {(!effectiveCollapsed || mobileOpen) && (
                 <div className="flex items-center gap-2">
                   <span className="truncate text-base font-bold tracking-tight text-primary">Fibio Admin</span>
@@ -130,7 +135,7 @@ export default function AdminLayout({ children }) {
               )}
 
               <div className="flex items-center gap-1">
-                {mounted && (
+                {mounted && (!effectiveCollapsed || mobileOpen) && (
                   <Button
                     variant="ghost"
                     size="icon"
@@ -147,6 +152,7 @@ export default function AdminLayout({ children }) {
                   size="icon"
                   className="hidden sm:inline-flex size-8"
                   onClick={toggleCollapsed}
+                  title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
                 >
                   {collapsed ? <PanelLeftOpen className="size-4" /> : <PanelLeftClose className="size-4" />}
                 </Button>

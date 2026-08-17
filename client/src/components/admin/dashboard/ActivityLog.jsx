@@ -25,18 +25,18 @@ export function ActivityLog({ items }) {
             <button
               type="button"
               onClick={() => setSelected(log)}
-              className="flex w-full items-center justify-between gap-3 rounded-md px-2 py-2 text-left text-sm hover:bg-accent"
+              className="flex w-full flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 sm:gap-3 rounded-md p-2 text-left text-xs sm:text-sm hover:bg-accent border border-transparent hover:border-border transition-all"
             >
               <div className="flex min-w-0 items-center gap-2">
                 <ActionBadge action={log.action} />
-                <span className="truncate">
+                <span className="truncate font-medium text-foreground">
                   {log.resource}
-                  <span className="text-muted-foreground"> · {log.user?.name || "Someone"}</span>
+                  <span className="text-muted-foreground font-normal"> · {log.user?.name || "Someone"}</span>
                 </span>
               </div>
-              <div className="flex shrink-0 items-center gap-2">
+              <div className="flex items-center justify-between sm:justify-end gap-2 text-xs text-muted-foreground pl-7 sm:pl-0">
                 <RoleBadge role={log.user?.role} />
-                <span className="text-xs text-muted-foreground">{timeAgo(log.createdAt)}</span>
+                <span>{timeAgo(log.createdAt)}</span>
               </div>
             </button>
           </li>

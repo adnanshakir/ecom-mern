@@ -21,15 +21,15 @@ export function LowStockList({ items, threshold }) {
               <button
                 type="button"
                 onClick={() => setSelected(variant)}
-                className="flex w-full items-center justify-between gap-3 rounded-md px-2 py-2 text-left text-sm hover:bg-accent"
+                className="flex w-full flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-3 rounded-md p-2 text-left text-xs sm:text-sm hover:bg-accent border border-transparent hover:border-border transition-all"
               >
-                <div className="min-w-0 truncate">
+                <div className="min-w-0 truncate font-medium">
                   {variant.product?.name || "—"}
-                  <span className="text-muted-foreground"> · {variant.sku}</span>
+                  <span className="text-muted-foreground font-normal"> · {variant.sku}</span>
                 </div>
                 <span
                   className={cn(
-                    "shrink-0 rounded-full px-2 py-0.5 text-xs font-medium",
+                    "self-start sm:self-auto shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium",
                     isOut ? "bg-red-500/10 text-red-500" : "bg-amber-500/10 text-amber-500"
                   )}
                 >

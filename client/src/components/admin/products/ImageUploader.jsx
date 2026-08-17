@@ -199,6 +199,9 @@ export function ImageUploader({
                   <span className="text-[10px] text-muted-foreground">
                     PNG, JPG, WEBP up to 5MB ({effectiveMax - currentImages.length} slot{effectiveMax - currentImages.length === 1 ? "" : "s"} remaining)
                   </span>
+                  <span className="mt-1 inline-flex items-center gap-1 rounded border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                    💡 Tip: Upload .WEBP images for 90%+ faster loading & smaller size
+                  </span>
                   <input
                     type="file"
                     accept="image/*"
