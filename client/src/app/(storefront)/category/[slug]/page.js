@@ -4,7 +4,10 @@ import { getPublicCategories } from "@/services/storefront/publicCatalog";
 async function fetchCategoryBySlug(slug) {
   if (!slug || slug === "all" || slug === "allcategories") return null;
   try {
-    const res = await getPublicCategories();
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("SSR Timeout")), 4000)
+    );
+    const res = await Promise.race([getPublicCategories(), timeoutPromise]);
     const categories = res.data?.data || [];
     return categories.find((c) => c.slug === slug || c._id === slug) || null;
   } catch {

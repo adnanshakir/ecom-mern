@@ -5,8 +5,17 @@ export const injectCustomerStore = (_store) => {
   store = _store;
 };
 
+const getCustomerBaseUrl = () => {
+  if (typeof window !== "undefined") {
+    return process.env.NEXT_PUBLIC_API_URL || "/api";
+  }
+  return process.env.NEXT_PUBLIC_API_URL && process.env.NEXT_PUBLIC_API_URL.startsWith("http")
+    ? process.env.NEXT_PUBLIC_API_URL
+    : "https://ecom-mern-c5wz.onrender.com/api";
+};
+
 const customerApi = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL,
+  baseURL: getCustomerBaseUrl(),
   withCredentials: true,
 });
 

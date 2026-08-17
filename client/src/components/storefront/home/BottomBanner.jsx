@@ -9,7 +9,8 @@ export function BottomBanner() {
   const { banners } = usePublicBanners();
   const bottom = banners.bottom || {};
 
-  const imageUrl = bottom.image?.url || "/bottom-banner.png";
+  const rawImageUrl = bottom.image?.url || "/bottom-banner.webp";
+  const imageUrl = rawImageUrl.endsWith(".png") ? rawImageUrl.replace(/\.png$/, ".webp") : rawImageUrl;
   const title = bottom.title || "Buying in Bulk?";
   const subtitle = bottom.subtitle || "Get special tier discounts, customized tax invoices, and personalized quotations for large wholesale orders.";
   const href = bottom.href || "/contact-us";
@@ -24,6 +25,8 @@ export function BottomBanner() {
         <img
           src={imageUrl}
           alt={title}
+          loading="lazy"
+          decoding="async"
           className="size-full object-cover object-center opacity-90"
         />
       </div>

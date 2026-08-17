@@ -59,10 +59,12 @@ const productSchema = new mongoose.Schema(
         name: { type: String, required: true, trim: true },
         values: { type: [String], required: true },
       },
-    ],
   },
   { timestamps: true }
 );
+
+productSchema.index({ status: 1, createdAt: -1 });
+productSchema.index({ category: 1, status: 1 });
 
 const Product = mongoose.model("Product", productSchema);
 export default Product;

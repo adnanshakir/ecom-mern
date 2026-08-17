@@ -9,7 +9,8 @@ export function HeroBanner() {
   const { banners } = usePublicBanners();
   const hero = banners.hero || {};
 
-  const imageUrl = hero.image?.url || "/hero-banner.png";
+  const rawImageUrl = hero.image?.url || "/hero-banner.webp";
+  const imageUrl = rawImageUrl.endsWith(".png") ? rawImageUrl.replace(/\.png$/, ".webp") : rawImageUrl;
   const title = hero.title || "TRUSTED BY MILLIONS";
   const subtitle = hero.subtitle || "Discover trending products, limited-time offers, and everyday essentials at unbeatable wholesale prices.";
   const href = hero.href || "/catalog/all";
@@ -28,6 +29,7 @@ export function HeroBanner() {
         <img
           src={imageUrl}
           alt={title}
+          decoding="async"
           className="size-full object-cover object-center opacity-90"
         />
         {/* Conditional Gradient overlay */}

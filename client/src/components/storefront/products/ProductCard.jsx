@@ -39,7 +39,13 @@ export function ProductCard({ product }) {
         <div className="relative flex aspect-square items-center justify-center overflow-hidden bg-muted">
           {thumbnail ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={thumbnail} alt={product.name} className={cn("size-full object-cover", !inStock && "opacity-50")} />
+            <img
+              src={thumbnail}
+              alt={product.name}
+              loading="lazy"
+              decoding="async"
+              className={cn("size-full object-cover", !inStock && "opacity-50")}
+            />
           ) : (
             <ImageIcon className="size-8 text-muted-foreground" />
           )}

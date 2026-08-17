@@ -11,7 +11,10 @@ export const metadata = {
 
 async function fetchCategories() {
   try {
-    const res = await getPublicCategories();
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("SSR Timeout")), 4000)
+    );
+    const res = await Promise.race([getPublicCategories(), timeoutPromise]);
     return res.data?.data || [];
   } catch {
     return [];

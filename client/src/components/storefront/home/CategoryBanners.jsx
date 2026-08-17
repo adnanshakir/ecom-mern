@@ -6,16 +6,18 @@ import { usePublicBanners } from "@/hooks/storefront/usePublicBanners";
 
 export function CategoryBanners() {
   const { banners: allBanners } = usePublicBanners();
-
   const left = allBanners["secondary-left"] || {};
   const right = allBanners["secondary-right"] || {};
+
+  const leftImage = (left.image?.url || "/secondary-left.webp").replace(/\.png$/, ".webp");
+  const rightImage = (right.image?.url || "/secondary-ryt.webp").replace(/\.png$/, ".webp");
 
   const banners = [
     {
       id: "secondary-left",
       title: left.title || "Jewellery",
       subtitle: left.subtitle || "Premium collection for every occasion",
-      image: left.image?.url || "/secondary-left.png",
+      image: leftImage,
       href: left.href || "/catalog/jewellery",
       ctaText: left.ctaText || "Explore Now",
       showGradient: left.showGradient ?? true,
@@ -26,7 +28,7 @@ export function CategoryBanners() {
       id: "secondary-right",
       title: right.title || "Mobile Accessories",
       subtitle: right.subtitle || "Trendy accessories for smart devices",
-      image: right.image?.url || "/secondary-ryt.png",
+      image: rightImage,
       href: right.href || "/catalog/mobile-accessories",
       ctaText: right.ctaText || "Explore Now",
       showGradient: right.showGradient ?? true,
@@ -51,6 +53,8 @@ export function CategoryBanners() {
               <img
                 src={banner.image}
                 alt={banner.title}
+                loading="lazy"
+                decoding="async"
                 className="size-full object-cover object-center"
               />
               {banner.showGradient && (

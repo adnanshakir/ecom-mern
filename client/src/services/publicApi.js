@@ -11,6 +11,7 @@ const getBaseUrl = () => {
 
 const publicApi = axios.create({
   baseURL: getBaseUrl(),
+  timeout: 15000,
 });
 
 export default publicApi;
