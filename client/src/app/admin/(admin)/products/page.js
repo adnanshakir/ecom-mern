@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { useSelector } from "react-redux";
-import { Loader2, MoreVertical, Plus, Trash2, CheckSquare, Square } from "lucide-react";
+import { Loader2, MoreVertical, Plus, CheckSquare, Square } from "lucide-react";
 
 import { useProducts } from "@/hooks/admin/useProducts";
 import { useCategories } from "@/hooks/admin/useCategories";
@@ -27,7 +27,7 @@ const STATUS_OPTIONS = [
   { value: "archived", label: "Archived" },
 ];
 
-export default function ProductsPage() {
+function ProductsContent() {
   const [createOpen, setCreateOpen] = useState(false);
   const [isSelecting, setIsSelecting] = useState(false);
   const [selectedIds, setSelectedIds] = useState([]);
@@ -51,8 +51,6 @@ export default function ProductsPage() {
   const { categories } = useCategories();
   const { brands } = useBrands();
 
-  // The list endpoint may or may not populate category/brand — this map
-  // covers both cases so names still resolve when only an ID comes back.
   const categoryById = Object.fromEntries(categories.map((c) => [c._id, c.name]));
   const brandById = Object.fromEntries(brands.map((b) => [b._id, b.name]));
 
@@ -164,10 +162,12 @@ export default function ProductsPage() {
         </div>
 
         <div className="flex items-center gap-2">
-          <Button onClick={() => setCreateOpen(true)}>
-            <Plus className="size-4" />
-            New product
-          </Button>
+          {canWrite && (
+            <Button onClick={() => setCreateOpen(true)}>
+              <Plus className="size-4" />
+              New product
+            </Button>
+          )}
 
           {canWrite && (
             <DropdownMenu>
@@ -325,19 +325,14 @@ export default function ProductsPage() {
               Page {pagination.page} of {pagination.pages || 1} ({pagination.total} total)
             </span>
             <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={filters.page <= 1}
-                onClick={() => setPage(filters.page - 1)}
-              >
+              <Button variant="outline" size="sm" disabled={pagination.page <= 1} onClick={() => setPage(pagination.page - 1)}>
                 Previous
               </Button>
               <Button
                 variant="outline"
                 size="sm"
-                disabled={filters.page >= (pagination.pages || 1)}
-                onClick={() => setPage(filters.page + 1)}
+                disabled={pagination.page >= pagination.pages}
+                onClick={() => setPage(pagination.page + 1)}
               >
                 Next
               </Button>
@@ -351,3 +346,10 @@ export default function ProductsPage() {
   );
 }
 
+export default function AdminProductsPage() {
+  return (
+    <Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Loading products module...</div>}>
+      <ProductsContent />
+    </Suspense>
+  );
+}

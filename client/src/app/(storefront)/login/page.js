@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { AuthFormTabs } from "@/components/storefront/auth/AuthFormTabs";
 
 export const metadata = {
@@ -6,5 +7,9 @@ export const metadata = {
 };
 
 export default function CustomerLoginPage() {
-  return <AuthFormTabs />;
+  return (
+    <Suspense fallback={null}>
+      <AuthFormTabs />
+    </Suspense>
+  );
 }
