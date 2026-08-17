@@ -9,8 +9,17 @@ export const injectStore = (_store) => {
   store = _store;
 };
 
+const getAdminBaseUrl = () => {
+  if (typeof window !== "undefined") {
+    return process.env.NEXT_PUBLIC_API_URL || "/api";
+  }
+  return process.env.NEXT_PUBLIC_API_URL && process.env.NEXT_PUBLIC_API_URL.startsWith("http")
+    ? process.env.NEXT_PUBLIC_API_URL
+    : "https://ecom-mern-c5wz.onrender.com/api";
+};
+
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || "/api",
+  baseURL: getAdminBaseUrl(),
   withCredentials: true, // send/receive the httpOnly refresh cookie
 });
 

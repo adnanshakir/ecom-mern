@@ -80,8 +80,7 @@ export default function AdminLayout({ children }) {
   const visibleNavItems = NAV_ITEMS.filter((item) => user?.role && item.allow.includes(user.role));
 
   return (
-    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
-      <TooltipProvider delayDuration={200}>
+    <TooltipProvider delayDuration={200}>
         <div className="flex h-screen overflow-hidden">
           {mobileOpen && (
             <div className="fixed inset-0 z-40 bg-black/50 sm:hidden" onClick={() => setMobileOpen(false)} />
@@ -186,6 +185,5 @@ export default function AdminLayout({ children }) {
           </div>
         </div>
       </TooltipProvider>
-    </ThemeProvider>
   );
 }
