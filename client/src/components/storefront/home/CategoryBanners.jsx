@@ -55,35 +55,50 @@ export function CategoryBanners() {
                 alt={banner.title}
                 loading="lazy"
                 decoding="async"
-                className="size-full object-cover object-center"
+                className="size-full object-cover max-sm:object-[80%_center] sm:object-center transition-transform duration-500 group-hover:scale-105"
               />
               {banner.showGradient && (
-                banner.overlayColor && banner.overlayColor.startsWith("#") ? (
-                  <div
-                    className={`absolute inset-0 sm:w-3/4 ${
-                      isRight ? "right-0 left-auto sm:ml-auto" : "left-0 right-auto"
-                    }`}
-                    style={{
-                      background: isRight
-                        ? `linear-gradient(to left, ${banner.overlayColor}F2, ${banner.overlayColor}D9 40%, transparent)`
-                        : `linear-gradient(to right, ${banner.overlayColor}F2, ${banner.overlayColor}D9 40%, transparent)`,
-                    }}
-                  />
-                ) : (
-                  <div
-                    className={`absolute inset-0 sm:w-3/4 ${
-                      isRight
-                        ? "right-0 left-auto bg-gradient-to-l from-background/95 via-background/85 to-transparent sm:ml-auto"
-                        : "left-0 right-auto bg-gradient-to-r from-background/95 via-background/85 to-transparent"
-                    }`}
-                  />
-                )
+                <>
+                  {/* Mobile Gradient Overlay (Left-to-Right gradient covering text area) */}
+                  {banner.overlayColor && banner.overlayColor.startsWith("#") ? (
+                    <div
+                      className="absolute inset-y-0 left-0 right-auto w-4/5 sm:hidden pointer-events-none"
+                      style={{
+                        background: `linear-gradient(to right, ${banner.overlayColor}FA 0%, ${banner.overlayColor}D9 55%, transparent 100%)`,
+                      }}
+                    />
+                  ) : (
+                    <div className="absolute inset-y-0 left-0 right-auto w-4/5 sm:hidden pointer-events-none bg-gradient-to-r from-background via-background/95 to-transparent" />
+                  )}
+
+                  {/* Desktop Gradient Overlay (Left-to-Right / Right-to-Left fade) */}
+                  {banner.overlayColor && banner.overlayColor.startsWith("#") ? (
+                    <div
+                      className={`hidden sm:block absolute inset-0 sm:w-3/4 ${
+                        isRight ? "right-0 left-auto sm:ml-auto" : "left-0 right-auto"
+                      }`}
+                      style={{
+                        background: isRight
+                          ? `linear-gradient(to left, ${banner.overlayColor}F2, ${banner.overlayColor}D9 40%, transparent)`
+                          : `linear-gradient(to right, ${banner.overlayColor}F2, ${banner.overlayColor}D9 40%, transparent)`,
+                      }}
+                    />
+                  ) : (
+                    <div
+                      className={`hidden sm:block absolute inset-0 sm:w-3/4 ${
+                        isRight
+                          ? "right-0 left-auto bg-gradient-to-l from-background/95 via-background/85 to-transparent sm:ml-auto"
+                          : "left-0 right-auto bg-gradient-to-r from-background/95 via-background/85 to-transparent"
+                      }`}
+                    />
+                  )}
+                </>
               )}
             </div>
 
             {/* Card Content */}
             <div
-              className={`relative z-10 flex flex-col justify-center p-6 sm:p-8 sm:w-2/3 ${
+              className={`relative z-10 flex flex-col justify-center p-5 sm:p-8 w-4/5 sm:w-2/3 ${
                 isRight ? "ml-auto text-right items-end" : "text-left items-start"
               }`}
             >

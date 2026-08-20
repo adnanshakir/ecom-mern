@@ -72,24 +72,24 @@ export function HeroBanner() {
         </div>
 
         {/* Value Propositions / Feature Badges */}
-        <div className="flex flex-wrap items-center justify-center gap-3 text-xs sm:gap-6 sm:text-sm">
-          <div className="flex items-center gap-2 rounded-full bg-black/30 px-4 py-2 backdrop-blur-sm border border-white/10">
-            <div className="flex size-6 items-center justify-center rounded-full bg-white/20 text-amber-300">
-              <Tag className="size-3.5" />
+        <div className="flex flex-wrap items-center justify-center gap-2.5 sm:gap-6 text-xs sm:text-sm">
+          <div className="flex items-center gap-1.5 sm:gap-2 rounded-full bg-black/30 px-3 py-1.5 sm:px-4 sm:py-2 backdrop-blur-sm border border-white/10">
+            <div className="flex size-5 sm:size-6 items-center justify-center rounded-full bg-white/20 text-amber-300">
+              <Tag className="size-3 sm:size-3.5" />
             </div>
             <span className="font-medium text-slate-100">Lowest Wholesale Prices</span>
           </div>
 
-          <div className="flex items-center gap-2 rounded-full bg-black/30 px-4 py-2 backdrop-blur-sm border border-white/10">
-            <div className="flex size-6 items-center justify-center rounded-full bg-white/20 text-teal-300">
-              <Package className="size-3.5" />
+          <div className="flex items-center gap-1.5 sm:gap-2 rounded-full bg-black/30 px-3 py-1.5 sm:px-4 sm:py-2 backdrop-blur-sm border border-white/10">
+            <div className="flex size-5 sm:size-6 items-center justify-center rounded-full bg-white/20 text-teal-300">
+              <Package className="size-3 sm:size-3.5" />
             </div>
             <span className="font-medium text-slate-100">Bulk Order Discounts</span>
           </div>
 
-          <div className="flex items-center gap-2 rounded-full bg-black/30 px-4 py-2 backdrop-blur-sm border border-white/10">
-            <div className="flex size-6 items-center justify-center rounded-full bg-white/20 text-emerald-300">
-              <Truck className="size-3.5" />
+          <div className="flex items-center gap-1.5 sm:gap-2 rounded-full bg-black/30 px-3 py-1.5 sm:px-4 sm:py-2 backdrop-blur-sm border border-white/10">
+            <div className="flex size-5 sm:size-6 items-center justify-center rounded-full bg-white/20 text-emerald-300">
+              <Truck className="size-3 sm:size-3.5" />
             </div>
             <span className="font-medium text-slate-100">Fast & Safe Delivery</span>
           </div>
