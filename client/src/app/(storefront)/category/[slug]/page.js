@@ -1,44 +1,17 @@
+"use client";
+
+import { use } from "react";
+import { usePublicCategories } from "@/hooks/storefront/usePublicCategories";
 import { ProductCatalogFilterView } from "@/components/storefront/products/ProductCatalogFilterView";
-import { getPublicCategories } from "@/services/storefront/publicCatalog";
 
-async function fetchCategoryBySlug(slug) {
-  if (!slug || slug === "all" || slug === "allcategories") return null;
-  try {
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error("SSR Timeout")), 4000)
-    );
-    const res = await Promise.race([getPublicCategories(), timeoutPromise]);
-    const categories = res.data?.data || [];
-    return categories.find((c) => c.slug === slug || c._id === slug) || null;
-  } catch {
-    return null;
-  }
-}
-
-export async function generateMetadata({ params }) {
-  const { slug } = await params;
+export default function CategoryPage({ params }) {
+  const { slug } = use(params);
   const activeCategorySlug = (slug === "allcategories" || slug === "all") ? null : slug;
+  const { categories } = usePublicCategories();
 
-  if (!activeCategorySlug) {
-    return {
-      title: "All Wholesale Products | Fibio Wholesale",
-      description: "Browse all wholesale products across all categories.",
-    };
-  }
-
-  const currentCategory = await fetchCategoryBySlug(activeCategorySlug);
-  const categoryName = currentCategory ? currentCategory.name : activeCategorySlug;
-
-  return {
-    title: `${categoryName} Wholesale Products | Fibio Wholesale`,
-    description: `Shop bulk ${categoryName} at unbeatable wholesale prices.`,
-  };
-}
-
-export default async function CategoryPage({ params }) {
-  const { slug } = await params;
-  const activeCategorySlug = (slug === "allcategories" || slug === "all") ? null : slug;
-  const currentCategory = await fetchCategoryBySlug(activeCategorySlug);
+  const currentCategory = activeCategorySlug
+    ? categories.find((c) => c.slug === activeCategorySlug || c._id === activeCategorySlug) || null
+    : null;
 
   return (
     <ProductCatalogFilterView

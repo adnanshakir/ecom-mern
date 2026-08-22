@@ -1,28 +1,13 @@
+"use client";
+
 import Link from "next/link";
-import { ArrowUpRight, Image } from "lucide-react";
-import { getPublicCategories } from "@/services/storefront/publicCatalog";
+import { ArrowUpRight, Image, Loader2 } from "lucide-react";
+import { usePublicCategories } from "@/hooks/storefront/usePublicCategories";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { Breadcrumbs } from "@/components/storefront/layout/Breadcrumbs";
 
-export const metadata = {
-  title: "Category Catalog | Fibio Wholesale",
-  description: "Explore our full wholesale category catalog. Select any category to view all available products and bulk deals.",
-};
-
-async function fetchCategories() {
-  try {
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error("SSR Timeout")), 4000)
-    );
-    const res = await Promise.race([getPublicCategories(), timeoutPromise]);
-    return res.data?.data || [];
-  } catch {
-    return [];
-  }
-}
-
-export default async function CatalogPage() {
-  const categories = await fetchCategories();
+export default function CatalogPage() {
+  const { categories, loading, error } = usePublicCategories();
 
   return (
     <PageContainer className="space-y-8 py-8">
@@ -39,12 +24,22 @@ export default async function CatalogPage() {
         </p>
       </div>
 
-      {/* Categories Grid (Displaying All Categories) */}
-      {categories.length === 0 ? (
+      {/* Loading State */}
+      {loading ? (
+        <div className="flex flex-col items-center justify-center gap-3 py-20 text-muted-foreground">
+          <Loader2 className="size-8 animate-spin text-[#033936]" />
+          <p className="text-sm font-medium">Loading categories...</p>
+        </div>
+      ) : error ? (
+        <div className="py-12 text-center text-sm text-destructive">
+          {error}
+        </div>
+      ) : categories.length === 0 ? (
         <div className="py-12 text-center text-sm text-muted-foreground">
           No categories found.
         </div>
       ) : (
+        /* Categories Grid (Displaying All Categories) */
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 sm:gap-6">
           {categories.map((category) => {
             const imageUrl = category.image?.url;
