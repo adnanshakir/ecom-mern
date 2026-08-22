@@ -8,7 +8,8 @@ import { usePublicCategories } from "@/hooks/storefront/usePublicCategories";
 import { ProductCard } from "@/components/storefront/products/ProductCard";
 import { Button } from "@/components/ui/button";
 
-export function PopularProductsSection() {
+export function
+PopularProductsSection() {
   const [selectedCategory, setSelectedCategory] = useState(null);
   const { categories } = usePublicCategories();
 
@@ -86,7 +87,7 @@ export function PopularProductsSection() {
           <p className="text-sm font-medium">No products found in this category.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 sm:gap-6">
           {products.slice(0, 12).map((product) => (
             <ProductCard key={product._id} product={product} />
           ))}

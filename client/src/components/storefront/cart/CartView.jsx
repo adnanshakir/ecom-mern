@@ -63,9 +63,7 @@ export function CartView() {
           <ShoppingBag className="size-12 text-muted-foreground/40" />
           <div>
             <p className="font-medium">Your cart is empty</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Browse products and add something you like.
-            </p>
+            <p className="mt-1 text-sm text-muted-foreground">Browse products and add something you like.</p>
           </div>
           <Button asChild variant="outline">
             <Link href="/">Continue shopping</Link>
@@ -88,18 +86,11 @@ export function CartView() {
                   className="flex gap-4 p-4 transition-opacity"
                   style={{ opacity: pending ? 0.6 : 1 }}
                 >
-                  <Link
-                    href={`/product/${product?.slug || ""}`}
-                    className="block shrink-0"
-                  >
+                  <Link href={`/product/${product?.slug || ""}`} className="block shrink-0">
                     <div className="size-20 overflow-hidden rounded-md border bg-muted">
                       {thumbnail ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={thumbnail}
-                          alt={product?.name}
-                          className="size-full object-cover"
-                        />
+                        <img src={thumbnail} alt={product?.name} className="size-full object-cover" />
                       ) : (
                         <div className="flex size-full items-center justify-center text-muted-foreground text-xs">
                           No image
@@ -126,9 +117,7 @@ export function CartView() {
                         >
                           <Minus className="size-3" />
                         </button>
-                        <span className="min-w-[2rem] text-center text-sm font-medium">
-                          {item.quantity}
-                        </span>
+                        <span className="min-w-[2rem] text-center text-sm font-medium">{item.quantity}</span>
                         <button
                           className="flex size-7 items-center justify-center rounded-r-md hover:bg-muted disabled:opacity-40"
                           disabled={pending || item.quantity >= (variant?.stock || 1)}
@@ -139,9 +128,7 @@ export function CartView() {
                       </div>
 
                       <div className="flex items-baseline gap-1.5">
-                        <span className="text-sm font-semibold">
-                          {formatPrice(unitPrice * item.quantity)}
-                        </span>
+                        <span className="text-sm font-semibold">{formatPrice(unitPrice * item.quantity)}</span>
                         {hasSale && (
                           <span className="text-xs text-muted-foreground line-through">
                             {formatPrice(variant.price * item.quantity)}

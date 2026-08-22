@@ -31,7 +31,7 @@ export function ExploreProducts({ excludeProductId, excludeCategoryId }) {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 sm:gap-6">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 sm:gap-6">
         {displayProducts.slice(0, 12).map((product) => (
           <ProductCard key={product._id} product={product} />
         ))}

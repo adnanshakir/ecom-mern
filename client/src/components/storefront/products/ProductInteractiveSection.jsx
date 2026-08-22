@@ -17,14 +17,10 @@ export function ProductInteractiveSection({ product }) {
   const [quantity, setQuantity] = useState(1);
   const { optionTypes, selectedOptions, setOption, selectedVariant } = useVariantSelector(product);
 
-  const isCustomerAuthed = useSelector(
-    (state) => state.customerAuth.status === "authenticated"
-  );
+  const isCustomerAuthed = useSelector((state) => state.customerAuth.status === "authenticated");
 
   const { addItem, isPending: isCartPending } = useCart();
-  const { isWishlisted, isPending: isWishlistPending, toggle: toggleWishlist } = useWishlist(
-    product?._id
-  );
+  const { isWishlisted, isPending: isWishlistPending, toggle: toggleWishlist } = useWishlist(product?._id);
 
   const inStock = (selectedVariant?.stock || 0) > 0;
   const price = selectedVariant?.salePrice || selectedVariant?.price;
@@ -63,14 +59,10 @@ export function ProductInteractiveSection({ product }) {
         {hasSale ? (
           <>
             <span className="text-2xl font-semibold">{formatPrice(price)}</span>
-            <span className="text-sm text-muted-foreground line-through">
-              {formatPrice(selectedVariant.price)}
-            </span>
+            <span className="text-sm text-muted-foreground line-through">{formatPrice(selectedVariant.price)}</span>
           </>
         ) : (
-          <span className="text-2xl font-semibold">
-            {formatPrice(price)}
-          </span>
+          <span className="text-2xl font-semibold">{formatPrice(price)}</span>
         )}
       </div>
 
@@ -85,23 +77,13 @@ export function ProductInteractiveSection({ product }) {
         {inStock ? "In stock" : "Out of stock"}
       </span>
 
-      {product.description && (
-        <p className="text-sm text-muted-foreground">{product.description}</p>
-      )}
+      {product.description && <p className="text-sm text-muted-foreground">{product.description}</p>}
 
-      <VariantSelector
-        optionTypes={optionTypes}
-        selectedOptions={selectedOptions}
-        onSelect={setOption}
-      />
+      <VariantSelector optionTypes={optionTypes} selectedOptions={selectedOptions} onSelect={setOption} />
 
       <div className="grid gap-2">
         <span className="text-sm font-medium">Quantity</span>
-        <QuantitySelector
-          value={quantity}
-          onChange={setQuantity}
-          max={selectedVariant?.stock || 1}
-        />
+        <QuantitySelector value={quantity} onChange={setQuantity} max={selectedVariant?.stock || 1} />
       </div>
 
       <div className="flex gap-2">
@@ -125,9 +107,7 @@ export function ProductInteractiveSection({ product }) {
           onClick={handleToggleWishlist}
           title={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
         >
-          <Heart
-            className={cn("size-4", isWishlisted && "fill-current text-rose-500")}
-          />
+          <Heart className={cn("size-4", isWishlisted && "fill-current text-rose-500")} />
         </Button>
       </div>
     </div>

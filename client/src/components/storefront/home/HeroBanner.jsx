@@ -44,7 +44,7 @@ export function HeroBanner() {
       </div>
 
       {/* Content Container */}
-      <div className="relative z-10 mx-auto flex min-h-[420px] max-w-7xl flex-col items-center justify-center px-4 py-12 text-center sm:min-h-[480px] sm:px-6 md:py-20 lg:px-8">
+      <div className="relative z-10 mx-auto flex min-h-[420px] max-w-400 flex-col items-center justify-center px-4 py-12 text-center sm:min-h-[480px] sm:px-6 md:py-20 lg:px-8">
         {/* Main Heading */}
         <h1 className="mb-4 text-3xl font-black tracking-tight text-white sm:text-5xl md:text-6xl lg:text-7xl uppercase drop-shadow-md">
           {title}

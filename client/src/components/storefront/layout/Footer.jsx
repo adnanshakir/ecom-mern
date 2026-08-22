@@ -31,7 +31,7 @@ const FOOTER_SECTIONS = [
 export function Footer() {
   return (
     <footer className="border-t bg-muted/30">
-      <div className="mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:grid-cols-2 sm:px-6 lg:grid-cols-4 lg:px-8">
+      <div className="mx-auto grid max-w-400 gap-8 px-4 py-10 sm:grid-cols-2 sm:px-6 lg:grid-cols-4 lg:px-8">
         <div>
           <span className="text-lg font-bold">Fibio</span>
           <span className="ml-1.5 text-xs text-muted-foreground">Wholesale</span>

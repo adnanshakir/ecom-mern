@@ -31,7 +31,7 @@ export default function ProductPage({ params }) {
   }
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 space-y-12">
+    <div className="mx-auto max-w-400 px-4 py-6 sm:px-6 lg:px-8 space-y-12">
       <Breadcrumbs
         items={[
           { label: "Home", href: "/" },
@@ -43,7 +43,7 @@ export default function ProductPage({ params }) {
         ]}
       />
 
-      <div className="grid gap-8 lg:grid-cols-[440px_1fr]">
+      <div className="grid gap-8 lg:grid-cols-[580px_1fr] xl:grid-cols-[640px_1fr]">
         <ProductGallery productImages={product.images} />
         <ProductInteractiveSection product={product} />
       </div>

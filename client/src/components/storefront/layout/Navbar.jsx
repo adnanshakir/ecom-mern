@@ -32,7 +32,7 @@ export function Navbar() {
 
   return (
     <header className="border-b bg-background">
-      <div className="mx-auto max-w-7xl px-4 py-3 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-400 px-4 py-3 sm:px-6 lg:px-8">
         {/* Desktop Single-Row & Mobile Top Row */}
         <div className="flex items-center justify-between gap-4 md:gap-6">
           {/* Logo */}

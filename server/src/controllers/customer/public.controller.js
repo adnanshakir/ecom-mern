@@ -102,6 +102,7 @@ export const getPublicProducts = async (req, res, next) => {
       const key = v.product.toString();
       if (!variantMap[key]) variantMap[key] = [];
       variantMap[key].push({
+        _id: v._id,
         price: v.price,
         salePrice: v.salePrice,
         stock: v.stock,
