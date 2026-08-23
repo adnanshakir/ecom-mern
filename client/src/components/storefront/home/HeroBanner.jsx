@@ -13,7 +13,7 @@ export function HeroBanner() {
   const imageUrl = rawImageUrl.endsWith(".png") ? rawImageUrl.replace(/\.png$/, ".webp") : rawImageUrl;
   const title = hero.title || "TRUSTED BY MILLIONS";
   const subtitle = hero.subtitle || "Discover trending products, limited-time offers, and everyday essentials at unbeatable wholesale prices.";
-  const href = hero.href || "/catalog/all";
+  const href = hero.href || "/category/all";
   const ctaText = hero.ctaText || "Shop Now";
   const showGradient = hero.showGradient ?? true;
   const overlayColor = hero.overlayColor || "#033936";

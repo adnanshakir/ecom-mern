@@ -249,7 +249,7 @@ export default function AdminBannersPage() {
                     <Input
                       value={banner.href || ""}
                       onChange={(e) => handleChange(cfg.key, "href", e.target.value)}
-                      placeholder="e.g. /catalog/jewellery"
+                      placeholder="e.g. /category/jewellery"
                       disabled={!canWrite}
                     />
                   </div>

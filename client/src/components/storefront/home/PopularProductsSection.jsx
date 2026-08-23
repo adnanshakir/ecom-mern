@@ -35,7 +35,7 @@ PopularProductsSection() {
         </div>
 
         <Button variant="outline" size="sm" asChild className="self-start rounded-full border-[#033936] text-[#033936] hover:bg-[#033936] hover:text-white sm:self-auto">
-          <Link href="/catalog" className="flex items-center gap-1">
+          <Link href="/category" className="flex items-center gap-1">
             <span>View All Products</span>
             <ChevronRight className="size-4" />
           </Link>

@@ -36,8 +36,8 @@ export default function ProductPage({ params }) {
         items={[
           { label: "Home", href: "/" },
           {
-            label: product.category?.name || "Catalog",
-            href: `/catalog/${product.category?.slug || product.category?._id || "all"}`,
+            label: product.category?.name || "Categories",
+            href: `/category/${product.category?.slug || product.category?._id || "all"}`,
           },
           { label: product.name },
         ]}

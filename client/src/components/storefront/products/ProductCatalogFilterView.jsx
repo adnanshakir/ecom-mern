@@ -134,9 +134,9 @@ export function ProductCatalogFilterView({
   const handleCategorySelect = (slugOrId) => {
     setSelectedCategory(slugOrId);
     if (!slugOrId) {
-      router.push("/catalog/all");
+      router.push("/category/all");
     } else {
-      router.push(`/catalog/${slugOrId}`);
+      router.push(`/category/${slugOrId}`);
     }
   };
 
@@ -410,7 +410,7 @@ export function ProductCatalogFilterView({
 
   const activeBreadcrumbs = [
     { label: "Home", href: "/" },
-    { label: "Catalog", href: "/catalog" },
+    { label: "Categories", href: "/category" },
     ...(selectedCategory && currentCategoryObj
       ? [{ label: currentCategoryObj.name }]
       : selectedCategory

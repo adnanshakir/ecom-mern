@@ -19,7 +19,7 @@ export default function CategoryPage({ params }) {
       titleOverride={currentCategory ? currentCategory.name : undefined}
       breadcrumbs={[
         { label: "Home", href: "/" },
-        { label: "Catalog", href: "/catalog" },
+        { label: "Categories", href: "/category" },
         ...(currentCategory ? [{ label: currentCategory.name }] : []),
       ]}
     />
