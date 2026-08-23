@@ -14,6 +14,7 @@ export * from "./home/ShopByCategory";
 export * from "./home/ShopByBudget";
 export * from "./home/BrandLogos";
 export * from "./home/TrustFeaturesBar";
+export * from "./home/FaqSection";
 
 // Products
 export * from "./products/ProductCard";
