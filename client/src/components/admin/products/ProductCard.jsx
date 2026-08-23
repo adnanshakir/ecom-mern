@@ -6,6 +6,8 @@ import { StatusBadge } from "@/components/admin/products/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { formatPrice } from "@/lib/formatCurrency";
+import { getDisplayPrice } from "@/lib/productPrice";
 
 export function ProductCard({
   product,
@@ -18,6 +20,10 @@ export function ProductCard({
   onToggleSelect,
 }) {
   const thumbnail = product.images?.[0]?.url;
+  const variants = product.variants || [];
+  const variantCount = variants.length;
+  const price = getDisplayPrice(variants);
+  const discountedVariant = variants.find((v) => v.salePrice && v.salePrice < v.price);
 
   return (
     <Card className="group relative overflow-hidden p-0 transition-all">
@@ -64,6 +70,25 @@ export function ProductCard({
           <p className="truncate text-xs text-muted-foreground">
             {brandName} · {categoryName}
           </p>
+
+          <div className="mt-2 flex items-center justify-between gap-1 text-xs">
+            <div className="flex items-baseline gap-1.5 font-semibold">
+              {discountedVariant ? (
+                <>
+                  <span className="text-red-600 dark:text-red-400">{formatPrice(discountedVariant.salePrice)}</span>
+                  <span className="text-[11px] font-normal text-muted-foreground line-through">
+                    {formatPrice(discountedVariant.price)}
+                  </span>
+                </>
+              ) : (
+                <span>{formatPrice(price)}</span>
+              )}
+            </div>
+
+            <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">
+              {variantCount} {variantCount === 1 ? "variant" : "variants"}
+            </span>
+          </div>
         </div>
       </Link>
 

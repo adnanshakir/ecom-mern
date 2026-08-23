@@ -18,6 +18,7 @@ import { FormErrorSummary } from "@/components/shared/FormErrorSummary";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { formatPrice } from "@/lib/formatCurrency";
 import {
   Table,
   TableHeader,
@@ -45,17 +46,23 @@ export default function ProductDetailPage() {
   return (
     <RoleGate allow={["super_admin", "admin"]}>
       <div className="grid w-full gap-4">
-        <div className="flex items-center justify-between">
-          <Button variant="ghost" size="sm" onClick={() => router.push("/admin/products")}>
+        <div className="flex items-center justify-between border-b border-border/40 pb-3">
+          <Button variant="ghost" size="sm" onClick={() => router.push("/admin/products")} className="gap-1.5 text-muted-foreground hover:text-foreground">
             <ArrowLeft className="size-4" />
             Back to products
           </Button>
 
-          {!loading && !error && !editing && (
-            <Button size="sm" onClick={() => setEditing(true)}>
-              <Pencil className="size-4" />
-              Edit
-            </Button>
+          {!loading && !error && (
+            editing ? (
+              <Button variant="outline" size="sm" onClick={() => setEditing(false)}>
+                Done editing
+              </Button>
+            ) : (
+              <Button size="sm" onClick={() => setEditing(true)}>
+                <Pencil className="size-4" />
+                Edit product
+              </Button>
+            )
           )}
         </div>
 
@@ -219,7 +226,16 @@ function VariantsTab({ productId, optionTypes, onChanged }) {
             {variants.map((variant) => (
               <TableRow key={variant._id}>
                 <TableCell>{variant.sku}</TableCell>
-                <TableCell>{variant.price}</TableCell>
+                <TableCell>
+                  {variant.salePrice ? (
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="font-medium text-red-600 dark:text-red-400">{formatPrice(variant.salePrice)}</span>
+                      <span className="text-xs text-muted-foreground line-through">{formatPrice(variant.price)}</span>
+                    </div>
+                  ) : (
+                    formatPrice(variant.price)
+                  )}
+                </TableCell>
                 <TableCell>{variant.stock}</TableCell>
                 <TableCell className="text-right">
                   <Button variant="ghost" size="icon" onClick={() => openEditDialog(variant)}>

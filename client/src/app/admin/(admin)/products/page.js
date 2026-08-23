@@ -26,6 +26,12 @@ const STATUS_OPTIONS = [
   { value: "active", label: "Active" },
   { value: "archived", label: "Archived" },
 ];
+const LIMIT_OPTIONS = [
+  { value: "10", label: "10 per page" },
+  { value: "20", label: "20 per page" },
+  { value: "50", label: "50 per page" },
+  { value: "100", label: "100 per page" },
+];
 
 function ProductsContent() {
   const [createOpen, setCreateOpen] = useState(false);
@@ -155,6 +161,19 @@ function ProductsContent() {
               {STATUS_OPTIONS.map((s) => (
                 <SelectItem key={s.value} value={s.value}>
                   {s.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={String(filters.limit || 20)} onValueChange={(v) => setFilter("limit", Number(v))}>
+            <SelectTrigger className="w-full sm:w-36">
+              <SelectValue placeholder="Per page">{filters.limit || 20} per page</SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {LIMIT_OPTIONS.map((l) => (
+                <SelectItem key={l.value} value={l.value}>
+                  {l.label}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -320,10 +339,29 @@ function ProductsContent() {
             ))}
           </div>
 
-          <div className="flex items-center justify-between text-sm text-muted-foreground">
-            <span>
-              Page {pagination.page} of {pagination.pages || 1} ({pagination.total} total)
-            </span>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-sm text-muted-foreground pt-2">
+            <div className="flex items-center gap-3">
+              <span>
+                Showing {products.length > 0 ? (pagination.page - 1) * (filters.limit || 20) + 1 : 0} -{" "}
+                {Math.min(pagination.page * (filters.limit || 20), pagination.total)} of {pagination.total} products
+              </span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs">Per page:</span>
+                <Select value={String(filters.limit || 20)} onValueChange={(v) => setFilter("limit", Number(v))}>
+                  <SelectTrigger className="h-8 w-[95px] text-xs">
+                    <SelectValue placeholder="Limit">{filters.limit || 20} / page</SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {LIMIT_OPTIONS.map((l) => (
+                      <SelectItem key={l.value} value={l.value} className="text-xs">
+                        {l.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
             <div className="flex gap-2">
               <Button variant="outline" size="sm" disabled={pagination.page <= 1} onClick={() => setPage(pagination.page - 1)}>
                 Previous
