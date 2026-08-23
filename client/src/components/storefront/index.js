@@ -10,6 +10,8 @@ export * from "./home/HeroBanner";
 export * from "./home/CategoryBanners";
 export * from "./home/BottomBanner";
 export * from "./home/PopularProductsSection";
+export * from "./home/ShopByCategory";
+export * from "./home/ShopByBudget";
 export * from "./home/BrandLogos";
 export * from "./home/TrustFeaturesBar";
 
