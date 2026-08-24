@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { previewImport, confirmImport, rollbackImport } from "@/services/admin/csvImport";
+import { useConfirm } from "@/hooks/useConfirm";
 
 export function useCsvImport() {
   const [file, setFile] = useState(null);
@@ -56,21 +57,21 @@ export function useCsvImport() {
     }
   };
 
-  const runRollback = async () => {
+  const { confirmState, requestConfirm, handleConfirm, handleCancel } = useConfirm();
+
+  const runRollback = () => {
     if (!confirmResult?.importJobId) return;
-    if (!window.confirm("Undo this import? This removes all products it created.")) return;
 
-    setRollingBack(true);
-    setRollbackError(null);
-
-    try {
-      await rollbackImport(confirmResult.importJobId);
-      setRolledBack(true);
-    } catch (err) {
-      setRollbackError(err.response?.data?.message || "Failed to roll back import");
-    } finally {
-      setRollingBack(false);
-    }
+    requestConfirm({
+      title: "Undo import?",
+      description: "This will remove all products created by this import.",
+      confirmLabel: "Undo import",
+      destructive: true,
+      onConfirm: async () => {
+        await rollbackImport(confirmResult.importJobId);
+        setRolledBack(true);
+      },
+    });
   };
 
   const reset = () => {
@@ -101,5 +102,8 @@ export function useCsvImport() {
     rolledBack,
     runRollback,
     reset,
+    confirmState,
+    handleConfirm: handleConfirm,
+    handleCancel: handleCancel,
   };
 }

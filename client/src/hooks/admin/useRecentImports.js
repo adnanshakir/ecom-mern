@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { getImportJobs, rollbackImport } from "@/services/admin/csvImport";
+import { useConfirm } from "@/hooks/useConfirm";
 
 export function useRecentImports() {
   const [jobs, setJobs] = useState([]);
@@ -21,17 +22,25 @@ export function useRecentImports() {
     fetchJobs();
   }, [fetchJobs]);
 
-  const rollback = async (job) => {
-    setRollingBackId(job._id);
-    try {
-      await rollbackImport(job._id);
-      fetchJobs(); // status now comes back as "rolled_back" from the server
-    } catch (err) {
-      alert(err.response?.data?.message || "Failed to roll back import");
-    } finally {
-      setRollingBackId(null);
-    }
+  const { confirmState, requestConfirm, handleConfirm, handleCancel } = useConfirm();
+
+  const rollback = (job) => {
+    requestConfirm({
+      title: "Roll back import?",
+      description: `This will remove all products created by import "${job.fileName || job._id}".`,
+      confirmLabel: "Roll back",
+      destructive: true,
+      onConfirm: async () => {
+        setRollingBackId(job._id);
+        try {
+          await rollbackImport(job._id);
+          fetchJobs();
+        } finally {
+          setRollingBackId(null);
+        }
+      },
+    });
   };
 
-  return { jobs, loading, error, rollingBackId, rollback, fetchJobs };
+  return { jobs, loading, error, rollingBackId, rollback, fetchJobs, confirmState, handleConfirm, handleCancel };
 }

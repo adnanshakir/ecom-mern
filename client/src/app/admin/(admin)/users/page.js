@@ -7,6 +7,7 @@ import { useCreateUser } from "@/hooks/admin/useCreateUser";
 import { useUsers } from "@/hooks/admin/useUsers";
 import { userRoles } from "@/schemas/admin/user";
 import { ApiErrorSummary } from "@/components/shared/ApiErrorSummary";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { RoleGate } from "@/components/admin/RoleGate";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -52,6 +53,9 @@ function UsersTable() {
     openEditDialog,
     submit,
     remove,
+    confirmState,
+    handleConfirm,
+    handleCancel,
   } = useUsers();
 
   const {
@@ -373,6 +377,9 @@ function UsersTable() {
           </Form>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirm Dialog */}
+      <ConfirmDialog {...confirmState} onConfirm={handleConfirm} onCancel={handleCancel} />
     </div>
   );
 }

@@ -19,6 +19,7 @@ import { useCategories } from "@/hooks/admin/useCategories";
 import { buildChildrenMap } from "@/lib/categoryTree";
 import { ImageUploader } from "@/components/admin/products/ImageUploader";
 import { ApiErrorSummary } from "@/components/shared/ApiErrorSummary";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -57,6 +58,9 @@ export default function CategoriesPage() {
     submit,
     remove,
     parentOptions, // now computed in useCategories per your update
+    confirmState,
+    handleConfirm,
+    handleCancel,
   } = useCategories();
 
   const childrenMap = buildChildrenMap(categories);
@@ -72,11 +76,12 @@ export default function CategoriesPage() {
       const row = (
         <TableRow
           key={category._id}
-          className={hasChildren ? "cursor-pointer" : undefined}
+          className={hasChildren ? "cursor-pointer select-none" : undefined}
           onClick={hasChildren ? () => toggleExpanded(category._id) : undefined}
         >
           <TableCell>
-            <span style={{ paddingLeft: `${depth * 1.25}rem` }} className="inline-flex items-center gap-2">
+            <div style={{ paddingLeft: `${depth * 1.5}rem` }} className="flex items-center gap-2.5">
+              {/* Expand / collapse toggle */}
               {hasChildren ? (
                 <button
                   type="button"
@@ -84,28 +89,31 @@ export default function CategoriesPage() {
                     event.stopPropagation();
                     toggleExpanded(category._id);
                   }}
-                  className="text-muted-foreground hover:text-foreground"
+                  className="flex items-center justify-center size-5 rounded text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  {expanded ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}
+                  {expanded ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
                 </button>
               ) : (
-                depth > 0 && <span className="inline-block w-3.5" />
+                <span className="inline-block size-5" />
               )}
 
               {/* Category Thumbnail */}
-              <div className="relative size-8 shrink-0 overflow-hidden rounded bg-muted border flex items-center justify-center">
+              <div className="relative size-8 shrink-0 overflow-hidden rounded bg-muted border border-border flex items-center justify-center">
                 {imageUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={imageUrl} alt={category.name} className="size-full object-cover" />
                 ) : (
-                  <span className="text-[10px] font-bold text-muted-foreground uppercase">
-                    {category.name?.slice(0, 2) || "CAT"}
+                  <span className="text-[10px] font-bold text-muted-foreground uppercase leading-none">
+                    {category.name?.slice(0, 2) || "CA"}
                   </span>
                 )}
               </div>
 
-              <span className="font-medium">{category.name}</span>
-            </span>
+              <span className="font-medium whitespace-nowrap">{category.name}</span>
+            </div>
+          </TableCell>
+          <TableCell>
+            <span className="text-muted-foreground text-sm">{category.slug || "—"}</span>
           </TableCell>
           <TableCell>
             <span className={category.isActive ? "text-emerald-500 font-medium" : "text-muted-foreground"}>
@@ -168,17 +176,16 @@ export default function CategoriesPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-12" />
                 <TableHead>Category</TableHead>
                 <TableHead>Slug</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                {canWrite && <TableHead className="text-right">Actions</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
               {categories.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-muted-foreground">
+                  <TableCell colSpan={canWrite ? 4 : 3} className="text-muted-foreground">
                     No categories found.
                   </TableCell>
                 </TableRow>
@@ -288,6 +295,9 @@ export default function CategoriesPage() {
           </Form>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirm Dialog */}
+      <ConfirmDialog {...confirmState} onConfirm={handleConfirm} onCancel={handleCancel} />
     </div>
   );
 }

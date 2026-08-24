@@ -5,6 +5,7 @@ import { Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 
 import { useBrands } from "@/hooks/admin/useBrands";
 import { ApiErrorSummary } from "@/components/shared/ApiErrorSummary";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -37,8 +38,11 @@ export default function BrandsPage() {
     form,
     openCreateDialog,
     openEditDialog,
-    onSubmit,
-    handleDelete,
+    submit: onSubmit,
+    remove,
+    confirmState,
+    handleConfirm,
+    handleCancel,
   } = useBrands();
 
   return (
@@ -93,7 +97,7 @@ export default function BrandsPage() {
                       <Button variant="ghost" size="icon" onClick={() => openEditDialog(brand)}>
                         <Pencil className="size-4" />
                       </Button>
-                      <Button variant="ghost" size="icon" onClick={() => handleDelete(brand)}>
+                      <Button variant="ghost" size="icon" onClick={() => remove(brand)}>
                         <Trash2 className="size-4" />
                       </Button>
                     </TableCell>
@@ -105,6 +109,7 @@ export default function BrandsPage() {
         </div>
       )}
 
+      {/* Create / Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-md max-h-[85vh] overflow-y-auto">
           <DialogHeader>
@@ -169,6 +174,9 @@ export default function BrandsPage() {
           </Form>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirm Dialog */}
+      <ConfirmDialog {...confirmState} onConfirm={handleConfirm} onCancel={handleCancel} />
     </div>
   );
 }

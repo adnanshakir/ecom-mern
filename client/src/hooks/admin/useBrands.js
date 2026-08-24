@@ -7,6 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 
 import { fetchBrands, addBrand, editBrand, removeBrand } from "@/redux/slices/brandsSlice";
 import { brandSchema } from "@/schemas/admin/brand";
+import { useConfirm } from "@/hooks/useConfirm";
 
 export function useBrands() {
   const dispatch = useDispatch();
@@ -17,6 +18,8 @@ export function useBrands() {
 
   const [formError, setFormError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+
+  const { confirmState, requestConfirm, handleConfirm, handleCancel } = useConfirm();
 
   // Form
   const form = useForm({
@@ -47,14 +50,16 @@ export function useBrands() {
     return dispatch(editBrand({ id: editingBrand._id, payload })).unwrap();
   };
 
-  const remove = async (brand) => {
-    if (!window.confirm(`Delete brand "${brand.name}"?`)) return;
-
-    try {
-      await dispatch(removeBrand(brand._id)).unwrap();
-    } catch (err) {
-      alert(err || "Failed to delete brand");
-    }
+  const remove = (brand) => {
+    requestConfirm({
+      title: "Delete brand?",
+      description: `This will permanently delete "${brand.name}". Any products referencing this brand may be affected.`,
+      confirmLabel: "Delete",
+      destructive: true,
+      onConfirm: async () => {
+        await dispatch(removeBrand(brand._id)).unwrap();
+      },
+    });
   };
 
   // UI Actions
@@ -123,6 +128,10 @@ export function useBrands() {
     form,
     formError,
     submitting,
+
+    confirmState,
+    handleConfirm,
+    handleCancel,
 
     openCreateDialog,
     openEditDialog,

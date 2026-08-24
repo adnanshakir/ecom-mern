@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 
 import { getVariants, createVariant, updateVariant, deleteVariant } from "@/services/admin/variants";
 import { variantSchema } from "@/schemas/admin/product";
+import { useConfirm } from "@/hooks/useConfirm";
 
 const EMPTY_VARIANT = { sku: "", price: "", stock: "", salePrice: "", costPrice: "", barcode: "" };
 
@@ -17,8 +18,10 @@ export function useProductVariants(productId) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingVariant, setEditingVariant] = useState(null); // null = creating
 
-  const [formError, setFormError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState(null);
+
+  const { confirmState, requestConfirm, handleConfirm, handleCancel } = useConfirm();
 
   const form = useForm({
     resolver: zodResolver(variantSchema),
@@ -97,17 +100,20 @@ export function useProductVariants(productId) {
     }
   };
 
-  const remove = async (variant) => {
+  const remove = (variant) => {
     // Backend blocks deleting a product's only remaining variant.
     if (variants.length <= 1) return;
-    if (!window.confirm(`Delete variant "${variant.sku}"?`)) return;
 
-    try {
-      await deleteVariant(productId, variant._id);
-      fetchVariants();
-    } catch (err) {
-      alert(err.response?.data?.message || "Failed to delete variant");
-    }
+    requestConfirm({
+      title: "Delete variant?",
+      description: `This will permanently delete variant "${variant.sku}".`,
+      confirmLabel: "Delete",
+      destructive: true,
+      onConfirm: async () => {
+        await deleteVariant(productId, variant._id);
+        fetchVariants();
+      },
+    });
   };
 
   return {
@@ -122,6 +128,10 @@ export function useProductVariants(productId) {
     form,
     formError,
     submitting,
+
+    confirmState,
+    handleConfirm,
+    handleCancel,
 
     openCreateDialog,
     openEditDialog,

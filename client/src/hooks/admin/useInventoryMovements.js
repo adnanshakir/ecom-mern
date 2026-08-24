@@ -91,7 +91,7 @@ export function useInventoryMovements(variantId) {
       const { data } = await getReconcile(variantId);
       setReconcileResult(data.data);
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to reconcile stock");
+      setError(err.response?.data?.message || "Failed to reconcile stock");
     } finally {
       setReconciling(false);
     }

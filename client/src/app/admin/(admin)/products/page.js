@@ -8,6 +8,7 @@ import { useProducts } from "@/hooks/admin/useProducts";
 import { useCategories } from "@/hooks/admin/useCategories";
 import { useBrands } from "@/hooks/admin/useBrands";
 import { CreateProductDialog } from "@/components/admin/products/CreateProductDialog";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
@@ -53,6 +54,9 @@ function ProductsContent() {
     fetchProducts,
     bulkUpdate,
     bulkDelete,
+    confirmState,
+    handleConfirm,
+    handleCancel,
   } = useProducts();
   const { categories } = useCategories();
   const { brands } = useBrands();
@@ -92,13 +96,9 @@ function ProductsContent() {
     setIsSelecting(false);
   };
 
-  const handleBulkDelete = async () => {
+  const handleBulkDelete = () => {
     if (selectedIds.length === 0) return;
-    if (window.confirm(`Delete ${selectedIds.length} selected products and their variants?`)) {
-      await bulkDelete(selectedIds);
-      setSelectedIds([]);
-      setIsSelecting(false);
-    }
+    bulkDelete(selectedIds);
   };
 
   return (
@@ -380,6 +380,9 @@ function ProductsContent() {
       )}
 
       <CreateProductDialog open={createOpen} onOpenChange={setCreateOpen} onCreated={fetchProducts} />
+
+      {/* Delete Confirm Dialog */}
+      <ConfirmDialog {...confirmState} onConfirm={handleConfirm} onCancel={handleCancel} />
     </div>
   );
 }

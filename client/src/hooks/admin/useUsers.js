@@ -7,6 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 
 import { getUsers, updateUser, deleteUser } from "@/services/admin/users";
 import { userUpdateSchema } from "@/schemas/admin/user";
+import { useConfirm } from "@/hooks/useConfirm";
 
 const DEFAULT_LIMIT = 20;
 
@@ -24,6 +25,8 @@ export function useUsers() {
   const [editingUser, setEditingUser] = useState(null);
   const [formError, setFormError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+
+  const { confirmState, requestConfirm, handleConfirm, handleCancel } = useConfirm();
 
   const form = useForm({
     resolver: zodResolver(userUpdateSchema),
@@ -114,16 +117,19 @@ export function useUsers() {
     }
   };
 
-  const remove = async (user) => {
-    // Backend blocks self-deletion — the confirm/alert flow surfaces that
+  const remove = (user) => {
+    // Backend blocks self-deletion — the confirm dialog surfaces that
     // error if it's somehow attempted, but the UI also disables it directly.
-    if (!window.confirm(`Delete user "${user.name}"? This cannot be undone.`)) return;
-    try {
-      await deleteUser(user._id);
-      fetchUsers();
-    } catch (err) {
-      alert(err.response?.data?.message || "Failed to delete user");
-    }
+    requestConfirm({
+      title: "Delete user?",
+      description: `This will permanently delete "${user.name}". This cannot be undone.`,
+      confirmLabel: "Delete",
+      destructive: true,
+      onConfirm: async () => {
+        await deleteUser(user._id);
+        fetchUsers();
+      },
+    });
   };
 
   return {
@@ -141,6 +147,10 @@ export function useUsers() {
     form,
     formError,
     submitting,
+
+    confirmState,
+    handleConfirm,
+    handleCancel,
 
     openEditDialog,
     closeDialog,

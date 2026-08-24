@@ -13,6 +13,7 @@ import {
 } from "@/redux/slices/categoriesSlice";
 import { categorySchema } from "@/schemas/admin/category";
 import { buildCategoryTree, getDescendantIds } from "@/lib/categoryTree";
+import { useConfirm } from "@/hooks/useConfirm";
 
 export function useCategories() {
   const dispatch = useDispatch();
@@ -27,6 +28,8 @@ export function useCategories() {
   const [submitting, setSubmitting] = useState(false);
 
   const [expandedIds, setExpandedIds] = useState(new Set());
+
+  const { confirmState, requestConfirm, handleConfirm, handleCancel } = useConfirm();
 
   const isExpanded = (id) => expandedIds.has(id);
 
@@ -70,14 +73,16 @@ export function useCategories() {
     return dispatch(editCategory({ id: editingCategory._id, payload })).unwrap();
   };
 
-  const remove = async (category) => {
-    if (!window.confirm(`Delete category "${category.name}"?`)) return;
-
-    try {
-      await dispatch(removeCategory(category._id)).unwrap();
-    } catch (err) {
-      alert(err || "Failed to delete category");
-    }
+  const remove = (category) => {
+    requestConfirm({
+      title: "Delete category?",
+      description: `This will permanently delete "${category.name}" and may affect products under it.`,
+      confirmLabel: "Delete",
+      destructive: true,
+      onConfirm: async () => {
+        await dispatch(removeCategory(category._id)).unwrap();
+      },
+    });
   };
 
   const openCreateDialog = () => {
@@ -141,6 +146,10 @@ export function useCategories() {
 
     isExpanded,
     toggleExpanded,
+
+    confirmState,
+    handleConfirm,
+    handleCancel,
 
     openCreateDialog,
     openEditDialog,

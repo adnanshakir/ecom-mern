@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { getProducts, deleteProduct, bulkUpdateProducts, bulkDeleteProducts } from "@/services/admin/products";
+import { useConfirm } from "@/hooks/useConfirm";
 
 const DEFAULT_LIMIT = 20;
 
@@ -15,6 +16,9 @@ export function useProducts() {
   const [pagination, setPagination] = useState({ total: 0, page: 1, pages: 1 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [actionError, setActionError] = useState(null);
+
+  const { confirmState, requestConfirm, handleConfirm, handleCancel } = useConfirm();
 
   // Filters are derived from the URL so they're shareable/bookmarkable and
   // back/forward works naturally — not held in local component state.
@@ -85,35 +89,41 @@ export function useProducts() {
     fetchProducts();
   }, [fetchProducts]);
 
-  const removeProduct = async (product) => {
+  const removeProduct = (product) => {
     // Backend cascades to delete this product's variants too.
-    if (!window.confirm(`Delete "${product.name}"? This also deletes its variants.`))
-      return;
-
-    try {
-      await deleteProduct(product._id);
-      fetchProducts();
-    } catch (err) {
-      alert(err.response?.data?.message || "Failed to delete product");
-    }
+    requestConfirm({
+      title: "Delete product?",
+      description: `This will permanently delete "${product.name}" and all its variants.`,
+      confirmLabel: "Delete",
+      destructive: true,
+      onConfirm: async () => {
+        await deleteProduct(product._id);
+        fetchProducts();
+      },
+    });
   };
 
   const bulkUpdate = async (ids, updates) => {
     try {
+      setActionError(null);
       await bulkUpdateProducts(ids, updates);
       fetchProducts();
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to update selected products");
+      setActionError(err.response?.data?.message || "Failed to update selected products");
     }
   };
 
-  const bulkDelete = async (ids) => {
-    try {
-      await bulkDeleteProducts(ids);
-      fetchProducts();
-    } catch (err) {
-      alert(err.response?.data?.message || "Failed to delete selected products");
-    }
+  const bulkDelete = (ids) => {
+    requestConfirm({
+      title: "Delete selected products?",
+      description: `This will permanently delete ${ids.length} product(s) and all their variants.`,
+      confirmLabel: `Delete ${ids.length}`,
+      destructive: true,
+      onConfirm: async () => {
+        await bulkDeleteProducts(ids);
+        fetchProducts();
+      },
+    });
   };
 
   return {
@@ -121,6 +131,7 @@ export function useProducts() {
     pagination,
     loading,
     error,
+    actionError,
     filters,
     setFilter,
     setPage,
@@ -128,5 +139,8 @@ export function useProducts() {
     removeProduct,
     bulkUpdate,
     bulkDelete,
+    confirmState,
+    handleConfirm,
+    handleCancel,
   };
 }

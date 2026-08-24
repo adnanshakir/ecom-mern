@@ -6,6 +6,7 @@ import { useCsvImport } from "@/hooks/admin/useCsvImport";
 import { useRecentImports } from "@/hooks/admin/useRecentImports";
 import { ImportJobsList } from "@/components/admin/csv-import/ImportJobsList";
 import { CsvHeaderGuide } from "@/components/admin/csv-import/CsvHeaderGuide";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { RoleGate } from "@/components/admin/RoleGate";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -48,6 +49,9 @@ function CsvImportFlow() {
     confirmResult,
     runConfirm,
     reset,
+    confirmState: csvConfirmState,
+    handleConfirm: csvHandleConfirm,
+    handleCancel: csvHandleCancel,
   } = useCsvImport();
 
   const recentImports = useRecentImports();
@@ -187,6 +191,14 @@ function CsvImportFlow() {
           )}
         </CardContent>
       </Card>
+
+      {/* Confirm dialogs for rollback actions */}
+      <ConfirmDialog {...csvConfirmState} onConfirm={csvHandleConfirm} onCancel={csvHandleCancel} />
+      <ConfirmDialog
+        {...recentImports.confirmState}
+        onConfirm={recentImports.handleConfirm}
+        onCancel={recentImports.handleCancel}
+      />
     </div>
   );
 }

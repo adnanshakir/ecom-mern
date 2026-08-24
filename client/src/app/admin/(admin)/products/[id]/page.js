@@ -15,6 +15,7 @@ import { ProductDetailsFields } from "@/components/admin/products/ProductDetails
 import { VariantRowFields } from "@/components/admin/products/VariantRowFields";
 import { ApiErrorSummary } from "@/components/shared/ApiErrorSummary";
 import { FormErrorSummary } from "@/components/shared/FormErrorSummary";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -181,6 +182,9 @@ function VariantsTab({ productId, optionTypes, onChanged }) {
     openEditDialog,
     remove,
     submit,
+    confirmState,
+    handleConfirm,
+    handleCancel,
   } = useProductVariants(productId);
 
   const handleSubmit = async (values) => {
@@ -282,6 +286,9 @@ function VariantsTab({ productId, optionTypes, onChanged }) {
           </Form>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirm Dialog */}
+      <ConfirmDialog {...confirmState} onConfirm={handleConfirm} onCancel={handleCancel} />
     </div>
   );
 }
