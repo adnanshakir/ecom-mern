@@ -348,7 +348,7 @@ function ProductsContent() {
               <div className="flex items-center gap-1.5">
                 <span className="text-xs">Per page:</span>
                 <Select value={String(filters.limit || 20)} onValueChange={(v) => setFilter("limit", Number(v))}>
-                  <SelectTrigger className="h-8 w-[95px] text-xs">
+                  <SelectTrigger className="h-8 w-23.75 text-xs">
                     <SelectValue placeholder="Limit">{filters.limit || 20} / page</SelectValue>
                   </SelectTrigger>
                   <SelectContent>

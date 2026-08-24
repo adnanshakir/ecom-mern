@@ -103,20 +103,20 @@ export function PopularProductsSection() {
       <div className="relative">
         {/* Subtle Left Masking Overlay (only visible after scrolling) */}
         <div
-          className={`pointer-events-none absolute left-0 top-0 bottom-0 z-10 w-6 sm:w-10 bg-gradient-to-r from-background via-background/50 to-transparent transition-opacity duration-300 ${
+          className={`pointer-events-none absolute left-0 top-0 bottom-0 z-10 w-6 sm:w-10 bg-linear-to-r from-background via-background/50 to-transparent transition-opacity duration-300 ${
             showPillsLeftMask ? "opacity-100" : "opacity-0"
           }`}
         />
         {/* Subtle Right Masking Overlay */}
         <div
-          className={`pointer-events-none absolute right-0 top-0 bottom-0 z-10 w-6 sm:w-10 bg-gradient-to-l from-background via-background/50 to-transparent transition-opacity duration-300 ${
+          className={`pointer-events-none absolute right-0 top-0 bottom-0 z-10 w-6 sm:w-10 bg-linear-to-l from-background via-background/50 to-transparent transition-opacity duration-300 ${
             showPillsRightMask ? "opacity-100" : "opacity-0"
           }`}
         />
 
         <div
           ref={pillsRef}
-          className="flex items-center gap-2 overflow-x-auto py-1 px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="flex items-center gap-2 overflow-x-auto py-1 px-1 scrollbar-none [&::-webkit-scrollbar]:hidden"
         >
           <button
             type="button"
@@ -165,13 +165,13 @@ export function PopularProductsSection() {
         <div className="group/products relative">
           {/* Subtle Left Masking Overlay (only visible after scrolling) */}
           <div
-            className={`pointer-events-none absolute left-0 top-0 bottom-0 z-10 w-8 sm:w-12 bg-gradient-to-r from-background via-background/60 to-transparent transition-opacity duration-300 ${
+            className={`pointer-events-none absolute left-0 top-0 bottom-0 z-10 w-8 sm:w-12 bg-linear-to-r from-background via-background/60 to-transparent transition-opacity duration-300 ${
               showLeftMask ? "opacity-100" : "opacity-0"
             }`}
           />
           {/* Subtle Right Masking Overlay */}
           <div
-            className={`pointer-events-none absolute right-0 top-0 bottom-0 z-10 w-8 sm:w-12 bg-gradient-to-l from-background via-background/60 to-transparent transition-opacity duration-300 ${
+            className={`pointer-events-none absolute right-0 top-0 bottom-0 z-10 w-8 sm:w-12 bg-linear-to-l from-background via-background/60 to-transparent transition-opacity duration-300 ${
               showRightMask ? "opacity-100" : "opacity-0"
             }`}
           />
@@ -201,10 +201,10 @@ export function PopularProductsSection() {
           {/* Scrollable Container */}
           <div
             ref={scrollContainerRef}
-            className="flex items-stretch gap-4 sm:gap-6 overflow-x-auto py-2 px-1 scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            className="flex items-stretch gap-4 sm:gap-6 overflow-x-auto py-2 px-1 scroll-smooth scrollbar-none [&::-webkit-scrollbar]:hidden"
           >
             {products.slice(0, 12).map((product) => (
-              <div key={product._id} className="w-[210px] xs:w-[230px] sm:w-[250px] shrink-0">
+              <div key={product._id} className="w-52.5 xs:w-[230px] sm:w-62.5 shrink-0">
                 <ProductCard product={product} />
               </div>
             ))}

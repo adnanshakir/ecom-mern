@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { getVariants, createVariant, updateVariant, deleteVariant } from "@/services/admin/variants";
 import { variantSchema } from "@/schemas/admin/product";
 
-const EMPTY_VARIANT = { sku: "", price: "", stock: "", salePrice: "", barcode: "" };
+const EMPTY_VARIANT = { sku: "", price: "", stock: "", salePrice: "", costPrice: "", barcode: "" };
 
 export function useProductVariants(productId) {
   const [variants, setVariants] = useState([]);
@@ -53,6 +53,7 @@ export function useProductVariants(productId) {
       price: variant.price,
       stock: variant.stock,
       salePrice: variant.salePrice || "",
+      costPrice: variant.costPrice || "",
       barcode: variant.barcode || "",
       weight: variant.weight || undefined,
       images: variant.images || [],
@@ -139,6 +140,7 @@ function cleanPayload(values) {
   return {
     ...values,
     salePrice: values.salePrice || undefined,
+    costPrice: values.costPrice || undefined,
     barcode: values.barcode || undefined,
     weight: values.weight?.value
       ? { value: values.weight.value, unit: values.weight.unit || "g" }

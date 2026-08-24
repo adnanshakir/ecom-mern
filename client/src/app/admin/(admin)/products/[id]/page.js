@@ -218,6 +218,7 @@ function VariantsTab({ productId, optionTypes, onChanged }) {
             <TableRow>
               <TableHead>SKU</TableHead>
               <TableHead>Price</TableHead>
+              <TableHead>Cost</TableHead>
               <TableHead>Stock</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
@@ -236,6 +237,7 @@ function VariantsTab({ productId, optionTypes, onChanged }) {
                     formatPrice(variant.price)
                   )}
                 </TableCell>
+                <TableCell>{variant.costPrice ? formatPrice(variant.costPrice) : "—"}</TableCell>
                 <TableCell>{variant.stock}</TableCell>
                 <TableCell className="text-right">
                   <Button variant="ghost" size="icon" onClick={() => openEditDialog(variant)}>

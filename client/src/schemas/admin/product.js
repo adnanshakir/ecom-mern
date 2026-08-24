@@ -13,6 +13,7 @@ export const variantSchema = z
     price: z.coerce.number().positive("Price must be greater than 0"),
     stock: z.coerce.number().int().min(0, "Stock can't be negative"),
     salePrice: z.coerce.number().positive().optional().or(z.literal("")),
+    costPrice: z.coerce.number().min(0).optional().or(z.literal("")),
     barcode: z.string().optional(),
     weight: z
       .object({

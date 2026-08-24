@@ -156,7 +156,7 @@ export default function AdminBannersPage() {
       <ApiErrorSummary message={error} />
 
       <Tabs defaultValue="hero" className="w-full">
-        <TabsList className="flex w-full overflow-x-auto justify-start sm:grid sm:grid-cols-4 h-auto p-1 gap-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <TabsList className="flex w-full overflow-x-auto justify-start sm:grid sm:grid-cols-4 h-auto p-1 gap-1 scrollbar-none [&::-webkit-scrollbar]:hidden">
           {BANNER_CONFIGS.map((cfg) => (
             <TabsTrigger key={cfg.key} value={cfg.key} className="shrink-0 text-xs sm:text-sm py-2 px-3">
               {cfg.name} {isDirty(cfg.key) && <span className="ml-1.5 size-1.5 rounded-full bg-amber-500 inline-block" />}

@@ -54,7 +54,7 @@ export default function CategoryIndexPage() {
                 className="group relative flex flex-col overflow-hidden rounded-2xl border bg-card shadow-xs transition-all duration-200 hover:border-[#033936] hover:shadow-md"
               >
                 {/* Image Box (aspect-square) */}
-                <div className="relative aspect-square w-full overflow-hidden bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-900 dark:to-slate-800 flex items-center justify-center">
+                <div className="relative aspect-square w-full overflow-hidden bg-linear-to-br from-slate-100 to-slate-200 dark:from-slate-900 dark:to-slate-800 flex items-center justify-center">
                   {imageUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
@@ -91,7 +91,7 @@ export default function CategoryIndexPage() {
 {/* Category Empty Image Placeholder */}
 function CategoryPlaceholder({ categoryName }) {
   return (
-    <div className="relative flex size-full flex-col items-center justify-center bg-gradient-to-br from-[#033936]/15 via-[#033936]/5 to-slate-200 p-4 text-center dark:from-[#033936]/40 dark:to-slate-900">
+    <div className="relative flex size-full flex-col items-center justify-center bg-linear-to-br from-[#033936]/15 via-[#033936]/5 to-slate-200 p-4 text-center dark:from-[#033936]/40 dark:to-slate-900">
       <Image size={40} color="white" />
     </div>
   );

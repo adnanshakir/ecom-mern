@@ -65,7 +65,7 @@ export function Navbar() {
               <Link href={isAuthenticated ? "/cart" : "/login?from=/cart"}>
                 <ShoppingCart className="size-5" />
                 {cartCount > 0 && (
-                  <span className="absolute -right-0.5 -top-0.5 flex min-w-[18px] items-center justify-center rounded-full bg-primary px-1 py-px text-[10px] font-semibold leading-none text-primary-foreground">
+                  <span className="absolute -right-0.5 -top-0.5 flex min-w-4.5 items-center justify-center rounded-full bg-primary px-1 py-px text-[10px] font-semibold leading-none text-primary-foreground">
                     {cartCount > 99 ? "99+" : cartCount}
                   </span>
                 )}

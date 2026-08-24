@@ -45,7 +45,7 @@ export function CategoryBanners() {
         return (
           <div
             key={banner.id}
-            className="group relative flex min-h-[220px] overflow-hidden rounded-2xl border bg-card shadow-sm sm:min-h-[240px]"
+            className="group relative flex min-h-55 overflow-hidden rounded-2xl border bg-card shadow-sm sm:min-h-60"
           >
             {/* Background image & gradient overlay */}
             <div className="absolute inset-0 z-0">
@@ -68,7 +68,7 @@ export function CategoryBanners() {
                       }}
                     />
                   ) : (
-                    <div className="absolute inset-y-0 left-0 right-auto w-4/5 sm:hidden pointer-events-none bg-gradient-to-r from-background via-background/95 to-transparent" />
+                    <div className="absolute inset-y-0 left-0 right-auto w-4/5 sm:hidden pointer-events-none bg-linear-to-r from-background via-background/95 to-transparent" />
                   )}
 
                   {/* Desktop Gradient Overlay (Left-to-Right / Right-to-Left fade) */}
@@ -87,8 +87,8 @@ export function CategoryBanners() {
                     <div
                       className={`hidden sm:block absolute inset-0 sm:w-3/4 ${
                         isRight
-                          ? "right-0 left-auto bg-gradient-to-l from-background/95 via-background/85 to-transparent sm:ml-auto"
-                          : "left-0 right-auto bg-gradient-to-r from-background/95 via-background/85 to-transparent"
+                          ? "right-0 left-auto bg-linear-to-l from-background/95 via-background/85 to-transparent sm:ml-auto"
+                          : "left-0 right-auto bg-linear-to-r from-background/95 via-background/85 to-transparent"
                       }`}
                     />
                   )}

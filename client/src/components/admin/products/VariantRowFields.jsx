@@ -72,6 +72,20 @@ export function VariantRowFields({ form, namePrefix = "", stockReadOnly = false,
 
         <FormField
           control={form.control}
+          name={field("costPrice")}
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Cost per item (optional, seller only)</FormLabel>
+              <FormControl>
+                <Input type="number" step="0.01" placeholder="e.g. 11.00" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
           name={field("stock")}
           render={({ field: stockField }) => (
             <FormItem>

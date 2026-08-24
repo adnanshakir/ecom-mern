@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { createProduct } from "@/services/admin/products";
 import { productSchema } from "@/schemas/admin/product";
 
-const EMPTY_VARIANT = { sku: "", price: "", stock: "", salePrice: "", barcode: "" };
+const EMPTY_VARIANT = { sku: "", price: "", stock: "", salePrice: "", costPrice: "", barcode: "" };
 
 const DETAILS_FIELDS = [
   "name",
@@ -88,6 +88,7 @@ export function useCreateProduct(open, onCreated) {
       variants: values.variants.map((v) => ({
         ...v,
         salePrice: v.salePrice || undefined,
+        costPrice: v.costPrice || undefined,
         barcode: v.barcode || undefined,
         weight: v.weight?.value ? { value: v.weight.value, unit: v.weight.unit || "g" } : undefined,
         images: v.images?.length ? v.images : undefined,

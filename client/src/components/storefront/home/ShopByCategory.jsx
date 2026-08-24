@@ -48,7 +48,7 @@ export function ShopByCategory() {
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
           {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="min-h-[195px] sm:min-h-[210px] rounded-2xl bg-muted/60 animate-pulse" />
+            <div key={i} className="min-h-48.75 sm:min-h-52.5 rounded-2xl bg-muted/60 animate-pulse" />
           ))}
         </div>
       </section>
@@ -83,7 +83,7 @@ export function ShopByCategory() {
           <Link
             key={item.id}
             href={item.href}
-            className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border/40 bg-muted/40 p-5 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 min-h-[195px] sm:min-h-[210px]"
+            className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border/40 bg-muted/40 p-5 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 min-h-48.75 sm:min-h-52.5"
           >
             {/* Background image */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -95,7 +95,7 @@ export function ShopByCategory() {
               className="absolute inset-0 size-full object-cover transition-transform duration-500 group-hover:scale-105"
             />
             {/* Text readable gradient overlay */}
-            <div className="absolute inset-0 bg-gradient-to-b from-white/80 via-white/45 to-white/10 dark:from-slate-950/85 dark:via-slate-950/50 dark:to-slate-950/20 pointer-events-none" />
+            <div className="absolute inset-0 bg-linear-to-b from-white/80 via-white/45 to-white/10 dark:from-slate-950/85 dark:via-slate-950/50 dark:to-slate-950/20 pointer-events-none" />
 
             {/* Category tag & name */}
             <div className="relative z-10">
@@ -119,7 +119,7 @@ export function ShopByCategory() {
         {/* 8th Highlight Card: Explore All Categories */}
         <Link
           href="/category"
-          className="group relative flex flex-col justify-between overflow-hidden rounded-2xl bg-[#0B192C] p-6 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 min-h-[195px] sm:min-h-[210px]"
+          className="group relative flex flex-col justify-between overflow-hidden rounded-2xl bg-[#0B192C] p-6 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 min-h-48.75 sm:min-h-52.5"
         >
           {/* Header */}
           <div className="relative z-10">

@@ -11,7 +11,7 @@ import {
   Hash,
   Barcode,
   Scale,
-  Sparkles
+  Coins,
 } from "lucide-react";
 import { StatusBadge } from "@/components/admin/products/StatusBadge";
 import { cn } from "@/lib/utils";
@@ -197,35 +197,41 @@ export function ProductView({ product }) {
             {/* Price & Availability Row */}
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div className="flex flex-wrap items-baseline gap-4">
-                {selectedVariant.salePrice && selectedVariant.salePrice > 0 ? (
-                  <div className="flex flex-wrap items-baseline gap-4">
-                    <div className="flex flex-col">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                        Sale Price
-                      </span>
-                      <span className="text-3xl font-extrabold tracking-tight text-emerald-600 dark:text-emerald-400">
-                        {formatPrice(selectedVariant.salePrice)}
-                      </span>
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                        Regular Price
-                      </span>
-                      <span className="text-xl font-medium text-muted-foreground line-through">
-                        {formatPrice(selectedVariant.price)}
-                      </span>
-                    </div>
-                    {selectedVariant.price > selectedVariant.salePrice && (
-                      <span className="self-center rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                        {Math.round(
-                          ((selectedVariant.price - selectedVariant.salePrice) /
-                            selectedVariant.price) *
-                            100
+                {selectedVariant.salePrice &&
+                selectedVariant.salePrice > 0 &&
+                selectedVariant.salePrice !== selectedVariant.price ? (
+                  (() => {
+                    const regularPrice = Math.max(selectedVariant.price, selectedVariant.salePrice);
+                    const salePrice = Math.min(selectedVariant.price, selectedVariant.salePrice);
+                    const discountPercent =
+                      regularPrice > 0 ? Math.round(((regularPrice - salePrice) / regularPrice) * 100) : 0;
+
+                    return (
+                      <div className="flex flex-wrap items-baseline gap-4">
+                        <div className="flex flex-col">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                            Sale Price
+                          </span>
+                          <span className="text-3xl font-extrabold tracking-tight text-emerald-600 dark:text-emerald-400">
+                            {formatPrice(salePrice)}
+                          </span>
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                            Regular Price
+                          </span>
+                          <span className="text-xl font-medium text-muted-foreground line-through">
+                            {formatPrice(regularPrice)}
+                          </span>
+                        </div>
+                        {discountPercent > 0 && (
+                          <span className="self-center rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                            {discountPercent}% OFF
+                          </span>
                         )}
-                        % OFF
-                      </span>
-                    )}
-                  </div>
+                      </div>
+                    );
+                  })()
                 ) : (
                   <div className="flex flex-col">
                     <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -261,24 +267,14 @@ export function ProductView({ product }) {
             </div>
 
             {/* Specifications Grid */}
-            <div className="grid grid-cols-2 gap-4 rounded-xl border border-border/40 bg-muted/20 p-4 sm:grid-cols-3 lg:grid-cols-5">
+            <div className="grid grid-cols-2 gap-4 rounded-xl border border-border/40 bg-muted/20 p-4 sm:grid-cols-4">
               <div className="grid gap-0.5">
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <Tag className="size-3.5" />
-                  <span>Regular Price</span>
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground" title="Seller wholesale cost per item">
+                  <Coins className="size-3.5 text-amber-500" />
+                  <span>Cost per item</span>
                 </div>
                 <span className="text-xs font-semibold text-foreground">
-                  {formatPrice(selectedVariant.price)}
-                </span>
-              </div>
-
-              <div className="grid gap-0.5">
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <Sparkles className="size-3.5 text-emerald-500" />
-                  <span>Sale Price</span>
-                </div>
-                <span className="text-xs font-semibold text-foreground">
-                  {selectedVariant.salePrice ? formatPrice(selectedVariant.salePrice) : "—"}
+                  {selectedVariant.costPrice ? formatPrice(selectedVariant.costPrice) : "—"}
                 </span>
               </div>
 

@@ -86,19 +86,19 @@ export function ShopByBudget() {
       {/* Budget Filter Pills with Dynamic Subtle White-Masking */}
       <div className="relative">
         <div
-          className={`pointer-events-none absolute left-0 top-0 bottom-0 z-10 w-6 sm:w-10 bg-gradient-to-r from-background via-background/50 to-transparent transition-opacity duration-300 ${
+          className={`pointer-events-none absolute left-0 top-0 bottom-0 z-10 w-6 sm:w-10 bg-linear-to-r from-background via-background/50 to-transparent transition-opacity duration-300 ${
             showPillsLeftMask ? "opacity-100" : "opacity-0"
           }`}
         />
         <div
-          className={`pointer-events-none absolute right-0 top-0 bottom-0 z-10 w-6 sm:w-10 bg-gradient-to-l from-background via-background/50 to-transparent transition-opacity duration-300 ${
+          className={`pointer-events-none absolute right-0 top-0 bottom-0 z-10 w-6 sm:w-10 bg-linear-to-l from-background via-background/50 to-transparent transition-opacity duration-300 ${
             showPillsRightMask ? "opacity-100" : "opacity-0"
           }`}
         />
 
         <div
           ref={pillsRef}
-          className="flex items-center gap-2.5 overflow-x-auto py-1 px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="flex items-center gap-2.5 overflow-x-auto py-1 px-1 scrollbar-none [&::-webkit-scrollbar]:hidden"
         >
           {BUDGET_OPTIONS.map((option) => {
             const isSelected = selectedBudget.id === option.id;

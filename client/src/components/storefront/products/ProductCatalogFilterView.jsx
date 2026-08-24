@@ -587,7 +587,7 @@ export function ProductCatalogFilterView({
                 </p>
 
                 {/* Thin Red Progress Line */}
-                <div className="w-72 max-w-full h-[2px] rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
+                <div className="w-72 max-w-full h-0.5 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
                   <div
                     className="h-full bg-red-600 transition-all duration-300 rounded-full"
                     style={{ width: `${progressPercent}%` }}

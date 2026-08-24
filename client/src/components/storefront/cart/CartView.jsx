@@ -117,7 +117,7 @@ export function CartView() {
                         >
                           <Minus className="size-3" />
                         </button>
-                        <span className="min-w-[2rem] text-center text-sm font-medium">{item.quantity}</span>
+                        <span className="min-w-8 text-center text-sm font-medium">{item.quantity}</span>
                         <button
                           className="flex size-7 items-center justify-center rounded-r-md hover:bg-muted disabled:opacity-40"
                           disabled={pending || item.quantity >= (variant?.stock || 1)}
