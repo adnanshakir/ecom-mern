@@ -1,26 +1,23 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import Link from "next/link";
 import {
   Package,
   Tags,
   BadgeCheck,
   AlertTriangle,
   RefreshCw,
-  ArrowUpRight,
-  Activity,
-  Layers,
-  FileUp,
+  History,
 } from "lucide-react";
 
 import api from "@/services/admin/axios";
+import { useRecentImports } from "@/hooks/admin/useRecentImports";
 import { StatCard } from "@/components/admin/dashboard/StatCard";
-import { LowStockList } from "@/components/admin/dashboard/LowStockList";
-import { ActivityLog } from "@/components/admin/dashboard/ActivityLog";
-import { ImportJobsList } from "@/components/admin/csv-import/ImportJobsList";
+import { LowStockCard } from "@/components/admin/dashboard/LowStockCard";
+import { ActivityCard } from "@/components/admin/dashboard/ActivityCard";
+import { ImportHistoryModal } from "@/components/admin/csv-import/ImportHistoryModal";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { DashboardSkeleton } from "@/components/admin/dashboard/DashboardSkeleton";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
 export default function DashboardPage() {
@@ -28,6 +25,9 @@ export default function DashboardPage() {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
+
+  const recentImports = useRecentImports();
 
   const fetchStats = useCallback(async (isManualRefresh = false) => {
     if (isManualRefresh) setRefreshing(true);
@@ -71,11 +71,11 @@ export default function DashboardPage() {
   const lowStockCount = stats?.lowStock?.count || 0;
 
   return (
-    <div className="space-y-5 pb-8">
-      {/* Dashboard Header — clean & minimal */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-border/50 pb-4">
+    <div className="space-y-4 sm:space-y-5 pb-8 w-full max-w-full overflow-hidden">
+      {/* Dashboard Header — clean & responsive */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-border/50 pb-4 w-full">
         <div className="min-w-0">
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2.5 flex-wrap">
             <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">Dashboard</h1>
             <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
               <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -87,20 +87,40 @@ export default function DashboardPage() {
           </p>
         </div>
 
-        {/* Subtle refresh action — no big buttons */}
-        <button
-          type="button"
-          onClick={() => fetchStats(true)}
-          disabled={refreshing}
-          className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50 self-start sm:self-auto"
-        >
-          <RefreshCw className={`size-3.5 ${refreshing ? "animate-spin text-primary" : ""}`} />
-          {refreshing ? "Syncing…" : "Refresh data"}
-        </button>
+        {/* Top Header Actions */}
+        <div className="flex items-center gap-2 flex-wrap self-start sm:self-auto">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setHistoryDialogOpen(true)}
+            className="h-8 gap-1.5 text-xs font-medium bg-background shadow-xs hover:bg-accent"
+          >
+            <History className="size-3.5 text-primary" />
+            <span>Import History</span>
+            {recentImports.jobs?.length > 0 && (
+              <span className="ml-0.5 rounded-full bg-primary/10 px-1.5 py-0.2 text-[10px] font-bold text-primary">
+                {recentImports.jobs.length}
+              </span>
+            )}
+          </Button>
+
+          <button
+            type="button"
+            onClick={() => {
+              fetchStats(true);
+              recentImports.fetchJobs();
+            }}
+            disabled={refreshing}
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50 h-8 px-2 rounded-md hover:bg-accent/50"
+          >
+            <RefreshCw className={`size-3.5 ${refreshing ? "animate-spin text-primary" : ""}`} />
+            {refreshing ? "Syncing…" : "Refresh"}
+          </button>
+        </div>
       </div>
 
       {/* KPI Metric Cards — 2 cols on mobile, 4 on desktop */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
+      <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4 lg:gap-4 w-full min-w-0">
         <StatCard
           label="Products"
           value={stats?.totalProducts}
@@ -132,99 +152,35 @@ export default function DashboardPage() {
         />
       </div>
 
-      {/* Main Panels — stack on mobile, side-by-side on lg */}
-      <div className="grid gap-5 lg:grid-cols-2">
-        {/* Low Stock Inventory */}
-        <Card className="flex flex-col border-border/80 shadow-xs min-h-[360px] max-h-[520px]">
-          <CardHeader className="shrink-0 border-b px-4 pb-3 pt-4">
-            <div className="flex items-center justify-between gap-2">
-              <div className="min-w-0">
-                <CardTitle className="text-sm font-bold flex items-center gap-2">
-                  <AlertTriangle className="size-3.5 text-amber-500 shrink-0" />
-                  <span className="truncate">Low Stock Inventory</span>
-                </CardTitle>
-                <CardDescription className="text-[11px] mt-0.5">
-                  Below {stats?.lowStock?.threshold} units
-                </CardDescription>
-              </div>
-              <span
-                className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold ${
-                  lowStockCount > 0
-                    ? "bg-rose-500/10 text-rose-500 border border-rose-500/20"
-                    : "bg-emerald-500/10 text-emerald-500"
-                }`}
-              >
-                {lowStockCount}
-              </span>
-            </div>
-          </CardHeader>
-          <CardContent className="flex-1 min-h-0 overflow-hidden p-4">
-            <LowStockList items={stats?.lowStock?.items} threshold={stats?.lowStock?.threshold} />
-          </CardContent>
-          <CardFooter className="shrink-0 border-t py-2 px-4">
-            <Link
-              href="/admin/products"
-              className="text-[11px] font-medium text-muted-foreground hover:text-primary flex items-center gap-1 ml-auto transition-colors"
-            >
-              All products <ArrowUpRight className="size-3" />
-            </Link>
-          </CardFooter>
-        </Card>
-
-        {/* System Activity Stream */}
-        <Card className="flex flex-col border-border/80 shadow-xs min-h-[360px] max-h-[520px]">
-          <CardHeader className="shrink-0 border-b px-4 pb-3 pt-4">
-            <div className="flex items-center justify-between gap-2">
-              <div className="min-w-0">
-                <CardTitle className="text-sm font-bold flex items-center gap-2">
-                  <Activity className="size-3.5 text-blue-500 shrink-0" />
-                  <span className="truncate">Recent Activity</span>
-                </CardTitle>
-                <CardDescription className="text-[11px] mt-0.5">
-                  Audit log &amp; user operations
-                </CardDescription>
-              </div>
-              <span className="shrink-0 rounded-full bg-blue-500/10 text-blue-500 text-[11px] font-bold px-2 py-0.5 border border-blue-500/20">
-                Latest 10
-              </span>
-            </div>
-          </CardHeader>
-          <CardContent className="flex-1 min-h-0 overflow-hidden p-4">
-            <ActivityLog items={stats?.latestActivity} />
-          </CardContent>
-          <CardFooter className="shrink-0 border-t py-2 px-4">
-            <span className="text-[11px] text-muted-foreground flex items-center gap-1">
-              <Layers className="size-3" /> Auto-recorded operations
-            </span>
-          </CardFooter>
-        </Card>
+      {/* Main Panels — Low Stock Inventory & Recent Activity */}
+      <div className="grid gap-4 lg:grid-cols-2 w-full min-w-0">
+        <LowStockCard
+          items={stats?.lowStock?.items}
+          threshold={stats?.lowStock?.threshold}
+          count={lowStockCount}
+        />
+        <ActivityCard
+          items={stats?.latestActivity}
+        />
       </div>
 
-      {/* Recent Imports — full width, no quick actions box */}
-      <Card className="border-border/80 shadow-xs">
-        <CardHeader className="border-b px-4 pb-3 pt-4">
-          <div className="flex items-center justify-between gap-2">
-            <div className="min-w-0">
-              <CardTitle className="text-sm font-bold flex items-center gap-2">
-                <FileUp className="size-3.5 text-emerald-500 shrink-0" />
-                <span className="truncate">Recent CSV Imports</span>
-              </CardTitle>
-              <CardDescription className="text-[11px] mt-0.5">
-                Recent batch upload jobs overview
-              </CardDescription>
-            </div>
-            <Link
-              href="/admin/csv-import"
-              className="text-[11px] font-medium text-muted-foreground hover:text-primary flex items-center gap-1 shrink-0 transition-colors"
-            >
-              Import Center <ArrowUpRight className="size-3" />
-            </Link>
-          </div>
-        </CardHeader>
-        <CardContent className="p-4">
-          <ImportJobsList jobs={stats?.recentImports} showRollback={false} />
-        </CardContent>
-      </Card>
+      {/* Import History Modal Dialog */}
+      <ImportHistoryModal
+        open={historyDialogOpen}
+        onOpenChange={setHistoryDialogOpen}
+        loading={recentImports.loading}
+        error={recentImports.error}
+        jobs={recentImports.jobs}
+        rollingBackId={recentImports.rollingBackId}
+        onRollback={recentImports.rollback}
+      />
+
+      {/* Rollback Confirmation Dialog */}
+      <ConfirmDialog
+        {...recentImports.confirmState}
+        onConfirm={recentImports.handleConfirm}
+        onCancel={recentImports.handleCancel}
+      />
     </div>
   );
 }

@@ -36,30 +36,30 @@ export function StatCard({ label, value, icon: Icon, color = "blue", subtitle, a
 
   return (
     <Card className={cn(
-      "group relative overflow-hidden transition-colors duration-200 border-border/80",
+      "group relative overflow-hidden transition-colors duration-200 border-border/80 w-full min-w-0",
       theme.glow
     )}>
-      <CardContent className="p-5">
-        <div className="flex items-start justify-between gap-3">
-          <div className="space-y-1.5 min-w-0">
-            <p className="text-xs font-semibold tracking-wide uppercase text-muted-foreground">{label}</p>
-            <div className="flex items-baseline gap-2">
-              <span className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">
+      <CardContent className="p-3 sm:p-4 md:p-5 overflow-hidden">
+        <div className="flex items-start justify-between gap-2 sm:gap-3">
+          <div className="space-y-1 min-w-0 flex-1 overflow-hidden">
+            <p className="text-[11px] sm:text-xs font-semibold tracking-wide uppercase text-muted-foreground truncate">{label}</p>
+            <div className="flex flex-wrap items-baseline gap-1.5 sm:gap-2 min-w-0">
+              <span className="text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight text-foreground truncate">
                 {typeof value === "number" ? value.toLocaleString() : value ?? 0}
               </span>
               {alertCount !== undefined && alertCount > 0 && (
-                <span className="rounded-full bg-rose-500/10 text-rose-500 text-[10px] font-bold px-2 py-0.5 border border-rose-500/20 animate-pulse">
+                <span className="rounded-full bg-rose-500/10 text-rose-500 text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 border border-rose-500/20 animate-pulse whitespace-nowrap">
                   {alertCount} alert{alertCount > 1 ? "s" : ""}
                 </span>
               )}
             </div>
             {subtitle && (
-              <p className="text-[11px] text-muted-foreground/80 truncate font-medium">{subtitle}</p>
+              <p className="text-[10px] sm:text-[11px] text-muted-foreground/80 truncate font-medium">{subtitle}</p>
             )}
           </div>
 
-          <div className={cn("flex size-11 shrink-0 items-center justify-center rounded-xl border shadow-xs", theme.bg)}>
-            <Icon className="size-5" />
+          <div className={cn("flex size-9 sm:size-10 md:size-11 shrink-0 items-center justify-center rounded-lg sm:rounded-xl border shadow-xs", theme.bg)}>
+            <Icon className="size-4 sm:size-5" />
           </div>
         </div>
       </CardContent>
