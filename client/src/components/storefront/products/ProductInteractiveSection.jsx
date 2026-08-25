@@ -22,12 +22,14 @@ import { QuantitySelector } from "@/components/storefront/products/QuantitySelec
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-export function ProductInteractiveSection({ product }) {
+export function ProductInteractiveSection({ product, variantSelectorProps }) {
   const router = useRouter();
   const [quantity, setQuantity] = useState(1);
   const [buyNowPending, setBuyNowPending] = useState(false);
 
-  const { optionTypes, selectedOptions, setOption, selectedVariant } = useVariantSelector(product);
+  const internalVariantSelector = useVariantSelector(product);
+  const { optionTypes, selectedOptions, setOption, selectedVariant } =
+    variantSelectorProps || internalVariantSelector;
   const isCustomerAuthed = useSelector((state) => state.customerAuth.status === "authenticated");
 
   const { addItem, isPending: isCartPending } = useCart();

@@ -12,7 +12,7 @@ const extractUrl = (item) => {
   return null;
 };
 
-export function ProductGallery({ productImages, variantImages }) {
+export function ProductGallery({ productImages, variantImages, allVariants }) {
   const images = useMemo(() => {
     const list = [];
     const seen = new Set();
@@ -29,17 +29,38 @@ export function ProductGallery({ productImages, variantImages }) {
       });
     };
 
+    // 1. Prioritize images of the currently selected variant
     addSource(variantImages);
+
+    // 2. Add main product images
     addSource(productImages);
+
+    // 3. Add images from all other variants so no images are missed
+    if (allVariants && Array.isArray(allVariants)) {
+      allVariants.forEach((v) => {
+        addSource(v?.images);
+      });
+    }
+
     return list;
-  }, [productImages, variantImages]);
+  }, [productImages, variantImages, allVariants]);
+
+  // Compute unique key for the active variant's images
+  const variantKey = useMemo(() => {
+    if (!variantImages) return "";
+    const items = Array.isArray(variantImages) ? variantImages : [variantImages];
+    return items.map(extractUrl).filter(Boolean).join(",");
+  }, [variantImages]);
 
   const [active, setActive] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
+  // Switch active image to the selected variant's first image whenever variant changes
   useEffect(() => {
-    setActive(0);
-  }, [variantImages]);
+    if (variantKey) {
+      setActive(0);
+    }
+  }, [variantKey]);
 
   const handlePrev = useCallback(() => {
     setActive((prev) => (prev === 0 ? images.length - 1 : prev - 1));

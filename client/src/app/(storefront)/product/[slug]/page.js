@@ -4,6 +4,7 @@ import { use, useEffect } from "react";
 import { Loader2 } from "lucide-react";
 import { usePublicProduct } from "@/hooks/storefront/usePublicProduct";
 import { useRecentlyViewed } from "@/hooks/storefront/useRecentlyViewed";
+import { useVariantSelector } from "@/hooks/storefront/useVariantSelector";
 import { ProductGallery } from "@/components/storefront/products/ProductGallery";
 import { ProductInteractiveSection } from "@/components/storefront/products/ProductInteractiveSection";
 import { RelatedProducts } from "@/components/storefront/products/RelatedProducts";
@@ -15,6 +16,8 @@ export default function ProductPage({ params }) {
   const { slug } = use(params);
   const { product, loading, error } = usePublicProduct(slug);
   const { addRecentlyViewed } = useRecentlyViewed();
+  const variantSelector = useVariantSelector(product);
+  const { selectedVariant } = variantSelector;
 
   // Save product to recently viewed list whenever product loads
   useEffect(() => {
@@ -52,10 +55,17 @@ export default function ProductPage({ params }) {
       {/* Balanced 50/50 Grid Layout */}
       <div className="grid gap-8 lg:gap-12 grid-cols-1 lg:grid-cols-12 items-start min-w-0">
         <div className="lg:col-span-6 min-w-0 w-full">
-          <ProductGallery productImages={product.images} />
+          <ProductGallery
+            productImages={product.images}
+            variantImages={selectedVariant?.images}
+            allVariants={product.variants}
+          />
         </div>
         <div className="lg:col-span-6 min-w-0 w-full">
-          <ProductInteractiveSection product={product} />
+          <ProductInteractiveSection
+            product={product}
+            variantSelectorProps={variantSelector}
+          />
         </div>
       </div>
 

@@ -28,6 +28,9 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
+import { useTheme } from "next-themes";
+import { ThemeProvider } from "@/components/theme-provider";
+
 const NAV_ITEMS = [
   { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard, allow: ["super_admin", "admin", "staff"] },
   { href: "/admin/products", label: "Products", icon: Package, allow: ["super_admin", "admin", "staff"] },
@@ -40,44 +43,40 @@ const NAV_ITEMS = [
 ];
 
 const COLLAPSE_KEY = "admin-sidebar-collapsed";
-const THEME_KEY = "admin-isolated-theme";
 
 export default function AdminLayout({ children }) {
+  return (
+    <ThemeProvider attribute="class" defaultTheme="dark" storageKey="admin-isolated-theme" enableSystem={false}>
+      <AdminLayoutContent>{children}</AdminLayoutContent>
+    </ThemeProvider>
+  );
+}
+
+function AdminLayoutContent({ children }) {
   const pathname = usePathname();
   const dispatch = useDispatch();
   const router = useRouter();
   const user = useSelector((state) => state.auth.user);
+  const { theme, setTheme } = useTheme();
 
   const [mounted, setMounted] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [adminTheme, setAdminTheme] = useState("dark");
 
   useEffect(() => {
     setMounted(true);
     if (localStorage.getItem(COLLAPSE_KEY) === "true") setCollapsed(true);
-
-    const savedTheme = localStorage.getItem(THEME_KEY);
-    if (savedTheme === "light" || savedTheme === "dark") {
-      setAdminTheme(savedTheme);
-    }
   }, []);
 
+  // Ensure dark class is removed from html element when navigating out of admin layout
   useEffect(() => {
-    if (adminTheme === "dark") {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
     return () => {
       document.documentElement.classList.remove("dark");
     };
-  }, [adminTheme]);
+  }, []);
 
   const toggleTheme = () => {
-    const nextTheme = adminTheme === "dark" ? "light" : "dark";
-    setAdminTheme(nextTheme);
-    localStorage.setItem(THEME_KEY, nextTheme);
+    setTheme(theme === "dark" ? "light" : "dark");
   };
 
   const toggleCollapsed = () => {
@@ -102,7 +101,7 @@ export default function AdminLayout({ children }) {
 
   return (
     <TooltipProvider delayDuration={200}>
-      <div className={cn("min-h-screen bg-background text-foreground transition-colors duration-200", adminTheme)}>
+      <div className="min-h-screen bg-background text-foreground transition-colors duration-200">
         <div className="flex h-screen overflow-hidden">
           {/* Mobile Overlay */}
           {mobileOpen && (
@@ -140,10 +139,10 @@ export default function AdminLayout({ children }) {
                     variant="ghost"
                     size="icon"
                     onClick={toggleTheme}
-                    title={`Switch to ${adminTheme === "dark" ? "light" : "dark"} mode`}
+                    title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
                     className="size-8"
                   >
-                    {adminTheme === "dark" ? <Sun className="size-4 text-amber-400" /> : <Moon className="size-4 text-slate-700" />}
+                    {theme === "dark" ? <Sun className="size-4 text-amber-400" /> : <Moon className="size-4 text-slate-700" />}
                   </Button>
                 )}
 
@@ -244,7 +243,7 @@ export default function AdminLayout({ children }) {
 
               {mounted && (
                 <Button variant="ghost" size="icon" onClick={toggleTheme} className="size-9">
-                  {adminTheme === "dark" ? <Sun className="size-5 text-amber-400" /> : <Moon className="size-5 text-slate-700" />}
+                  {theme === "dark" ? <Sun className="size-5 text-amber-400" /> : <Moon className="size-5 text-slate-700" />}
                 </Button>
               )}
             </header>
