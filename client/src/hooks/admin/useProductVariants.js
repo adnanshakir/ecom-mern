@@ -7,6 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { getVariants, createVariant, updateVariant, deleteVariant } from "@/services/admin/variants";
 import { variantSchema } from "@/schemas/admin/product";
 import { useConfirm } from "@/hooks/useConfirm";
+import { cleanVariantPayload } from "@/lib/productSanitizers";
 
 const EMPTY_VARIANT = { sku: "", price: "", stock: "", salePrice: "", costPrice: "", barcode: "" };
 
@@ -73,11 +74,11 @@ export function useProductVariants(productId) {
   };
 
   const create = async (values) => {
-    await createVariant(productId, cleanPayload(values));
+    await createVariant(productId, cleanVariantPayload(values));
   };
 
   const update = async (values) => {
-    await updateVariant(productId, editingVariant._id, cleanPayload(values));
+    await updateVariant(productId, editingVariant._id, cleanVariantPayload(values));
   };
 
   const submit = async (values) => {
@@ -142,20 +143,5 @@ export function useProductVariants(productId) {
     update,
     remove,
     submit,
-  };
-}
-
-function cleanPayload(values) {
-  const cleanOptions = values.options?.filter((o) => o.name && o.value);
-  return {
-    ...values,
-    salePrice: values.salePrice || undefined,
-    costPrice: values.costPrice || undefined,
-    barcode: values.barcode || undefined,
-    weight: values.weight?.value
-      ? { value: values.weight.value, unit: values.weight.unit || "g" }
-      : undefined,
-    images: values.images?.length ? values.images : undefined,
-    options: cleanOptions?.length ? cleanOptions : undefined,
   };
 }

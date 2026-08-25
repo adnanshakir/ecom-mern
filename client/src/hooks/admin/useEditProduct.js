@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 
 import { getProduct, updateProduct } from "@/services/admin/products";
 import { productDetailsSchema } from "@/schemas/admin/product";
+import { cleanOptionTypes } from "@/lib/productSanitizers";
 
 export function useEditProduct(productId) {
   const [loading, setLoading] = useState(true);
@@ -66,11 +67,7 @@ export function useEditProduct(productId) {
     const payload = {
       ...values,
       images: values.images || [],
-      optionTypes: values.optionTypes?.length
-        ? values.optionTypes
-            .filter((ot) => ot.name && ot.values?.length)
-            .map((ot) => ({ name: ot.name, values: ot.values.map((v) => v.value).filter(Boolean) }))
-        : [],
+      optionTypes: cleanOptionTypes(values.optionTypes) || [],
     };
 
     try {

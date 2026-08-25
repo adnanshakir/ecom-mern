@@ -16,10 +16,6 @@ export function useCsvImport() {
   const [confirmError, setConfirmError] = useState(null);
   const [confirmResult, setConfirmResult] = useState(null);
 
-  const [rollingBack, setRollingBack] = useState(false);
-  const [rollbackError, setRollbackError] = useState(null);
-  const [rolledBack, setRolledBack] = useState(false);
-
   useEffect(() => {
     if (!file) return;
 
@@ -29,8 +25,6 @@ export function useCsvImport() {
     setPreviewDialogOpen(false);
     setConfirmResult(null);
     setConfirmError(null);
-    setRolledBack(false);
-    setRollbackError(null);
 
     previewImport(file)
       .then(({ data }) => {
@@ -69,7 +63,6 @@ export function useCsvImport() {
       destructive: true,
       onConfirm: async () => {
         await rollbackImport(confirmResult.importJobId);
-        setRolledBack(true);
       },
     });
   };
@@ -81,8 +74,6 @@ export function useCsvImport() {
     setPreviewDialogOpen(false);
     setConfirmResult(null);
     setConfirmError(null);
-    setRolledBack(false);
-    setRollbackError(null);
   };
 
   return {
@@ -97,13 +88,10 @@ export function useCsvImport() {
     confirmError,
     confirmResult,
     runConfirm,
-    rollingBack,
-    rollbackError,
-    rolledBack,
     runRollback,
     reset,
     confirmState,
-    handleConfirm: handleConfirm,
-    handleCancel: handleCancel,
+    handleConfirm,
+    handleCancel,
   };
 }

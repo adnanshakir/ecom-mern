@@ -1,17 +1,14 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
-import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import { useState, useEffect, useCallback } from "react";
 import { getProducts, deleteProduct, bulkUpdateProducts, bulkDeleteProducts } from "@/services/admin/products";
 import { useConfirm } from "@/hooks/useConfirm";
+import { useUrlFilters } from "@/hooks/admin/useUrlFilters";
 
 const DEFAULT_LIMIT = 20;
+const PARAM_KEYS = ["search", "category", "brand", "status", "featured"];
 
 export function useProducts() {
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-
   const [products, setProducts] = useState([]);
   const [pagination, setPagination] = useState({ total: 0, page: 1, pages: 1 });
   const [loading, setLoading] = useState(true);
@@ -19,46 +16,7 @@ export function useProducts() {
   const [actionError, setActionError] = useState(null);
 
   const { confirmState, requestConfirm, handleConfirm, handleCancel } = useConfirm();
-
-  // Filters are derived from the URL so they're shareable/bookmarkable and
-  // back/forward works naturally — not held in local component state.
-  const filters = useMemo(
-    () => ({
-      search: searchParams.get("search") || "",
-      category: searchParams.get("category") || "",
-      brand: searchParams.get("brand") || "",
-      status: searchParams.get("status") || "",
-      featured: searchParams.get("featured") || "",
-      page: Number(searchParams.get("page")) || 1,
-      limit: Number(searchParams.get("limit")) || DEFAULT_LIMIT,
-    }),
-    [searchParams]
-  );
-
-  const updateParams = useCallback(
-    (updates) => {
-      const params = new URLSearchParams(searchParams.toString());
-
-      Object.entries(updates).forEach(([key, value]) => {
-        if (value === "" || value === undefined || value === null) {
-          params.delete(key);
-        } else {
-          params.set(key, value);
-        }
-      });
-
-      // Any filter change other than page itself resets back to page 1.
-      if (!("page" in updates)) {
-        params.delete("page");
-      }
-
-      router.push(`${pathname}?${params.toString()}`);
-    },
-    [router, pathname, searchParams]
-  );
-
-  const setFilter = (key, value) => updateParams({ [key]: value });
-  const setPage = (page) => updateParams({ page });
+  const { filters, setFilter, setPage } = useUrlFilters(PARAM_KEYS, DEFAULT_LIMIT);
 
   const fetchProducts = useCallback(() => {
     setLoading(true);

@@ -34,7 +34,6 @@ export function useAuth() {
 
   // Login
   const submitLogin = async (values) => {
-    console.log("LOGIN VALUES:", JSON.stringify(values));
     setServerError(null);
 
     const result = await dispatch(login(values));

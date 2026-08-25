@@ -1,21 +1,18 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
-import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import { useState, useEffect, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import { getUsers, updateUser, deleteUser } from "@/services/admin/users";
 import { userUpdateSchema } from "@/schemas/admin/user";
 import { useConfirm } from "@/hooks/useConfirm";
+import { useUrlFilters } from "@/hooks/admin/useUrlFilters";
 
 const DEFAULT_LIMIT = 20;
+const PARAM_KEYS = ["search", "role", "isActive"];
 
 export function useUsers() {
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-
   const [users, setUsers] = useState([]);
   const [pagination, setPagination] = useState({ total: 0, page: 1, pages: 1 });
   const [loading, setLoading] = useState(true);
@@ -27,42 +24,12 @@ export function useUsers() {
   const [submitting, setSubmitting] = useState(false);
 
   const { confirmState, requestConfirm, handleConfirm, handleCancel } = useConfirm();
+  const { filters, setFilter, setPage } = useUrlFilters(PARAM_KEYS, DEFAULT_LIMIT);
 
   const form = useForm({
     resolver: zodResolver(userUpdateSchema),
     defaultValues: { name: "", role: "staff", isActive: true },
   });
-
-  // Filters driven by the URL, same pattern as useProducts — shareable/bookmarkable.
-  const filters = useMemo(
-    () => ({
-      search: searchParams.get("search") || "",
-      role: searchParams.get("role") || "",
-      isActive: searchParams.get("isActive") || "",
-      page: Number(searchParams.get("page")) || 1,
-      limit: Number(searchParams.get("limit")) || DEFAULT_LIMIT,
-    }),
-    [searchParams]
-  );
-
-  const updateParams = useCallback(
-    (updates) => {
-      const params = new URLSearchParams(searchParams.toString());
-      Object.entries(updates).forEach(([key, value]) => {
-        if (value === "" || value === undefined || value === null) {
-          params.delete(key);
-        } else {
-          params.set(key, value);
-        }
-      });
-      if (!("page" in updates)) params.delete("page");
-      router.push(`${pathname}?${params.toString()}`);
-    },
-    [router, pathname, searchParams]
-  );
-
-  const setFilter = (key, value) => updateParams({ [key]: value });
-  const setPage = (page) => updateParams({ page });
 
   const fetchUsers = useCallback(() => {
     setLoading(true);

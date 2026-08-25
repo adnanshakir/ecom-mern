@@ -151,7 +151,7 @@ function CsvImportFlow() {
                 {confirmError && <p className="mt-4 text-sm text-destructive">{confirmError}</p>}
               </div>
 
-              <DialogFooter className="shrink-0 border-t bg-muted/20 p-6 pt-4">
+              <DialogFooter className="shrink-0 border-t bg-muted/30 mx-0 mb-0 px-6 py-4 rounded-b-xl">
                 <Button
                   onClick={async () => {
                     await runConfirm();

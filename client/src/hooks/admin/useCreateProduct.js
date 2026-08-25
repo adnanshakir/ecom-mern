@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 
 import { createProduct } from "@/services/admin/products";
 import { productSchema } from "@/schemas/admin/product";
+import { cleanOptionTypes, cleanVariantPayload } from "@/lib/productSanitizers";
 
 const EMPTY_VARIANT = { sku: "", price: "", stock: "", salePrice: "", costPrice: "", barcode: "" };
 
@@ -80,22 +81,8 @@ export function useCreateProduct(open, onCreated) {
     const payload = {
       ...values,
       images: values.images?.length ? values.images : undefined,
-      optionTypes: values.optionTypes?.length
-        ? values.optionTypes
-            .filter((ot) => ot.name && ot.values?.length)
-            .map((ot) => ({ name: ot.name, values: ot.values.map((v) => v.value).filter(Boolean) }))
-        : undefined,
-      variants: values.variants.map((v) => ({
-        ...v,
-        salePrice: v.salePrice || undefined,
-        costPrice: v.costPrice || undefined,
-        barcode: v.barcode || undefined,
-        weight: v.weight?.value ? { value: v.weight.value, unit: v.weight.unit || "g" } : undefined,
-        images: v.images?.length ? v.images : undefined,
-        options: v.options?.filter((o) => o.name && o.value)?.length
-          ? v.options.filter((o) => o.name && o.value)
-          : undefined,
-      })),
+      optionTypes: cleanOptionTypes(values.optionTypes),
+      variants: values.variants.map(cleanVariantPayload),
     };
 
     try {

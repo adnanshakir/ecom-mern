@@ -9,7 +9,7 @@ import { QuickCreateEntityDialog } from "@/components/admin/products/QuickCreate
 import { ImageUploader } from "@/components/admin/products/ImageUploader";
 import { OptionTypesEditor } from "@/components/admin/products/OptionTypesEditor";
 
-export function ProductDetailsFields({ form, categories, brands }) {
+export function ProductDetailsFields({ form, categories, brands, refetchCategories, refetchBrands }) {
   return (
     <div className="grid gap-4">
       <FormField
