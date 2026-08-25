@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, Heart, ShoppingCart } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Loader2, Heart, ShoppingCart, Zap } from "lucide-react";
 import { useSelector } from "react-redux";
 import { toast } from "sonner";
 import { useVariantSelector } from "@/hooks/storefront/useVariantSelector";
@@ -14,7 +15,9 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 export function ProductInteractiveSection({ product }) {
+  const router = useRouter();
   const [quantity, setQuantity] = useState(1);
+  const [buyNowPending, setBuyNowPending] = useState(false);
   const { optionTypes, selectedOptions, setOption, selectedVariant } = useVariantSelector(product);
 
   const isCustomerAuthed = useSelector((state) => state.customerAuth.status === "authenticated");
@@ -37,6 +40,26 @@ export function ProductInteractiveSection({ product }) {
       toast.warning(result.payload.message);
     } else if (!result?.error) {
       toast.success("Added to cart!");
+    }
+  };
+
+  const handleBuyNow = async () => {
+    if (!isCustomerAuthed) {
+      toast.error("Please log in to purchase items.");
+      return;
+    }
+    if (!selectedVariant?._id) return;
+    setBuyNowPending(true);
+    try {
+      const result = await addItem(selectedVariant._id, quantity);
+      if (result?.payload?.message) {
+        toast.warning(result.payload.message);
+      } else if (!result?.error) {
+        toast.success("Redirecting to cart...");
+        router.push("/cart");
+      }
+    } finally {
+      setBuyNowPending(false);
     }
   };
 
@@ -86,13 +109,14 @@ export function ProductInteractiveSection({ product }) {
         <QuantitySelector value={quantity} onChange={setQuantity} max={selectedVariant?.stock || 1} />
       </div>
 
-      <div className="flex gap-2">
+      <div className="flex flex-col sm:flex-row gap-2.5">
         <Button
-          className="flex-1 bg-[#033936] text-white hover:bg-[#022826]"
-          disabled={!inStock || isCartPending(selectedVariant?._id)}
+          variant="outline"
+          className="flex-1 border-[#033936] text-[#033936] hover:bg-[#033936]/10"
+          disabled={!inStock || isCartPending(selectedVariant?._id) || buyNowPending}
           onClick={handleAddToCart}
         >
-          {isCartPending(selectedVariant?._id) ? (
+          {isCartPending(selectedVariant?._id) && !buyNowPending ? (
             <Loader2 className="size-4 animate-spin" />
           ) : (
             <ShoppingCart className="size-4" />
@@ -101,8 +125,22 @@ export function ProductInteractiveSection({ product }) {
         </Button>
 
         <Button
+          className="flex-1 bg-[#033936] text-white hover:bg-[#022826]"
+          disabled={!inStock || isCartPending(selectedVariant?._id) || buyNowPending}
+          onClick={handleBuyNow}
+        >
+          {buyNowPending ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <Zap className="size-4" />
+          )}
+          Buy Now
+        </Button>
+
+        <Button
           variant="outline"
           size="icon"
+          className="shrink-0"
           disabled={isWishlistPending}
           onClick={handleToggleWishlist}
           title={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
@@ -113,3 +151,4 @@ export function ProductInteractiveSection({ product }) {
     </div>
   );
 }
+

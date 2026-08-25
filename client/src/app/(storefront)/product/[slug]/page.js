@@ -23,15 +23,11 @@ export default function ProductPage({ params }) {
   }
 
   if (error || !product) {
-    return (
-      <div className="py-20 text-center text-sm text-destructive">
-        Product not found
-      </div>
-    );
+    return <div className="py-20 text-center text-sm text-destructive">Product not found</div>;
   }
 
   return (
-    <div className="mx-auto max-w-400 px-4 py-6 sm:px-6 lg:px-8 space-y-12">
+    <div className="mx-auto max-w-[1600px] w-full min-w-0 px-4 py-6 sm:px-6 lg:px-8 space-y-12">
       <Breadcrumbs
         items={[
           { label: "Home", href: "/" },
@@ -43,7 +39,7 @@ export default function ProductPage({ params }) {
         ]}
       />
 
-      <div className="grid gap-8 lg:grid-cols-[580px_1fr] xl:grid-cols-[640px_1fr]">
+      <div className="grid gap-8 lg:grid-cols-[400px_1fr] xl:grid-cols-[460px_1fr] min-w-0">
         <ProductGallery productImages={product.images} />
         <ProductInteractiveSection product={product} />
       </div>

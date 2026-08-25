@@ -1,7 +1,7 @@
 "use client";
 
 import { usePublicProducts } from "@/hooks/storefront/usePublicProducts";
-import { ProductCard } from "@/components/storefront/products/ProductCard";
+import { ProductScrollRow } from "@/components/storefront/products/ProductScrollRow";
 
 export function ExploreProducts({ excludeProductId, excludeCategoryId }) {
   const { products, loading } = usePublicProducts({ limit: 16, sort: "newest" });
@@ -18,10 +18,10 @@ export function ExploreProducts({ excludeProductId, excludeCategoryId }) {
       ? otherCategoryProducts
       : products.filter((p) => p._id !== excludeProductId);
 
-  if (loading || displayProducts.length === 0) return null;
+  if (!loading && displayProducts.length === 0) return null;
 
   return (
-    <div className="grid gap-4 pt-8 border-t">
+    <div className="space-y-4 pt-8 border-t w-full min-w-0">
       <div>
         <h2 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">
           Explore Other Products
@@ -31,11 +31,8 @@ export function ExploreProducts({ excludeProductId, excludeCategoryId }) {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 sm:gap-6">
-        {displayProducts.slice(0, 12).map((product) => (
-          <ProductCard key={product._id} product={product} />
-        ))}
-      </div>
+      <ProductScrollRow products={displayProducts.slice(0, 12)} loading={loading} />
     </div>
   );
 }
+

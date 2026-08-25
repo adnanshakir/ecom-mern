@@ -1,16 +1,16 @@
 "use client";
 
 import { usePublicProducts } from "@/hooks/storefront/usePublicProducts";
-import { ProductCard } from "@/components/storefront/products/ProductCard";
+import { ProductScrollRow } from "@/components/storefront/products/ProductScrollRow";
 
 export function RelatedProducts({ categoryId, excludeProductId }) {
-  const { products, loading } = usePublicProducts({ category: categoryId, limit: 10 });
+  const { products, loading } = usePublicProducts({ category: categoryId, limit: 12 });
   const related = products.filter((p) => p._id !== excludeProductId);
 
-  if (loading || related.length === 0) return null;
+  if (!loading && related.length === 0) return null;
 
   return (
-    <div className="grid gap-4 pt-8 border-t">
+    <div className="space-y-4 pt-8 border-t w-full min-w-0">
       <div>
         <h2 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">
           Related Products
@@ -20,11 +20,8 @@ export function RelatedProducts({ categoryId, excludeProductId }) {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 sm:gap-6">
-        {related.slice(0, 8).map((product) => (
-          <ProductCard key={product._id} product={product} />
-        ))}
-      </div>
+      <ProductScrollRow products={related.slice(0, 10)} loading={loading} />
     </div>
   );
 }
+
