@@ -1,17 +1,27 @@
 "use client";
 
-import { use } from "react";
+import { use, useEffect } from "react";
 import { Loader2 } from "lucide-react";
 import { usePublicProduct } from "@/hooks/storefront/usePublicProduct";
+import { useRecentlyViewed } from "@/hooks/storefront/useRecentlyViewed";
 import { ProductGallery } from "@/components/storefront/products/ProductGallery";
 import { ProductInteractiveSection } from "@/components/storefront/products/ProductInteractiveSection";
 import { RelatedProducts } from "@/components/storefront/products/RelatedProducts";
 import { ExploreProducts } from "@/components/storefront/products/ExploreProducts";
+import { RecentlyViewedProducts } from "@/components/storefront/products/RecentlyViewedProducts";
 import { Breadcrumbs } from "@/components/storefront/layout/Breadcrumbs";
 
 export default function ProductPage({ params }) {
   const { slug } = use(params);
   const { product, loading, error } = usePublicProduct(slug);
+  const { addRecentlyViewed } = useRecentlyViewed();
+
+  // Save product to recently viewed list whenever product loads
+  useEffect(() => {
+    if (product) {
+      addRecentlyViewed(product);
+    }
+  }, [product, addRecentlyViewed]);
 
   if (loading) {
     return (
@@ -39,9 +49,14 @@ export default function ProductPage({ params }) {
         ]}
       />
 
-      <div className="grid gap-8 lg:grid-cols-[400px_1fr] xl:grid-cols-[460px_1fr] min-w-0">
-        <ProductGallery productImages={product.images} />
-        <ProductInteractiveSection product={product} />
+      {/* Balanced 50/50 Grid Layout */}
+      <div className="grid gap-8 lg:gap-12 grid-cols-1 lg:grid-cols-12 items-start min-w-0">
+        <div className="lg:col-span-6 min-w-0 w-full">
+          <ProductGallery productImages={product.images} />
+        </div>
+        <div className="lg:col-span-6 min-w-0 w-full">
+          <ProductInteractiveSection product={product} />
+        </div>
       </div>
 
       {/* Section 1: Related Products */}
@@ -49,6 +64,9 @@ export default function ProductPage({ params }) {
 
       {/* Section 2: Explore Other Products */}
       <ExploreProducts excludeProductId={product._id} excludeCategoryId={product.category?._id} />
+
+      {/* Section 3: Recently Viewed Products */}
+      <RecentlyViewedProducts currentProductId={product._id} />
     </div>
   );
 }

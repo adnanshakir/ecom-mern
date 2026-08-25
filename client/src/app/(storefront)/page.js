@@ -8,6 +8,7 @@ import { BrandLogos } from "@/components/storefront/home/BrandLogos";
 import { BottomBanner } from "@/components/storefront/home/BottomBanner";
 import { TrustFeaturesBar } from "@/components/storefront/home/TrustFeaturesBar";
 import { FaqSection } from "@/components/storefront/home/FaqSection";
+import { RecentlyViewedProducts } from "@/components/storefront/products/RecentlyViewedProducts";
 
 export default function Home() {
   return (
@@ -16,6 +17,7 @@ export default function Home() {
       <PageContainer className="space-y-10">
         {/* <CategoryBanners /> */}
         <PopularProductsSection />
+        <RecentlyViewedProducts />
         <ShopByCategory />
         <ShopByBudget />
         <BrandLogos />
