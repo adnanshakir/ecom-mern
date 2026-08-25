@@ -6,39 +6,35 @@ import { getPublicBanners } from "@/services/storefront/publicBanners";
 const FALLBACK_BANNERS = {
   hero: {
     key: "hero",
-    title: "TRUSTED BY MILLIONS",
-    subtitle: "Discover trending products, limited-time offers, and everyday essentials at unbeatable wholesale prices.",
-    image: { url: "/hero-banner.png", fileId: "" },
-    href: "/category/all",
-    ctaText: "Shop Now",
-    showGradient: true,
-  },
-  "secondary-left": {
-    key: "secondary-left",
-    title: "Jewellery",
-    subtitle: "Premium collection for every occasion",
-    image: { url: "/secondary-left.png", fileId: "" },
-    href: "/category/jewellery",
-    ctaText: "Explore Now",
-    showGradient: true,
-  },
-  "secondary-right": {
-    key: "secondary-right",
-    title: "Mobile Accessories",
-    subtitle: "Trendy accessories for smart devices",
-    image: { url: "/secondary-ryt.png", fileId: "" },
-    href: "/category/mobile-accessories",
-    ctaText: "Explore Now",
-    showGradient: true,
+    slides: [
+      {
+        image: { url: "/banner-1.webp", fileId: "" },
+        href: "/category/all",
+        order: 1,
+        isActive: true,
+      },
+      {
+        image: { url: "/banner-2.webp", fileId: "" },
+        href: "/category/all",
+        order: 2,
+        isActive: true,
+      },
+      {
+        image: { url: "/banner-3.webp", fileId: "" },
+        href: "/category/all",
+        order: 3,
+        isActive: true,
+      },
+    ],
   },
   bottom: {
     key: "bottom",
     title: "Buying in Bulk?",
     subtitle: "Get special tier discounts, customized tax invoices, and personalized quotations for large wholesale orders.",
-    image: { url: "/bottom-banner.png", fileId: "" },
+    image: { url: "/bottom-banner.webp", fileId: "" },
     href: "/contact-us",
     ctaText: "Request a Quote",
-    showGradient: true,
+    isActive: true,
   },
 };
 

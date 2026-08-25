@@ -13,6 +13,7 @@ export function ImageUploader({
   maxImages = 4,
   singleImage = false,
   label = "Images",
+  clean = false,
 }) {
   const [mode, setMode] = useState("file"); // "file" or "url"
   const [uploading, setUploading] = useState(false);
@@ -142,6 +143,11 @@ export function ImageUploader({
         <div className="flex flex-wrap gap-3 pt-1">
           {currentImages.map((img, i) => {
             const isSingle = singleImage || effectiveMax === 1;
+            const rawUrl = typeof img === "string" ? img : img?.url || "";
+            const displayUrl =
+              typeof rawUrl === "string" && rawUrl.endsWith(".png") && rawUrl.startsWith("/")
+                ? rawUrl.replace(/\.png$/, ".webp")
+                : rawUrl;
 
             return (
               <div
@@ -154,7 +160,7 @@ export function ImageUploader({
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={img.url}
+                  src={displayUrl}
                   alt=""
                   className={isSingle ? "size-full object-contain" : "size-full object-cover"}
                 />

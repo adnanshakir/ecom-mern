@@ -9,17 +9,18 @@ export function BottomBanner() {
   const { banners } = usePublicBanners();
   const bottom = banners.bottom || {};
 
+  if (bottom.isActive === false) return null;
+
   const rawImageUrl = bottom.image?.url || "/bottom-banner.webp";
   const imageUrl = rawImageUrl.endsWith(".png") ? rawImageUrl.replace(/\.png$/, ".webp") : rawImageUrl;
   const title = bottom.title || "Buying in Bulk?";
   const subtitle = bottom.subtitle || "Get special tier discounts, customized tax invoices, and personalized quotations for large wholesale orders.";
   const href = bottom.href || "/contact-us";
   const ctaText = bottom.ctaText || "Request a Quote";
-  const showGradient = bottom.showGradient ?? true;
 
   return (
     <section className="relative overflow-hidden rounded-2xl bg-[#033936] text-white shadow-xl">
-      {/* Background Image */}
+      {/* Background Image - Clean without masking overlay */}
       <div className="absolute inset-0 z-0">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
@@ -27,7 +28,7 @@ export function BottomBanner() {
           alt={title}
           loading="lazy"
           decoding="async"
-          className="size-full object-cover object-center opacity-90"
+          className="size-full object-cover object-center"
         />
       </div>
 
