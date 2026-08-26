@@ -1,10 +1,11 @@
 "use client";
 
-import { use } from "react";
+import { use, Suspense } from "react";
+import { Loader2 } from "lucide-react";
 import { usePublicCategories } from "@/hooks/storefront/usePublicCategories";
 import { ProductCatalogFilterView } from "@/components/storefront/products/ProductCatalogFilterView";
 
-export default function CategoryPage({ params }) {
+function CategoryContent({ params }) {
   const { slug } = use(params);
   const activeCategorySlug = (slug === "allcategories" || slug === "all") ? null : slug;
   const { categories } = usePublicCategories();
@@ -23,5 +24,19 @@ export default function CategoryPage({ params }) {
         ...(currentCategory ? [{ label: currentCategory.name }] : []),
       ]}
     />
+  );
+}
+
+export default function CategoryPage({ params }) {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center py-20 text-muted-foreground">
+          <Loader2 className="size-8 animate-spin text-[#033936]" />
+        </div>
+      }
+    >
+      <CategoryContent params={params} />
+    </Suspense>
   );
 }

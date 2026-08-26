@@ -81,7 +81,7 @@ export function ShopByCategory() {
           <Link
             key={item.id}
             href={item.href}
-            className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border/40 bg-muted/40 p-5 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 min-h-48.75 sm:min-h-52.5"
+            className="group relative flex flex-col justify-between overflow-hidden rounded-md border border-border/40 bg-muted/40 p-5 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 min-h-48.75 sm:min-h-52.5"
           >
             {/* Background image */}
             {/* eslint-disable-next-line @next/next/no-img-element */}

@@ -69,14 +69,14 @@ export default function ProductPage({ params }) {
         </div>
       </div>
 
-      {/* Section 1: Related Products */}
+      {/* Section 1: You May Also Like */}
       <RelatedProducts categoryId={product.category?._id} excludeProductId={product._id} />
 
-      {/* Section 2: Explore Other Products */}
-      <ExploreProducts excludeProductId={product._id} excludeCategoryId={product.category?._id} />
-
-      {/* Section 3: Recently Viewed Products */}
+      {/* Section 2: Recently Viewed Products (Scroll Row) */}
       <RecentlyViewedProducts currentProductId={product._id} />
+
+      {/* Section 3: Explore Other Products */}
+      <ExploreProducts excludeProductId={product._id} excludeCategoryId={product.category?._id} />
     </div>
   );
 }

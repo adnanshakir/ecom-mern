@@ -8,16 +8,18 @@ import { BottomBanner } from "@/components/storefront/home/BottomBanner";
 import { TrustFeaturesBar } from "@/components/storefront/home/TrustFeaturesBar";
 import { FaqSection } from "@/components/storefront/home/FaqSection";
 import { RecentlyViewedProducts } from "@/components/storefront/products/RecentlyViewedProducts";
+import { ExploreProducts } from "@/components/storefront";
 
 export default function Home() {
   return (
     <div className="space-y-10 pb-12">
       <HeroBanner />
       <PageContainer className="space-y-10">
+        <ShopByBudget />
         <PopularProductsSection />
         <RecentlyViewedProducts />
         <ShopByCategory />
-        <ShopByBudget />
+        <ExploreProducts/>
         <BrandLogos />
         <BottomBanner />
         <TrustFeaturesBar />

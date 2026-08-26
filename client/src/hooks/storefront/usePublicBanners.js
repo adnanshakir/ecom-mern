@@ -27,6 +27,35 @@ const FALLBACK_BANNERS = {
       },
     ],
   },
+  budget: {
+    key: "budget",
+    slides: [
+      {
+        image: { url: "/99.WEBP", fileId: "" },
+        href: "/category/all?maxPrice=99",
+        order: 1,
+        isActive: true,
+      },
+      {
+        image: { url: "/149.WEBP", fileId: "" },
+        href: "/category/all?maxPrice=149",
+        order: 2,
+        isActive: true,
+      },
+      {
+        image: { url: "/199.WEBP", fileId: "" },
+        href: "/category/all?maxPrice=199",
+        order: 3,
+        isActive: true,
+      },
+      {
+        image: { url: "/499.WEBP", fileId: "" },
+        href: "/category/all?maxPrice=499",
+        order: 4,
+        isActive: true,
+      },
+    ],
+  },
   bottom: {
     key: "bottom",
     title: "Buying in Bulk?",

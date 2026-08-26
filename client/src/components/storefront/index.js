@@ -7,7 +7,6 @@ export * from "./layout/ScrollToTop";
 
 // Home
 export * from "./home/HeroBanner";
-export * from "./home/CategoryBanners";
 export * from "./home/BottomBanner";
 export * from "./home/PopularProductsSection";
 export * from "./home/ShopByCategory";

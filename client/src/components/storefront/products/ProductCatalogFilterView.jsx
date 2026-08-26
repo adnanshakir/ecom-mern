@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   SlidersHorizontal,
   ChevronDown,
@@ -41,19 +41,45 @@ export function ProductCatalogFilterView({
   breadcrumbs = [],
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { categories } = usePublicCategories();
+
+  const urlMinPrice = searchParams?.get("minPrice") || "";
+  const urlMaxPrice = searchParams?.get("maxPrice") || "";
 
   // Filters State
   const [selectedCategory, setSelectedCategory] = useState(initialCategory);
   const [sort, setSort] = useState("newest");
 
   // Confirmed Filter State (used for API calls)
-  const [minPrice, setMinPrice] = useState("");
-  const [maxPrice, setMaxPrice] = useState("");
+  const [minPrice, setMinPrice] = useState(urlMinPrice);
+  const [maxPrice, setMaxPrice] = useState(urlMaxPrice);
 
   // Temporary Input State for Price Filter (Only submitted on "Apply" click)
-  const [tempMinPrice, setTempMinPrice] = useState("");
-  const [tempMaxPrice, setTempMaxPrice] = useState("");
+  const [tempMinPrice, setTempMinPrice] = useState(urlMinPrice);
+  const [tempMaxPrice, setTempMaxPrice] = useState(urlMaxPrice);
+
+  useEffect(() => {
+    const qpMin = searchParams?.get("minPrice") || "";
+    const qpMax = searchParams?.get("maxPrice") || "";
+    setMinPrice(qpMin);
+    setMaxPrice(qpMax);
+    setTempMinPrice(qpMin);
+    setTempMaxPrice(qpMax);
+  }, [searchParams]);
+
+  const updateUrlWithFilters = (newMin, newMax) => {
+    const params = new URLSearchParams(searchParams ? searchParams.toString() : "");
+    if (newMin) params.set("minPrice", newMin);
+    else params.delete("minPrice");
+
+    if (newMax) params.set("maxPrice", newMax);
+    else params.delete("maxPrice");
+
+    const queryString = params.toString();
+    const basePath = typeof window !== "undefined" ? window.location.pathname : "/category/all";
+    router.push(queryString ? `${basePath}?${queryString}` : basePath);
+  };
 
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
 
@@ -133,17 +159,17 @@ export function ProductCatalogFilterView({
 
   const handleCategorySelect = (slugOrId) => {
     setSelectedCategory(slugOrId);
-    if (!slugOrId) {
-      router.push("/category/all");
-    } else {
-      router.push(`/category/${slugOrId}`);
-    }
+    const params = new URLSearchParams(searchParams ? searchParams.toString() : "");
+    const queryString = params.toString();
+    const basePath = !slugOrId ? "/category/all" : `/category/${slugOrId}`;
+    router.push(queryString ? `${basePath}?${queryString}` : basePath);
   };
 
   // Submit price filter on button click
   const handleApplyPriceFilter = () => {
     setMinPrice(tempMinPrice);
     setMaxPrice(tempMaxPrice);
+    updateUrlWithFilters(tempMinPrice, tempMaxPrice);
   };
 
   const handleQuickPricePreset = (min, max) => {
@@ -151,21 +177,23 @@ export function ProductCatalogFilterView({
     setTempMaxPrice(max);
     setMinPrice(min);
     setMaxPrice(max);
+    updateUrlWithFilters(min, max);
   };
 
   const handleResetFilters = () => {
-    handleCategorySelect(null);
+    setSelectedCategory(null);
     setTempMinPrice("");
     setTempMaxPrice("");
     setMinPrice("");
     setMaxPrice("");
     setSort("newest");
+    router.push("/category/all");
   };
 
-  const childrenMap = buildChildrenMap(categories);
-  const topCategories = categories.filter((c) => !c.parent);
+  const childrenMap = buildChildrenMap(categories || []);
+  const topCategories = (categories || []).filter((c) => !c.parent);
 
-  const currentCategoryObj = categories.find(
+  const currentCategoryObj = (categories || []).find(
     (c) => c.slug === selectedCategory || c._id === selectedCategory
   );
 

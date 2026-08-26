@@ -7,12 +7,15 @@ import { toast } from "sonner";
 
 import { getAdminBanners, updateAdminBanner } from "@/services/admin/banners";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ApiErrorSummary } from "@/components/shared/ApiErrorSummary";
 import { HeroBannersTab } from "@/components/admin/banners/HeroBannersTab";
+import { BudgetBannersTab } from "@/components/admin/banners/BudgetBannersTab";
 import { BottomBannerTab } from "@/components/admin/banners/BottomBannerTab";
 
 const BANNER_CONFIGS = [
   { key: "hero", name: "Top Hero Carousel Banners" },
+  { key: "budget", name: "Shop By Budget Banners" },
   { key: "bottom", name: "Bottom Banner" },
 ];
 
@@ -20,6 +23,7 @@ export default function AdminBannersPage() {
   const user = useSelector((state) => state.auth.user);
   const canWrite = ["super_admin", "admin"].includes(user?.role);
 
+  const [activeTab, setActiveTab] = useState("hero");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [savedBanners, setSavedBanners] = useState({});
@@ -106,7 +110,7 @@ export default function AdminBannersPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Storefront Banners</h1>
           <p className="text-sm text-muted-foreground">
-            Manage your Top Hero Carousel (up to 5 banners) and Bottom Promotional Banner.
+            Manage your Top Hero Carousel, Shop By Budget Banners, and Bottom Promotional Banner.
           </p>
         </div>
 
@@ -120,18 +124,45 @@ export default function AdminBannersPage() {
 
       <ApiErrorSummary message={error} />
 
-      <Tabs defaultValue="hero" className="w-full space-y-4">
-        <div className="flex justify-center w-full">
+      <Tabs value={activeTab} onValueChange={(val) => val && setActiveTab(val)} className="w-full space-y-4">
+        {/* Mobile Dropdown Select (< 640px) */}
+        <div className="sm:hidden w-full">
+          <Select value={activeTab} onValueChange={(val) => val && setActiveTab(val)}>
+            <SelectTrigger className="w-full h-11 px-3.5 bg-card border-border font-medium shadow-xs rounded-lg">
+              <div className="flex items-center justify-between w-full pr-2">
+                <span className="font-semibold text-foreground text-sm">{BAN_NAME(activeTab)}</span>
+                {isDirty(activeTab) && (
+                  <span className="ml-2 size-2 rounded-full bg-amber-500 inline-block shrink-0" title="Unsaved changes" />
+                )}
+              </div>
+            </SelectTrigger>
+            <SelectContent>
+              {BANNER_CONFIGS.map((cfg) => (
+                <SelectItem key={cfg.key} value={cfg.key} className="py-2.5 cursor-pointer">
+                  <div className="flex items-center justify-between w-full">
+                    <span className="font-medium">{cfg.name}</span>
+                    {isDirty(cfg.key) && (
+                      <span className="ml-2 size-2 rounded-full bg-amber-500 inline-block shrink-0" title="Unsaved changes" />
+                    )}
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Desktop Horizontal Tabs (>= 640px) */}
+        <div className="hidden sm:flex justify-center w-full overflow-x-auto no-scrollbar">
           <TabsList className="inline-flex h-10 items-center justify-center rounded-md bg-muted/80 p-1 text-muted-foreground border border-border">
             {BANNER_CONFIGS.map((cfg) => (
               <TabsTrigger
                 key={cfg.key}
                 value={cfg.key}
-                className="px-4 py-1.5 text-xs sm:text-sm font-semibold rounded-sm transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
+                className="px-4 py-1.5 text-xs sm:text-sm font-semibold rounded-sm transition-all cursor-pointer data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
               >
                 <span>{cfg.name}</span>
                 {isDirty(cfg.key) && (
-                  <span className="ml-2 size-2 rounded-full bg-amber-500 inline-block shrink-0" />
+                  <span className="ml-2 size-2 rounded-full bg-amber-500 inline-block shrink-0" title="Unsaved changes" />
                 )}
               </TabsTrigger>
             ))}
@@ -141,6 +172,18 @@ export default function AdminBannersPage() {
 
         <TabsContent value="hero">
           <HeroBannersTab
+            banners={banners}
+            savedBanners={savedBanners}
+            canWrite={canWrite}
+            savingKey={savingKey}
+            setBanners={setBanners}
+            onSave={handleSave}
+            onUndo={handleUndo}
+          />
+        </TabsContent>
+
+        <TabsContent value="budget">
+          <BudgetBannersTab
             banners={banners}
             savedBanners={savedBanners}
             canWrite={canWrite}

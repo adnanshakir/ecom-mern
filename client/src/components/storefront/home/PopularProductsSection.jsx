@@ -2,10 +2,10 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Loader2, PackageX } from "lucide-react";
 import { usePublicProducts } from "@/hooks/storefront/usePublicProducts";
 import { usePublicCategories } from "@/hooks/storefront/usePublicCategories";
-import { ProductScrollRow } from "@/components/storefront/products/ProductScrollRow";
+import { ProductCard } from "@/components/storefront/products/ProductCard";
 import { Button } from "@/components/ui/button";
 
 export function PopularProductsSection() {
@@ -23,7 +23,7 @@ export function PopularProductsSection() {
     limit: 12,
   });
 
-  const topCategories = categories.filter((cat) => !cat.parent);
+  const topCategories = (categories || []).filter((cat) => !cat.parent);
 
   const checkPillsScroll = useCallback(() => {
     if (pillsRef.current) {
@@ -60,22 +60,20 @@ export function PopularProductsSection() {
         </div>
 
         <Button variant="outline" size="sm" asChild className="self-start rounded-full border-[#033936] text-[#033936] hover:bg-[#033936] hover:text-white sm:self-auto">
-          <Link href="/category" className="flex items-center gap-1">
+          <Link href="/category/all" className="flex items-center gap-1">
             <span>View All Products</span>
             <ChevronRight className="size-4" />
           </Link>
         </Button>
       </div>
 
-      {/* Category Filter Pills with Dynamic Subtle White-Masking */}
+      {/* Category Filter Pills with Dynamic Subtle Masking */}
       <div className="relative">
-        {/* Subtle Left Masking Overlay (only visible after scrolling) */}
         <div
           className={`pointer-events-none absolute left-0 top-0 bottom-0 z-10 w-6 sm:w-10 bg-linear-to-r from-background via-background/50 to-transparent transition-opacity duration-300 ${
             showPillsLeftMask ? "opacity-100" : "opacity-0"
           }`}
         />
-        {/* Subtle Right Masking Overlay */}
         <div
           className={`pointer-events-none absolute right-0 top-0 bottom-0 z-10 w-6 sm:w-10 bg-linear-to-l from-background via-background/50 to-transparent transition-opacity duration-300 ${
             showPillsRightMask ? "opacity-100" : "opacity-0"
@@ -118,14 +116,24 @@ export function PopularProductsSection() {
         </div>
       </div>
 
-      {/* Products Row using ProductScrollRow */}
-      <ProductScrollRow
-        products={products.slice(0, 12)}
-        loading={loading}
-        error={error}
-        emptyMessage="No products found in this category."
-      />
+      {/* Products Grid Layout */}
+      {loading ? (
+        <div className="flex flex-col items-center justify-center gap-3 py-16 text-muted-foreground">
+          <Loader2 className="size-7 animate-spin text-[#033936]" />
+          <p className="text-sm font-medium">Loading popular products...</p>
+        </div>
+      ) : error || products.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-16 text-center text-muted-foreground border rounded-2xl bg-muted/20">
+          <PackageX className="mb-2 size-10 text-muted-foreground/60" />
+          <p className="text-sm font-medium">No products found in this category.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 sm:gap-6">
+          {products.slice(0, 10).map((product) => (
+            <ProductCard key={product._id} product={product} />
+          ))}
+        </div>
+      )}
     </section>
   );
 }
-
