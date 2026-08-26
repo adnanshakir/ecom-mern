@@ -32,7 +32,12 @@ export function ProductDetailsFields({ form, categories, brands, refetchCategori
           <FormItem>
             <FormLabel>Description (optional)</FormLabel>
             <FormControl>
-              <Textarea rows={3} placeholder="Product description..." {...field} />
+              <Textarea
+                rows={3}
+                placeholder="Product description..."
+                className="min-h-[90px] max-h-[180px] overflow-y-auto resize-none"
+                {...field}
+              />
             </FormControl>
           </FormItem>
         )}
@@ -159,32 +164,6 @@ export function ProductDetailsFields({ form, categories, brands, refetchCategori
             <FormLabel>Product images (optional, up to 4)</FormLabel>
             <FormControl>
               <ImageUploader images={field.value || []} onChange={field.onChange} maxImages={4} />
-            </FormControl>
-          </FormItem>
-        )}
-      />
-
-      <FormField
-        control={form.control}
-        name="seoTitle"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>SEO title (optional)</FormLabel>
-            <FormControl>
-              <Input {...field} />
-            </FormControl>
-          </FormItem>
-        )}
-      />
-
-      <FormField
-        control={form.control}
-        name="seoDescription"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>SEO description (optional)</FormLabel>
-            <FormControl>
-              <Textarea rows={2} {...field} />
             </FormControl>
           </FormItem>
         )}

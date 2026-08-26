@@ -18,8 +18,6 @@ const DETAILS_FIELDS = [
   "status",
   "featured",
   "images",
-  "seoTitle",
-  "seoDescription",
 ];
 
 const DEFAULTS = {
@@ -30,8 +28,6 @@ const DEFAULTS = {
   brand: "",
   status: "draft",
   featured: false,
-  seoTitle: "",
-  seoDescription: "",
   images: [],
   variants: [EMPTY_VARIANT],
 };

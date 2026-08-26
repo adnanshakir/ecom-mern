@@ -39,6 +39,13 @@ const HEADER_SPEC = [
     note: "Unique slug used to group variants under one product.",
   },
   {
+    field: "Description (HTML Supported)",
+    required: false,
+    headers: ["Description", "Body (HTML)", "Body"],
+    example: "<h2>Features</h2><ul><li>Max Air Cushioning</li><li>Breathable mesh</li></ul>",
+    note: "Rich description text. Accepts HTML tags like <h2>, <p>, <ul>, <li>, <strong>.",
+  },
+  {
     field: "SKU",
     required: true,
     headers: ["SKU", "Variant SKU"],
@@ -177,12 +184,14 @@ export function CsvColumnGuideModal({ open, onOpenChange }) {
               <CheckCircle2 className="size-4 shrink-0 text-emerald-500 mt-0.5" />
               <div className="grid gap-1">
                 <span className="font-semibold text-emerald-800 dark:text-emerald-200">
-                  3-Price System &amp; Parent Category Image Rules
+                  3-Price System, Category Images &amp; Rich HTML Description Rules
                 </span>
                 <p className="leading-relaxed text-emerald-700/90 dark:text-emerald-300/90">
                   1. <strong>Prices Supported:</strong> Selling Price (<code>Price</code>), Regular Price (<code>Compare-at price</code>), and Wholesale Cost (<code>Cost per item</code> — seller only).
                   <br />
                   2. <strong>Category Image Rule:</strong> Attached to top-level <em>Parent Category</em> (e.g. &quot;Footwear&quot; in &quot;Footwear &gt; Sneakers&quot;).
+                  <br />
+                  3. <strong>Rich Description:</strong> Accepts HTML formatting (<code>&lt;h2&gt;</code> headings, <code>&lt;ul&gt;&lt;li&gt;</code> bullet lists, <code>&lt;strong&gt;</code> bold text) in the <code>Description</code> / <code>Body (HTML)</code> column.
                 </p>
               </div>
             </div>

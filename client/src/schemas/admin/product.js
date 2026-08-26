@@ -55,13 +55,11 @@ export const productSchema = z.object({
   brand: z.string().min(1, "Brand is required"),
   status: z.enum(["draft", "active", "archived"]),
   featured: z.boolean(),
-  seoTitle: z.string().max(120, "SEO title must be 120 characters or fewer").optional(),
-  seoDescription: z.string().max(350, "SEO description must be 350 characters or fewer").optional(),
   images: z
     .array(
       z.object({
         url: z.string().url("Invalid image URL"),
-        fileId: z.string().min(1),
+        fileId: z.string().optional().or(z.literal("")),
       })
     )
     .optional()

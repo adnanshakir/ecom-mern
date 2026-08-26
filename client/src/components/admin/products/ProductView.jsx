@@ -12,15 +12,19 @@ import {
   Barcode,
   Scale,
   Coins,
+  Plus,
+  Minus,
 } from "lucide-react";
 import { StatusBadge } from "@/components/admin/products/StatusBadge";
 import { cn } from "@/lib/utils";
 import { formatPrice } from "@/lib/formatCurrency";
+import DOMPurify from "isomorphic-dompurify";
 
 export function ProductView({ product }) {
   const variants = product.variants || [];
   const [selectedVariantIndex, setSelectedVariantIndex] = useState(0);
   const [activeImage, setActiveImage] = useState(0);
+  const [isDescriptionOpen, setIsDescriptionOpen] = useState(false);
 
   const selectedVariant = variants[selectedVariantIndex] || variants[0];
 
@@ -141,11 +145,24 @@ export function ProductView({ product }) {
           </div>
         </div>
 
-        {/* Product Description */}
+        {/* Collapsible Product Description */}
         {product.description && (
-          <p className="text-sm leading-relaxed text-muted-foreground">
-            {product.description}
-          </p>
+          <div className="grid gap-2 border-t border-border/40 pt-4">
+            <button
+              type="button"
+              onClick={() => setIsDescriptionOpen((prev) => !prev)}
+              className="flex items-center justify-between py-1 text-left font-semibold uppercase tracking-wider text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+            >
+              <span>Description</span>
+              {isDescriptionOpen ? <Minus className="size-4" /> : <Plus className="size-4" />}
+            </button>
+            {isDescriptionOpen && (
+              <div
+                className="text-sm leading-relaxed text-muted-foreground [&_h1]:text-lg [&_h1]:font-bold [&_h1]:text-foreground [&_h1]:mt-3 [&_h1]:mb-1.5 [&_h2]:text-base [&_h2]:font-bold [&_h2]:text-foreground [&_h2]:mt-2.5 [&_h2]:mb-1 [&_h3]:text-sm [&_h3]:font-bold [&_h3]:text-foreground [&_h3]:mt-2 [&_h3]:mb-1 [&_p]:my-1.5 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:my-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:my-2 [&_li]:my-0.5 [&_strong]:font-semibold [&_strong]:text-foreground [&_a]:text-primary [&_a]:underline [&_blockquote]:border-l-2 [&_blockquote]:border-primary/50 [&_blockquote]:pl-3 [&_blockquote]:italic [&_blockquote]:my-2"
+                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(product.description) }}
+              />
+            )}
+          </div>
         )}
 
         {/* Variant Selector */}
@@ -336,34 +353,18 @@ export function ProductView({ product }) {
           </div>
         )}
 
-        {/* SEO & Product Metadata */}
-        {(product.slug || product.seoTitle || product.seoDescription) && (
+        {/* Product Metadata */}
+        {product.slug && (
           <div className="grid gap-2 border-t border-border/40 pt-4 text-xs">
             <span className="font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
               <Globe className="size-3.5" />
-              Product Metadata & SEO
+              Product Metadata
             </span>
             <div className="grid gap-1.5 text-muted-foreground">
-              {product.slug && (
-                <div className="flex items-center gap-2">
-                  <span className="font-medium text-foreground">Slug:</span>
-                  <span className="font-mono text-muted-foreground">/{product.slug}</span>
-                </div>
-              )}
-              {product.seoTitle && (
-                <div className="flex items-center gap-2">
-                  <span className="font-medium text-foreground">SEO Title:</span>
-                  <span>{product.seoTitle}</span>
-                </div>
-              )}
-              {product.seoDescription && (
-                <div className="flex flex-col gap-0.5">
-                  <span className="font-medium text-foreground">SEO Description:</span>
-                  <span className="line-clamp-2 text-muted-foreground">
-                    {product.seoDescription}
-                  </span>
-                </div>
-              )}
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-foreground">Slug:</span>
+                <span className="font-mono text-muted-foreground">/{product.slug}</span>
+              </div>
             </div>
           </div>
         )}

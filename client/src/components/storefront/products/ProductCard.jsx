@@ -147,7 +147,11 @@ export function ProductCard({ product, showCartOnHover = false }) {
         {/* Product info */}
         <div className="grid gap-1 p-3">
           <p className="line-clamp-1 text-sm font-medium">{product.name}</p>
-          {product.description && <p className="line-clamp-1 text-xs text-muted-foreground">{product.description}</p>}
+          {product.description && (
+            <p className="line-clamp-1 text-xs text-muted-foreground">
+              {product.description.replace(/<[^>]*>?/gm, "").trim()}
+            </p>
+          )}
 
           <div className="mt-1 flex items-baseline gap-1.5 flex-wrap">
             {discountedVariant ? (

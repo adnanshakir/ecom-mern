@@ -25,8 +25,6 @@ export function useEditProduct(productId) {
       brand: "",
       status: "draft",
       featured: false,
-      seoTitle: "",
-      seoDescription: "",
       images: [],
     },
   });
@@ -49,8 +47,6 @@ export function useEditProduct(productId) {
           brand: product.brand?._id || product.brand || "",
           status: product.status || "draft",
           featured: !!product.featured,
-          seoTitle: product.seoTitle || "",
-          seoDescription: product.seoDescription || "",
           images: product.images || [],
         });
       })

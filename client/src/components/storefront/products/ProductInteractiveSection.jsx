@@ -21,6 +21,7 @@ import { useVariantSelector } from "@/hooks/storefront/useVariantSelector";
 import { useCart } from "@/hooks/storefront/useCart";
 import { useWishlist } from "@/hooks/storefront/useWishlist";
 import { formatPrice } from "@/lib/formatCurrency";
+import DOMPurify from "isomorphic-dompurify";
 import { VariantSelector } from "@/components/storefront/products/VariantSelector";
 import { QuantitySelector } from "@/components/storefront/products/QuantitySelector";
 import { Button } from "@/components/ui/button";
@@ -452,9 +453,10 @@ export function ProductInteractiveSection({ product, variantSelectorProps }) {
             )}
           </button>
           {isDescriptionOpen && (
-            <div className="pt-2 pb-1 text-xs sm:text-sm text-muted-foreground leading-relaxed">
-              {product.description}
-            </div>
+            <div
+              className="pt-2 pb-1 text-xs sm:text-sm text-muted-foreground leading-relaxed [&_h1]:text-base [&_h1]:font-bold [&_h1]:text-foreground [&_h1]:mt-3 [&_h1]:mb-1.5 [&_h2]:text-sm [&_h2]:font-bold [&_h2]:text-foreground [&_h2]:mt-2.5 [&_h2]:mb-1 [&_h3]:text-xs [&_h3]:font-bold [&_h3]:text-foreground [&_h3]:mt-2 [&_h3]:mb-1 [&_p]:my-1.5 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:my-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:my-2 [&_li]:my-0.5 [&_strong]:font-semibold [&_strong]:text-foreground [&_a]:text-primary [&_a]:underline [&_blockquote]:border-l-2 [&_blockquote]:border-primary/50 [&_blockquote]:pl-3 [&_blockquote]:italic [&_blockquote]:my-2"
+              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(product.description) }}
+            />
           )}
         </div>
       )}

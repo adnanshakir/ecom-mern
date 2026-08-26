@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSelector } from "react-redux";
 import { Loader2, MoreVertical, Plus, CheckSquare, Square } from "lucide-react";
 
+import { useDebouncedValue } from "@/hooks/shared/useDebouncedValue";
 import { useProducts } from "@/hooks/admin/useProducts";
 import { useCategories } from "@/hooks/admin/useCategories";
 import { useBrands } from "@/hooks/admin/useBrands";
@@ -58,6 +59,15 @@ function ProductsContent() {
     handleConfirm,
     handleCancel,
   } = useProducts();
+
+  const [searchTerm, setSearchTerm] = useState(filters.search || "");
+  const debouncedSearch = useDebouncedValue(searchTerm, 400);
+
+  useEffect(() => {
+    if (debouncedSearch !== (filters.search || "")) {
+      setFilter("search", debouncedSearch);
+    }
+  }, [debouncedSearch]);
   const { categories } = useCategories();
   const { brands } = useBrands();
 
@@ -111,11 +121,9 @@ function ProductsContent() {
         <div className="flex flex-col sm:flex-row flex-wrap gap-2 w-full sm:w-auto">
           <Input
             placeholder="Search products..."
-            defaultValue={filters.search}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full sm:w-56"
-            onKeyDown={(e) => {
-              if (e.key === "Enter") setFilter("search", e.currentTarget.value);
-            }}
           />
 
           <Select value={filters.category || "all"} onValueChange={(v) => setFilter("category", v === "all" ? "" : v)}>

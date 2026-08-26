@@ -223,18 +223,30 @@ export function ImageUploader({
               )}
             </div>
           ) : (
-            <form onSubmit={handleAddUrl} className="flex gap-2 items-center">
+            <div className="flex gap-2 items-center">
               <Input
                 placeholder="https://example.com/image.png"
                 value={urlInput}
                 onChange={(e) => setUrlInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleAddUrl(e);
+                  }
+                }}
                 className="text-xs flex-1"
               />
-              <Button type="submit" size="sm" variant="secondary" className="h-9 px-3 text-xs shrink-0">
+              <Button
+                type="button"
+                onClick={handleAddUrl}
+                size="sm"
+                variant="secondary"
+                className="h-9 px-3 text-xs shrink-0"
+              >
                 <Plus className="size-3.5" />
                 Add URL
               </Button>
-            </form>
+            </div>
           )}
         </div>
       )}
