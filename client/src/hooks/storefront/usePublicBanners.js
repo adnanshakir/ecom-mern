@@ -31,25 +31,25 @@ const FALLBACK_BANNERS = {
     key: "budget",
     slides: [
       {
-        image: { url: "/99.WEBP", fileId: "" },
+        image: { url: "/99.webp", fileId: "" },
         href: "/category/all?maxPrice=99",
         order: 1,
         isActive: true,
       },
       {
-        image: { url: "/149.WEBP", fileId: "" },
+        image: { url: "/149.webp", fileId: "" },
         href: "/category/all?maxPrice=149",
         order: 2,
         isActive: true,
       },
       {
-        image: { url: "/199.WEBP", fileId: "" },
+        image: { url: "/199.webp", fileId: "" },
         href: "/category/all?maxPrice=199",
         order: 3,
         isActive: true,
       },
       {
-        image: { url: "/499.WEBP", fileId: "" },
+        image: { url: "/499.webp", fileId: "" },
         href: "/category/all?maxPrice=499",
         order: 4,
         isActive: true,
@@ -59,7 +59,8 @@ const FALLBACK_BANNERS = {
   bottom: {
     key: "bottom",
     title: "Buying in Bulk?",
-    subtitle: "Get special tier discounts, customized tax invoices, and personalized quotations for large wholesale orders.",
+    subtitle:
+      "Get special tier discounts, customized tax invoices, and personalized quotations for large wholesale orders.",
     image: { url: "/bottom-banner.webp", fileId: "" },
     href: "/contact-us",
     ctaText: "Request a Quote",
