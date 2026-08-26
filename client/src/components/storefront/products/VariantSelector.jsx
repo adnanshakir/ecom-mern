@@ -1,34 +1,42 @@
-import { cn } from "@/lib/utils";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export function VariantSelector({ optionTypes, selectedOptions, onSelect }) {
-  if (!optionTypes.length) return null;
+  if (!optionTypes?.length) return null;
 
   return (
     <div className="grid gap-3">
-      {optionTypes.map((optionType) => (
-        <div key={optionType.name} className="grid gap-1.5">
-          <span className="text-sm font-medium">{optionType.name}</span>
-          <div className="flex flex-wrap gap-2">
-            {optionType.values.map((value) => {
-              const isSelected = selectedOptions[optionType.name] === value;
-              return (
-                <button
-                  key={value}
-                  onClick={() => onSelect(optionType.name, value)}
-                  className={cn(
-                    "rounded-md border px-3 py-1.5 text-sm",
-                    isSelected
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : "hover:bg-accent"
-                  )}
-                >
-                  {value}
-                </button>
-              );
-            })}
+      {optionTypes.map((optionType) => {
+        const currentValue = selectedOptions[optionType.name] || optionType.values[0] || "";
+        return (
+          <div key={optionType.name} className="grid gap-1.5">
+            <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              {optionType.name}: <span className="text-foreground font-bold">{currentValue}</span>
+            </label>
+            <Select
+              value={currentValue}
+              onValueChange={(val) => onSelect(optionType.name, val)}
+            >
+              <SelectTrigger className="w-full h-[38px] rounded-lg border-slate-300 dark:border-slate-700 bg-background px-3 text-xs sm:text-sm font-medium">
+                <SelectValue placeholder={`Select ${optionType.name}`} />
+              </SelectTrigger>
+              <SelectContent>
+                {optionType.values.map((value) => (
+                  <SelectItem key={value} value={value} className="text-xs sm:text-sm cursor-pointer">
+                    {value}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
+

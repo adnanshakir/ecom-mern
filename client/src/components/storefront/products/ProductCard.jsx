@@ -77,10 +77,10 @@ export function ProductCard({ product, showCartOnHover = false }) {
   };
 
   return (
-    <div className="group relative flex flex-col border rounded-lg overflow-hidden bg-card transition-shadow duration-200 hover:shadow-md">
+    <div className="group relative flex flex-col border rounded-sm overflow-hidden bg-card transition-shadow duration-200 hover:shadow-md">
       <Link href={`/product/${product.slug}`} className="relative block">
         {/* Image */}
-        <div className="relative flex aspect-square items-center justify-center overflow-hidden bg-muted">
+        <div className="relative flex aspect-square items-center justify-center overflow-hidden bg-muted p-3">
           {thumbnail ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -89,7 +89,7 @@ export function ProductCard({ product, showCartOnHover = false }) {
               loading="lazy"
               decoding="async"
               className={cn(
-                "size-full object-cover transition-transform duration-300 group-hover:scale-105",
+                "size-full object-contain transition-transform duration-300 group-hover:scale-105 rounded-sm",
                 !inStock && "opacity-50"
               )}
             />
@@ -122,7 +122,7 @@ export function ProductCard({ product, showCartOnHover = false }) {
               className={cn(
                 "absolute bottom-0 left-0 right-0 flex items-center justify-center gap-1.5 py-2.5 text-xs font-bold uppercase tracking-wide transition-all duration-200",
                 "translate-y-full opacity-0 group-hover:translate-y-0 group-hover:opacity-100",
-                isAlreadyInCart ? "bg-emerald-600 text-white" : "bg-[#033936] text-white hover:bg-[#022826]"
+                isAlreadyInCart ? "bg-emerald-600 text-white" : "bg-red-500 text-white hover:bg-red-600"
               )}
             >
               {isAddingToCart ? (
@@ -147,12 +147,15 @@ export function ProductCard({ product, showCartOnHover = false }) {
           <p className="line-clamp-1 text-sm font-medium">{product.name}</p>
           {product.description && <p className="line-clamp-1 text-xs text-muted-foreground">{product.description}</p>}
 
-          <div className="mt-1 flex items-baseline gap-2">
+          <div className="mt-1 flex items-baseline gap-1.5 flex-wrap">
             {discountedVariant ? (
               <>
                 <span className="text-base font-bold text-red-600">{formatPrice(discountedVariant.salePrice)}</span>
                 <span className="text-xs text-muted-foreground line-through">
                   {formatPrice(discountedVariant.price)}
+                </span>
+                <span className="rounded-sm bg-red-100 px-1.5 py-0.5 text-[10px] font-bold text-red-600 dark:bg-red-950/60 dark:text-red-400">
+                  {discountPercent}% OFF
                 </span>
               </>
             ) : (
@@ -170,8 +173,8 @@ export function ProductCard({ product, showCartOnHover = false }) {
             onClick={handleAddToCart}
             disabled={isAddingToCart}
             className={cn(
-              "flex w-full items-center justify-center gap-1.5 rounded-md py-2 text-xs font-bold uppercase tracking-wide transition-colors duration-200",
-              isAlreadyInCart ? "bg-emerald-600 text-white" : "bg-[#033936] text-white hover:bg-[#022826]"
+              "flex w-full items-center justify-center gap-1.5 rounded-sm py-2 text-xs font-bold uppercase tracking-wide transition-colors duration-200",
+              isAlreadyInCart ? "bg-emerald-600 text-white" : "bg-red-500 text-white hover:bg-red-600"
             )}
           >
             {isAddingToCart ? (

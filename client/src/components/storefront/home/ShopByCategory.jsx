@@ -60,9 +60,7 @@ export function ShopByCategory() {
       {/* Section Header */}
       <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            SHOP BY CATEGORY
-          </p>
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">SHOP BY CATEGORY</p>
           <h2 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
             Curated for retailers and shoppers
           </h2>
@@ -94,18 +92,6 @@ export function ShopByCategory() {
               decoding="async"
               className="absolute inset-0 size-full object-cover transition-transform duration-500 group-hover:scale-105"
             />
-            {/* Text readable gradient overlay */}
-            <div className="absolute inset-0 bg-linear-to-b from-white/80 via-white/45 to-white/10 dark:from-slate-950/85 dark:via-slate-950/50 dark:to-slate-950/20 pointer-events-none" />
-
-            {/* Category tag & name */}
-            <div className="relative z-10">
-              <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 line-clamp-1">
-                {item.tag}
-              </p>
-              <h3 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white tracking-tight mt-0.5 leading-tight line-clamp-1">
-                {item.title}
-              </h3>
-            </div>
 
             {/* Bottom-left Circular Arrow Button (ONLY VISIBLE ON HOVER) */}
             <div className="relative z-10 mt-auto pt-4">
@@ -123,9 +109,7 @@ export function ShopByCategory() {
         >
           {/* Header */}
           <div className="relative z-10">
-            <p className="text-xs font-bold uppercase tracking-wider text-amber-400">
-              EXPLORE ALL
-            </p>
+            <p className="text-xs font-bold uppercase tracking-wider text-amber-400">EXPLORE ALL</p>
             <h3 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight leading-tight mt-2">
               {remainingCount}+ more categories
             </h3>
