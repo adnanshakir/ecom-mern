@@ -92,8 +92,8 @@ export const mergeBannersWithDefaults = async (filter = {}) => {
 
         slides = slides.map((s) => {
           const u = s.image?.url || "";
-          if (typeof u === "string" && u.endsWith(".png") && u.startsWith("/")) {
-            return { ...s, image: { ...s.image, url: u.replace(/\.png$/, ".webp") } };
+          if (typeof u === "string" && (u.startsWith("/") || !u.startsWith("http"))) {
+            return { ...s, image: { ...s.image, url: u.replace(/\.(png|webp)$/i, ".webp") } };
           }
           return s;
         });
@@ -113,10 +113,9 @@ export const mergeBannersWithDefaults = async (filter = {}) => {
           : DEFAULT_BANNERS[key].image;
         if (
           typeof bottomImg?.url === "string" &&
-          bottomImg.url.endsWith(".png") &&
-          bottomImg.url.startsWith("/")
+          (bottomImg.url.startsWith("/") || !bottomImg.url.startsWith("http"))
         ) {
-          bottomImg = { ...bottomImg, url: bottomImg.url.replace(/\.png$/, ".webp") };
+          bottomImg = { ...bottomImg, url: bottomImg.url.replace(/\.(png|webp)$/i, ".webp") };
         }
 
         result[key] = {
@@ -187,16 +186,22 @@ export const updateBannerByKey = async (req, res) => {
         });
       }
 
-      const formattedSlides = slides.map((s, idx) => ({
-        _id: s._id,
-        image: {
-          url: s.image?.url || "",
-          fileId: s.image?.fileId || "",
-        },
-        href: s.href || "",
-        order: Number(s.order) || idx + 1,
-        isActive: s.isActive ?? true,
-      }));
+      const formattedSlides = slides.map((s, idx) => {
+        let url = s.image?.url || "";
+        if (typeof url === "string" && (url.startsWith("/") || !url.startsWith("http"))) {
+          url = url.replace(/\.(png|webp)$/i, ".webp");
+        }
+        return {
+          _id: s._id,
+          image: {
+            url,
+            fileId: s.image?.fileId || "",
+          },
+          href: s.href || "",
+          order: Number(s.order) || idx + 1,
+          isActive: s.isActive ?? true,
+        };
+      });
 
       banner = await Banner.findOneAndUpdate(
         { key },
@@ -209,7 +214,13 @@ export const updateBannerByKey = async (req, res) => {
       const updateData = {};
       if (title !== undefined) updateData.title = title;
       if (subtitle !== undefined) updateData.subtitle = subtitle;
-      if (image !== undefined) updateData.image = image;
+      if (image !== undefined) {
+        let imgObj = { ...image };
+        if (typeof imgObj.url === "string" && (imgObj.url.startsWith("/") || !imgObj.url.startsWith("http"))) {
+          imgObj.url = imgObj.url.replace(/\.(png|webp)$/i, ".webp");
+        }
+        updateData.image = imgObj;
+      }
       if (href !== undefined) updateData.href = href;
       if (ctaText !== undefined) updateData.ctaText = ctaText;
       if (isActive !== undefined) updateData.isActive = isActive;

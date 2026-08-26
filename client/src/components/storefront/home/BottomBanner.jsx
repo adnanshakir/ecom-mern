@@ -12,7 +12,10 @@ export function BottomBanner() {
   if (bottom.isActive === false) return null;
 
   const rawImageUrl = bottom.image?.url || "/bottom-banner.webp";
-  const imageUrl = rawImageUrl.endsWith(".png") ? rawImageUrl.replace(/\.png$/, ".webp") : rawImageUrl;
+  const imageUrl =
+    typeof rawImageUrl === "string" && (rawImageUrl.startsWith("/") || !rawImageUrl.startsWith("http"))
+      ? rawImageUrl.replace(/\.(png|webp)$/i, ".webp")
+      : rawImageUrl;
   const title = bottom.title || "Buying in Bulk?";
   const subtitle = bottom.subtitle || "Get special tier discounts, customized tax invoices, and personalized quotations for large wholesale orders.";
   const href = bottom.href || "/contact-us";

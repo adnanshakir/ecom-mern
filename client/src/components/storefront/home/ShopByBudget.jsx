@@ -22,7 +22,11 @@ export function ShopByBudget() {
         <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
           {budgetSlides.map((slide, idx) => {
             const href = slide.href || "/category/all";
-            const imageUrl = slide.image?.url || "";
+            const rawImageUrl = slide.image?.url || "";
+            const imageUrl =
+              typeof rawImageUrl === "string" && (rawImageUrl.startsWith("/") || !rawImageUrl.startsWith("http"))
+                ? rawImageUrl.replace(/\.(png|webp)$/i, ".webp")
+                : rawImageUrl;
 
             return (
               <Link

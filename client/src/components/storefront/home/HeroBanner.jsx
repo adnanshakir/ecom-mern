@@ -41,9 +41,10 @@ export function HeroBanner() {
 
   const currentSlide = slides[currentIndex] || slides[0];
   const rawImageUrl = currentSlide.image?.url || "/banner-1.webp";
-  const imageUrl = rawImageUrl.endsWith(".png")
-    ? rawImageUrl.replace(/\.png$/, ".webp")
-    : rawImageUrl;
+  const imageUrl =
+    typeof rawImageUrl === "string" && (rawImageUrl.startsWith("/") || !rawImageUrl.startsWith("http"))
+      ? rawImageUrl.replace(/\.(png|webp)$/i, ".webp")
+      : rawImageUrl;
   const href = currentSlide.href || "/category/all";
 
   return (

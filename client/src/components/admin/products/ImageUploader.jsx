@@ -145,8 +145,8 @@ export function ImageUploader({
             const isSingle = singleImage || effectiveMax === 1;
             const rawUrl = typeof img === "string" ? img : img?.url || "";
             const displayUrl =
-              typeof rawUrl === "string" && rawUrl.endsWith(".png") && rawUrl.startsWith("/")
-                ? rawUrl.replace(/\.png$/, ".webp")
+              typeof rawUrl === "string" && (rawUrl.startsWith("/") || !rawUrl.startsWith("http"))
+                ? rawUrl.replace(/\.(png|webp)$/i, ".webp")
                 : rawUrl;
 
             return (

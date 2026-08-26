@@ -80,9 +80,31 @@ export function usePublicBanners() {
       try {
         const { data } = await getPublicBanners();
         if (isMounted && data?.data) {
+          const loaded = data.data;
+          const normalizeSlide = (s) => {
+            const raw = s?.image?.url || "";
+            const url = typeof raw === "string" && (raw.startsWith("/") || !raw.startsWith("http"))
+              ? raw.replace(/\.(png|webp)$/i, ".webp")
+              : raw;
+            return { ...s, image: { ...s?.image, url } };
+          };
+
+          if (loaded.hero?.slides) {
+            loaded.hero.slides = loaded.hero.slides.map(normalizeSlide);
+          }
+          if (loaded.budget?.slides) {
+            loaded.budget.slides = loaded.budget.slides.map(normalizeSlide);
+          }
+          if (loaded.bottom?.image?.url) {
+            const raw = loaded.bottom.image.url;
+            if (typeof raw === "string" && (raw.startsWith("/") || !raw.startsWith("http"))) {
+              loaded.bottom.image.url = raw.replace(/\.(png|webp)$/i, ".webp");
+            }
+          }
+
           setBanners((prev) => ({
             ...prev,
-            ...data.data,
+            ...loaded,
           }));
         }
       } catch (err) {
