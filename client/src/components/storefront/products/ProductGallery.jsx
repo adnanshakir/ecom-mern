@@ -107,7 +107,7 @@ export function ProductGallery({ productImages, variantImages, allVariants }) {
                 type="button"
                 onClick={() => setActive(i)}
                 className={cn(
-                  "relative size-16 sm:size-18 shrink-0 overflow-hidden rounded-lg border-2 transition-all duration-200 focus:outline-hidden",
+                  "relative size-16 sm:size-18 shrink-0 overflow-hidden border-2 transition-all duration-200 focus:outline-hidden",
                   active === i
                     ? "border-[#033936] ring-2 ring-[#033936]/20 shadow-xs scale-102"
                     : "border-slate-200 hover:border-slate-400 opacity-75 hover:opacity-100"
@@ -126,7 +126,7 @@ export function ProductGallery({ productImages, variantImages, allVariants }) {
         )}
 
         {/* Main Display Image */}
-        <div className="relative flex-1 aspect-square max-w-[500px] w-full mx-auto overflow-hidden rounded-xl bg-muted border border-slate-200/80 shadow-xs group/main">
+        <div className="relative flex-1 aspect-square max-w-[500px] w-full mx-auto overflow-hidden bg-muted border border-slate-200/80 shadow-xs group/main">
           {images[active] ? (
             <Image
               src={images[active].url}

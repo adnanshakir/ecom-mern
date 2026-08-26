@@ -80,7 +80,7 @@ export function ProductCard({ product, showCartOnHover = false }) {
     <div className="group relative flex flex-col border rounded-sm overflow-hidden bg-card transition-shadow duration-200 hover:shadow-md">
       <Link href={`/product/${product.slug}`} className="relative block">
         {/* Image */}
-        <div className="relative flex aspect-square items-center justify-center overflow-hidden bg-muted p-3">
+        <div className="relative aspect-square w-full overflow-hidden bg-muted">
           {thumbnail ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -89,12 +89,14 @@ export function ProductCard({ product, showCartOnHover = false }) {
               loading="lazy"
               decoding="async"
               className={cn(
-                "size-full object-contain transition-transform duration-300 group-hover:scale-105 rounded-sm",
+                "absolute inset-0 w-full p-2 h-full object-cover transition-transform duration-300 group-hover:scale-105",
                 !inStock && "opacity-50"
               )}
             />
           ) : (
-            <ImageIcon className="size-8 text-muted-foreground" />
+            <div className="flex size-full items-center justify-center">
+              <ImageIcon className="size-8 text-muted-foreground" />
+            </div>
           )}
 
           {/* Discount badge */}
@@ -173,8 +175,8 @@ export function ProductCard({ product, showCartOnHover = false }) {
             onClick={handleAddToCart}
             disabled={isAddingToCart}
             className={cn(
-              "flex w-full items-center justify-center gap-1.5 rounded-sm py-2 text-xs font-bold uppercase tracking-wide transition-colors duration-200",
-              isAlreadyInCart ? "bg-emerald-600 text-white" : "bg-red-500 text-white hover:bg-red-600"
+              "flex w-full items-center justify-center gap-1.5 py-2 text-xs font-bold uppercase tracking-wide transition-colors duration-200",
+              isAlreadyInCart ? "bg-emerald-700 text-white" : "bg-red-500 text-white hover:bg-red-600"
             )}
           >
             {isAddingToCart ? (
