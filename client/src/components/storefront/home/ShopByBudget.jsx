@@ -1,9 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronRight, Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { usePublicBanners } from "@/hooks/storefront/usePublicBanners";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export function ShopByBudget() {
   const { banners, loading } = usePublicBanners();
@@ -14,9 +13,15 @@ export function ShopByBudget() {
     <section className="space-y-6 ">
       {/* Budget Banner Grid */}
       {loading ? (
-        <div className="flex flex-col items-center justify-center gap-3 py-16 text-muted-foreground">
-          <Loader2 className="size-7 animate-spin text-[#033936]" />
-          <p className="text-sm font-medium">Loading budget deals...</p>
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, idx) => (
+            <div
+              key={idx}
+              className="relative aspect-4/3 sm:aspect-square w-full overflow-hidden rounded-2xl border border-border/40 bg-card p-1.5 shadow-2xs"
+            >
+              <Skeleton className="size-full rounded-xl" />
+            </div>
+          ))}
         </div>
       ) : (
         <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">

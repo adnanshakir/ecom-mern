@@ -77,7 +77,7 @@ export function ProductCard({ product, showCartOnHover = false }) {
   };
 
   return (
-    <div className="group relative flex flex-col border rounded-sm overflow-hidden bg-card transition-shadow duration-200 hover:shadow-md">
+    <div className="group relative flex flex-col border overflow-hidden bg-card transition-shadow duration-200 ">
       <Link href={`/product/${product.slug}`} className="relative block">
         {/* Image */}
         <div className="relative aspect-square w-full overflow-hidden bg-muted">
@@ -101,7 +101,7 @@ export function ProductCard({ product, showCartOnHover = false }) {
 
           {/* Discount badge */}
           {discountPercent && (
-            <span className="absolute left-2 top-2 rounded-sm bg-red-600 px-2 py-0.5 text-[11px] font-bold text-white shadow-sm">
+            <span className="absolute left-2 top-2 bg-red-600 px-2 py-0.5 text-[11px] font-bold text-white shadow-sm">
               -{discountPercent}%
             </span>
           )}
@@ -124,7 +124,7 @@ export function ProductCard({ product, showCartOnHover = false }) {
               className={cn(
                 "absolute bottom-0 left-0 right-0 flex items-center justify-center gap-1.5 py-2.5 text-xs font-bold uppercase tracking-wide transition-all duration-200",
                 "translate-y-full opacity-0 group-hover:translate-y-0 group-hover:opacity-100",
-                isAlreadyInCart ? "bg-emerald-600 text-white" : "bg-red-500 text-white hover:bg-red-600"
+                isAlreadyInCart ? "bg-emerald-400 text-white" : "bg-red-500 text-white hover:bg-red-600"
               )}
             >
               {isAddingToCart ? (
@@ -205,7 +205,7 @@ export function ProductCard({ product, showCartOnHover = false }) {
         title={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
         disabled={isWishlistPending}
         className={cn(
-          "absolute right-2 top-2 flex size-7 items-center justify-center rounded-full bg-background/90 shadow-sm transition-opacity",
+          "absolute right-2 top-2 flex size-7 items-center justify-center bg-background/90 shadow-sm transition-opacity",
           isWishlisted ? "opacity-100" : "opacity-0 group-hover:opacity-100"
         )}
         onClick={handleWishlist}

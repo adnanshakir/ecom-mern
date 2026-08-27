@@ -17,6 +17,7 @@ export * from "./home/FaqSection";
 
 // Products
 export * from "./products/ProductCard";
+export * from "./products/ProductCardSkeleton";
 export * from "./products/ProductGrid";
 export * from "./products/ProductGallery";
 export * from "./products/ProductInteractiveSection";

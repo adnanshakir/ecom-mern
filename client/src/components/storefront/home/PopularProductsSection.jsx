@@ -2,10 +2,11 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { ChevronRight, Loader2, PackageX } from "lucide-react";
+import { ChevronRight, PackageX } from "lucide-react";
 import { usePublicProducts } from "@/hooks/storefront/usePublicProducts";
 import { usePublicCategories } from "@/hooks/storefront/usePublicCategories";
 import { ProductCard } from "@/components/storefront/products/ProductCard";
+import { ProductCardSkeleton } from "@/components/storefront/products/ProductCardSkeleton";
 import { Button } from "@/components/ui/button";
 
 export function PopularProductsSection() {
@@ -118,9 +119,10 @@ export function PopularProductsSection() {
 
       {/* Products Grid Layout */}
       {loading ? (
-        <div className="flex flex-col items-center justify-center gap-3 py-16 text-muted-foreground">
-          <Loader2 className="size-7 animate-spin text-[#033936]" />
-          <p className="text-sm font-medium">Loading popular products...</p>
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 sm:gap-6">
+          {Array.from({ length: 10 }).map((_, idx) => (
+            <ProductCardSkeleton key={idx} />
+          ))}
         </div>
       ) : error || products.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center text-muted-foreground border rounded-2xl bg-muted/20">

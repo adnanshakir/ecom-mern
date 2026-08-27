@@ -48,7 +48,7 @@ export function ShopByCategory() {
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
           {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="min-h-48.75 sm:min-h-52.5 rounded-2xl bg-muted/60 animate-pulse" />
+            <div key={i} className="min-h-48.75 sm:min-h-52.5 rounded bg-muted/60 animate-pulse" />
           ))}
         </div>
       </section>
@@ -81,7 +81,7 @@ export function ShopByCategory() {
           <Link
             key={item.id}
             href={item.href}
-            className="group relative flex flex-col justify-between overflow-hidden rounded-md border border-border/40 bg-muted/40 p-5 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 min-h-48.75 sm:min-h-52.5"
+            className="group relative flex flex-col justify-between overflow-hidden rounded border border-border/40 bg-muted/40 p-5 transition-all duration-300 min-h-48.75 sm:min-h-52.5"
           >
             {/* Background image */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -105,7 +105,7 @@ export function ShopByCategory() {
         {/* 8th Highlight Card: Explore All Categories */}
         <Link
           href="/category"
-          className="group relative flex flex-col justify-between overflow-hidden rounded-2xl bg-[#0B192C] p-6 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 min-h-48.75 sm:min-h-52.5"
+          className="group relative flex flex-col justify-between overflow-hidden rounded bg-[#0B192C] p-6 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 min-h-48.75 sm:min-h-52.5"
         >
           {/* Header */}
           <div className="relative z-10">

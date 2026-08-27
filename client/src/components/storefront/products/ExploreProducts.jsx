@@ -2,7 +2,7 @@
 
 import { usePublicProducts } from "@/hooks/storefront/usePublicProducts";
 import { ProductCard } from "@/components/storefront/products/ProductCard";
-import { Loader2 } from "lucide-react";
+import { ProductCardSkeleton } from "@/components/storefront/products/ProductCardSkeleton";
 
 export function ExploreProducts({ excludeProductId, excludeCategoryId }) {
   const { products, loading } = usePublicProducts({ limit: 24, sort: "newest" });
@@ -34,9 +34,10 @@ export function ExploreProducts({ excludeProductId, excludeCategoryId }) {
       </div>
 
       {loading ? (
-        <div className="flex flex-col items-center justify-center gap-3 py-12 text-muted-foreground">
-          <Loader2 className="size-6 animate-spin text-primary" />
-          <p className="text-xs font-medium">Loading products...</p>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
+          {Array.from({ length: 12 }).map((_, idx) => (
+            <ProductCardSkeleton key={idx} />
+          ))}
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
