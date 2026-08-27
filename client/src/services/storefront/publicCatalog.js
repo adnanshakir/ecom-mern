@@ -4,7 +4,7 @@ export const getPublicProducts = (params) =>
   publicApi.get("/public/products", { params });
 
 export const getPublicProductBySlug = (slug) =>
-  publicApi.get(`/public/products/${slug}`);
+  publicApi.get(`/public/products/${encodeURIComponent(slug)}`);
 
 export const getPublicCategories = (params) =>
   publicApi.get("/public/categories", { params });

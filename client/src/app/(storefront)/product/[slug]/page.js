@@ -30,12 +30,16 @@ export default async function ProductPage({ params }) {
     const product = await getProduct(slug);
     const jsonLd = generateProductJsonLd(product);
 
+    const jsonLdScript = jsonLd
+      ? JSON.stringify(jsonLd).replace(/</g, "\\u003c")
+      : null;
+
     return (
       <>
-        {jsonLd && (
+        {jsonLdScript && (
           <script
             type="application/ld+json"
-            dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+            dangerouslySetInnerHTML={{ __html: jsonLdScript }}
           />
         )}
         <ProductPageClient slug={slug} initialProduct={product} />
