@@ -3,11 +3,15 @@
  * Centralised here so every Axios instance uses the same logic.
  */
 export const getApiBaseUrl = () => {
+  let url = "";
   if (typeof window !== "undefined") {
-    return process.env.NEXT_PUBLIC_API_URL || "/api";
+    url = process.env.NEXT_PUBLIC_API_URL || "/api";
+  } else {
+    url =
+      process.env.NEXT_PUBLIC_API_URL &&
+      process.env.NEXT_PUBLIC_API_URL.startsWith("http")
+        ? process.env.NEXT_PUBLIC_API_URL
+        : "https://ecom-mern-c5wz.onrender.com/api";
   }
-  return process.env.NEXT_PUBLIC_API_URL &&
-    process.env.NEXT_PUBLIC_API_URL.startsWith("http")
-    ? process.env.NEXT_PUBLIC_API_URL
-    : "https://ecom-mern-c5wz.onrender.com/api";
+  return url.replace(/\/+$/, "");
 };

@@ -1,11 +1,22 @@
 import { getDisplayPrice, isInStock } from "@/lib/productPrice";
 
 export function getSiteUrl() {
-  const envUrl = process.env.NEXT_PUBLIC_SITE_URL;
+  if (typeof window !== "undefined" && window.location?.origin) {
+    return window.location.origin;
+  }
+
+  const envUrl =
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    (process.env.VERCEL_PROJECT_PRODUCTION_URL
+      ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+      : process.env.VERCEL_URL
+      ? `https://${process.env.VERCEL_URL}`
+      : null);
+
   if (envUrl && envUrl.trim()) {
     return envUrl.replace(/\/+$/, "");
   }
-  return "http://localhost:3000";
+  return "https://ecom-mern-blue.vercel.app";
 }
 
 export function stripHtml(html) {
@@ -75,8 +86,8 @@ export function generateProductMetadata(product) {
         {
           url: primaryImage,
           alt: product.name,
-          width: 800,
-          height: 800,
+          width: 1200,
+          height: 630,
         },
       ],
     },
