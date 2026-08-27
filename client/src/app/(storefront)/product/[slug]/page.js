@@ -12,28 +12,36 @@ async function getProduct(slug) {
 }
 
 export async function generateMetadata({ params }) {
-  const resolvedParams = await params;
-  const slug = resolvedParams?.slug;
-  const product = await getProduct(slug);
+  try {
+    const resolvedParams = await params;
+    const slug = resolvedParams?.slug || "";
+    const product = await getProduct(slug);
 
-  return generateProductMetadata(product, slug);
+    return generateProductMetadata(product, slug);
+  } catch (err) {
+    return generateProductMetadata(null, "");
+  }
 }
 
 export default async function ProductPage({ params }) {
-  const resolvedParams = await params;
-  const slug = resolvedParams?.slug;
-  const product = await getProduct(slug);
-  const jsonLd = generateProductJsonLd(product);
+  try {
+    const resolvedParams = await params;
+    const slug = resolvedParams?.slug || "";
+    const product = await getProduct(slug);
+    const jsonLd = generateProductJsonLd(product);
 
-  return (
-    <>
-      {jsonLd && (
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-        />
-      )}
-      <ProductPageClient slug={slug} initialProduct={product} />
-    </>
-  );
+    return (
+      <>
+        {jsonLd && (
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+          />
+        )}
+        <ProductPageClient slug={slug} initialProduct={product} />
+      </>
+    );
+  } catch (err) {
+    return <ProductPageClient slug="" initialProduct={null} />;
+  }
 }

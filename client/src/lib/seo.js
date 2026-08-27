@@ -28,151 +28,171 @@ export function stripHtml(html) {
  * Generates Next.js Metadata object for a product page
  */
 export function generateProductMetadata(product, fallbackSlug = "") {
-  const siteUrl = getSiteUrl();
+  try {
+    const siteUrl = getSiteUrl();
 
-  const brandName = product?.brand?.name || "";
-  const categoryName = product?.category?.name || "";
+    const brandName = product?.brand?.name || "";
+    const categoryName = product?.category?.name || "";
 
-  const title = product
-    ? (product.seo?.metaTitle ||
-       `${product.name}${brandName ? ` - ${brandName}` : ""}${categoryName ? ` (${categoryName})` : ""} | Fibio Wholesale`)
-    : "Fibio Wholesale - Quality Products at Wholesale Prices";
+    const title = product
+      ? (product.seo?.metaTitle ||
+         `${product.name}${brandName ? ` - ${brandName}` : ""}${categoryName ? ` (${categoryName})` : ""} | Fibio Wholesale`)
+      : "Fibio Wholesale - Quality Products at Wholesale Prices";
 
-  const cleanDescription = product
-    ? (product.seo?.metaDescription ||
-       stripHtml(product.description || "").slice(0, 160) ||
-       `Buy ${product.name} at wholesale price on Fibio Wholesale.`)
-    : "Explore Fibio Wholesale for top-rated products, bulk pricing, and unbeatable wholesale deals.";
+    const cleanDescription = product
+      ? (product.seo?.metaDescription ||
+         stripHtml(product.description || "").slice(0, 160) ||
+         `Buy ${product.name} at wholesale price on Fibio Wholesale.`)
+      : "Explore Fibio Wholesale for top-rated products, bulk pricing, and unbeatable wholesale deals.";
 
-  const canonicalUrl = `${siteUrl}/product/${product?.slug || fallbackSlug}`;
-  const images = product?.images?.map((img) => img.url).filter(Boolean) || [];
-  const primaryImage = images[0] || `${siteUrl}/banner-1.webp`;
+    const canonicalUrl = `${siteUrl}/product/${product?.slug || fallbackSlug || ""}`;
+    const images = product?.images?.map((img) => (typeof img === "string" ? img : img?.url)).filter(Boolean) || [];
+    const primaryImage = images[0] || `${siteUrl}/banner-1.webp`;
 
-  const keywords =
-    product?.seo?.keywords?.length > 0
-      ? product.seo.keywords
-      : [
-          product?.name,
-          brandName,
-          categoryName,
-          "wholesale",
-          "buy online",
-          "e-commerce",
-          "Fibio Wholesale",
-        ].filter(Boolean);
+    const keywords =
+      product?.seo?.keywords?.length > 0
+        ? product.seo.keywords
+        : [
+            product?.name,
+            brandName,
+            categoryName,
+            "wholesale",
+            "buy online",
+            "e-commerce",
+            "Fibio Wholesale",
+          ].filter(Boolean);
 
-  const price = product ? getDisplayPrice(product.variants) : null;
-  const inStock = product ? isInStock(product.variants) : true;
+    const price = product ? getDisplayPrice(product.variants) : null;
+    const inStock = product ? isInStock(product.variants) : true;
 
-  return {
-    title,
-    description: cleanDescription,
-    keywords: keywords.join(", "),
-    alternates: {
-      canonical: canonicalUrl,
-    },
-    openGraph: {
+    return {
       title,
       description: cleanDescription,
-      url: canonicalUrl,
-      siteName: "Fibio Wholesale",
-      type: "website",
-      images: [
-        {
-          url: primaryImage,
-          alt: product?.name || "Fibio Wholesale Product",
-          width: 1200,
-          height: 630,
-        },
-      ],
-    },
-    twitter: {
-      card: "summary_large_image",
-      title,
-      description: cleanDescription,
-      images: [primaryImage],
-    },
-    other: {
-      ...(price ? { "product:price:amount": String(price) } : {}),
-      "product:price:currency": "INR",
-      "product:availability": inStock ? "in stock" : "out of stock",
-    },
-  };
+      keywords: keywords.join(", "),
+      alternates: {
+        canonical: canonicalUrl,
+      },
+      openGraph: {
+        title,
+        description: cleanDescription,
+        url: canonicalUrl,
+        siteName: "Fibio Wholesale",
+        type: "website",
+        images: [
+          {
+            url: primaryImage,
+            alt: product?.name || "Fibio Wholesale Product",
+            width: 1200,
+            height: 630,
+          },
+        ],
+      },
+      twitter: {
+        card: "summary_large_image",
+        title,
+        description: cleanDescription,
+        images: [primaryImage],
+      },
+      other: {
+        ...(price ? { "product:price:amount": String(price) } : {}),
+        "product:price:currency": "INR",
+        "product:availability": inStock ? "in stock" : "out of stock",
+      },
+    };
+  } catch (err) {
+    const siteUrl = getSiteUrl();
+    return {
+      title: "Fibio Wholesale - Quality Products at Wholesale Prices",
+      description: "Explore Fibio Wholesale for top-rated products, bulk pricing, and unbeatable wholesale deals.",
+      openGraph: {
+        title: "Fibio Wholesale - Quality Products at Wholesale Prices",
+        description: "Explore Fibio Wholesale for top-rated products, bulk pricing, and unbeatable wholesale deals.",
+        url: `${siteUrl}/product/${fallbackSlug}`,
+        siteName: "Fibio Wholesale",
+        type: "website",
+        images: [{ url: `${siteUrl}/banner-1.webp`, width: 1200, height: 630 }],
+      },
+    };
+  }
 }
 
 /**
  * Generates Schema.org JSON-LD Structured Data for a product
  */
 export function generateProductJsonLd(product) {
-  if (!product) return null;
+  try {
+    if (!product) return null;
 
-  const siteUrl = getSiteUrl();
-  const canonicalUrl = `${siteUrl}/product/${product.slug}`;
-  const price = getDisplayPrice(product.variants);
-  const inStock = isInStock(product.variants);
-  const images = product.images?.map((img) => img.url) || [];
+    const siteUrl = getSiteUrl();
+    const canonicalUrl = `${siteUrl}/product/${product.slug}`;
+    const price = getDisplayPrice(product.variants);
+    const inStock = isInStock(product.variants);
+    const images = product.images?.map((img) => (typeof img === "string" ? img : img?.url)).filter(Boolean) || [];
 
-  const productSchema = {
-    "@context": "https://schema.org",
-    "@type": "Product",
-    name: product.name,
-    description: stripHtml(product.description || product.name),
-    image: images,
-    sku: product.variants?.[0]?.sku || product._id,
-    mpn: product._id,
-    brand: {
-      "@type": "Brand",
-      name: product.brand?.name || "Fibio Wholesale",
-    },
-    ...(product.category?.name
-      ? { category: product.category.name }
-      : {}),
-    offers: {
-      "@type": "Offer",
-      url: canonicalUrl,
-      priceCurrency: "INR",
-      price: price || 0,
-      itemCondition: "https://schema.org/NewCondition",
-      availability: inStock
-        ? "https://schema.org/InStock"
-        : "https://schema.org/OutOfStock",
-      seller: {
-        "@type": "Organization",
-        name: "Fibio Wholesale",
-      },
-    },
-  };
-
-  const breadcrumbSchema = {
-    "@context": "https://schema.org",
-    "@type": "BreadcrumbList",
-    itemListElement: [
-      {
-        "@type": "ListItem",
-        position: 1,
-        name: "Home",
-        item: siteUrl,
+    const productSchema = {
+      "@context": "https://schema.org",
+      "@type": "Product",
+      name: product.name,
+      description: stripHtml(product.description || product.name),
+      image: images,
+      sku: product.variants?.[0]?.sku || product._id,
+      mpn: product._id,
+      brand: {
+        "@type": "Brand",
+        name: product.brand?.name || "Fibio Wholesale",
       },
       ...(product.category?.name
-        ? [
-            {
-              "@type": "ListItem",
-              position: 2,
-              name: product.category.name,
-              item: `${siteUrl}/category/${product.category.slug || product.category._id}`,
-            },
-          ]
-        : []),
-      {
-        "@type": "ListItem",
-        position: product.category?.name ? 3 : 2,
-        name: product.name,
-        item: canonicalUrl,
+        ? { category: product.category.name }
+        : {}),
+      offers: {
+        "@type": "Offer",
+        url: canonicalUrl,
+        priceCurrency: "INR",
+        price: price || 0,
+        itemCondition: "https://schema.org/NewCondition",
+        availability: inStock
+          ? "https://schema.org/InStock"
+          : "https://schema.org/OutOfStock",
+        seller: {
+          "@type": "Organization",
+          name: "Fibio Wholesale",
+        },
       },
-    ],
-  };
+    };
 
-  return [productSchema, breadcrumbSchema];
+    const breadcrumbSchema = {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        {
+          "@type": "ListItem",
+          position: 1,
+          name: "Home",
+          item: siteUrl,
+        },
+        ...(product.category?.name
+          ? [
+              {
+                "@type": "ListItem",
+                position: 2,
+                name: product.category.name,
+                item: `${siteUrl}/category/${product.category.slug || product.category._id}`,
+              },
+            ]
+          : []),
+        {
+          "@type": "ListItem",
+          position: product.category?.name ? 3 : 2,
+          name: product.name,
+          item: canonicalUrl,
+        },
+      ],
+    };
+
+    return [productSchema, breadcrumbSchema];
+  } catch (err) {
+    return null;
+  }
 }
 
 /**
