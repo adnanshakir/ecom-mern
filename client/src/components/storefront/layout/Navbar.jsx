@@ -245,10 +245,29 @@ function SearchInputWithSuggestions() {
 
 function UserMenu({ user, isAuthenticated, onLogout }) {
   const [open, setOpen] = useState(false);
+  const timeoutRef = useRef(null);
   const isLoggedIn = isAuthenticated || !!user;
 
+  const handleMouseEnter = () => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    setOpen(true);
+  };
+
+  const handleMouseLeave = () => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    timeoutRef.current = setTimeout(() => {
+      setOpen(false);
+    }, 150);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, []);
+
   return (
-    <div className="relative" onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)}>
+    <div className="relative" onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
       {/* Trigger icon */}
       {isLoggedIn ? (
         <button
@@ -268,33 +287,35 @@ function UserMenu({ user, isAuthenticated, onLogout }) {
         </Link>
       )}
 
-      {/* Dropdown panel */}
+      {/* Dropdown panel with Hover Bridge */}
       {open && (
-        <div className="absolute right-0 top-full z-50 mt-1 w-44 overflow-hidden rounded-md border bg-popover py-1 shadow-md">
-          {isLoggedIn ? (
-            <>
-              <div className="px-3 py-1.5 text-xs font-medium text-muted-foreground truncate">{user?.name || "Account"}</div>
-              <div className="my-1 h-px bg-border" />
-              <MenuItem href="/account/orders">Your orders</MenuItem>
-              <MenuItem href="/account/addresses">Addresses</MenuItem>
-              <MenuItem href="/contact-us">Contact us</MenuItem>
-              <div className="my-1 h-px bg-border" />
-              <button
-                onClick={onLogout}
-                className="w-full px-3 py-1.5 text-left text-sm text-destructive transition-colors hover:bg-accent"
-              >
-                Logout
-              </button>
-            </>
-          ) : (
-            <>
-              <MenuItem href="/contact-us">Contact us</MenuItem>
-              <div className="my-1 h-px bg-border" />
-              <MenuItem href="/login" highlight>
-                Login
-              </MenuItem>
-            </>
-          )}
+        <div className="absolute right-0 top-full z-50 pt-1 w-44">
+          <div className="overflow-hidden rounded-md border bg-popover py-1 shadow-md">
+            {isLoggedIn ? (
+              <>
+                <div className="px-3 py-1.5 text-xs font-medium text-muted-foreground truncate">{user?.name || "Account"}</div>
+                <div className="my-1 h-px bg-border" />
+                <MenuItem href="/account/profile">Profile</MenuItem>
+                <MenuItem href="/account/orders">Your orders</MenuItem>
+                <MenuItem href="/contact-us">Contact us</MenuItem>
+                <div className="my-1 h-px bg-border" />
+                <button
+                  onClick={onLogout}
+                  className="w-full px-3 py-1.5 text-left text-sm text-destructive transition-colors hover:bg-accent"
+                >
+                  Logout
+                </button>
+              </>
+            ) : (
+              <>
+                <MenuItem href="/contact-us">Contact us</MenuItem>
+                <div className="my-1 h-px bg-border" />
+                <MenuItem href="/login" highlight>
+                  Login
+                </MenuItem>
+              </>
+            )}
+          </div>
         </div>
       )}
     </div>

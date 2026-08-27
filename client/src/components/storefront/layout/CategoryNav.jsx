@@ -16,6 +16,25 @@ export function CategoryNav() {
   const [openId, setOpenId] = useState(null); // Tap toggle state
   const [hoverId, setHoverId] = useState(null); // Mouse hover state
   const containerRef = useRef(null);
+  const hoverTimeoutRef = useRef(null);
+
+  const handleMouseEnter = (id) => {
+    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+    setHoverId(id);
+  };
+
+  const handleMouseLeave = () => {
+    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+    hoverTimeoutRef.current = setTimeout(() => {
+      setHoverId(null);
+    }, 150);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+    };
+  }, []);
 
   // Close dropdown on outside click or tap
   useEffect(() => {
@@ -84,8 +103,8 @@ export function CategoryNav() {
             <div
               key={category._id}
               className="group relative shrink-0"
-              onMouseEnter={() => setHoverId(category._id)}
-              onMouseLeave={() => setHoverId(null)}
+              onMouseEnter={() => handleMouseEnter(category._id)}
+              onMouseLeave={handleMouseLeave}
             >
               <div className="flex items-center">
                 <Link
@@ -111,38 +130,40 @@ export function CategoryNav() {
                 </button>
               </div>
 
-              {/* Dropdown Menu */}
+              {/* Dropdown Menu with Hover Bridge */}
               <div
                 className={cn(
-                  "absolute left-0 top-full z-50 mt-1 min-w-48 rounded-md border bg-popover py-1 shadow-lg whitespace-normal transition-all duration-150",
+                  "absolute left-0 top-full z-50 pt-1 min-w-48 whitespace-normal transition-all duration-150",
                   isShown
                     ? "visible opacity-100 block"
                     : "invisible opacity-0 hidden group-hover:visible group-hover:opacity-100 group-hover:block"
                 )}
               >
-                <Link
-                  href={`/category/${category.slug || category._id}`}
-                  onClick={() => {
-                    setOpenId(null);
-                    setHoverId(null);
-                  }}
-                  className="block px-3 py-2 text-sm font-medium hover:bg-accent"
-                >
-                  All {category.name}
-                </Link>
-                {subcategories.map((sub) => (
+                <div className="rounded-md border bg-popover py-1 shadow-lg">
                   <Link
-                    key={sub._id}
-                    href={`/category/${sub.slug || sub._id}`}
+                    href={`/category/${category.slug || category._id}`}
                     onClick={() => {
                       setOpenId(null);
                       setHoverId(null);
                     }}
-                    className="block px-3 py-2 text-sm text-popover-foreground hover:bg-accent"
+                    className="block px-3 py-2 text-sm font-medium hover:bg-accent"
                   >
-                    {sub.name}
+                    All {category.name}
                   </Link>
-                ))}
+                  {subcategories.map((sub) => (
+                    <Link
+                      key={sub._id}
+                      href={`/category/${sub.slug || sub._id}`}
+                      onClick={() => {
+                        setOpenId(null);
+                        setHoverId(null);
+                      }}
+                      className="block px-3 py-2 text-sm text-popover-foreground hover:bg-accent"
+                    >
+                      {sub.name}
+                    </Link>
+                  ))}
+                </div>
               </div>
             </div>
           );
@@ -156,7 +177,8 @@ export function CategoryNav() {
             openId={openId}
             hoverId={hoverId}
             setOpenId={setOpenId}
-            setHoverId={setHoverId}
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
           />
         )}
       </div>
@@ -170,17 +192,18 @@ function MoreCategoriesDropdown({
   openId,
   hoverId,
   setOpenId,
-  setHoverId,
+  onMouseEnter,
+  onMouseLeave,
 }) {
   const [activeSubId, setActiveSubId] = useState(null);
   const isShown = openId === "more" || hoverId === "more";
 
   return (
     <div
-      className="group relative shrink-0 ml-auto"
-      onMouseEnter={() => setHoverId("more")}
+      className="group relative shrink-0"
+      onMouseEnter={() => onMouseEnter("more")}
       onMouseLeave={() => {
-        setHoverId(null);
+        onMouseLeave();
         setActiveSubId(null);
       }}
     >
@@ -197,68 +220,78 @@ function MoreCategoriesDropdown({
         <ChevronDown className={cn("size-3.5 transition-transform", isShown && "rotate-180")} />
       </button>
 
+      {/* Main "More" Dropdown Menu */}
       <div
         className={cn(
-          "absolute right-0 top-full z-50 mt-1 min-w-56 max-h-[75vh] overflow-y-auto rounded-md border bg-popover py-1 shadow-lg whitespace-normal transition-all duration-150",
+          "absolute left-0 top-full z-50 pt-1 min-w-56 whitespace-normal transition-all duration-150",
           isShown
             ? "visible opacity-100 block"
             : "invisible opacity-0 hidden group-hover:visible group-hover:opacity-100 group-hover:block"
         )}
       >
-        {moreCategories.map((category) => {
-          const subcategories = childrenMap.get(category._id) || [];
-          const isSubOpen = activeSubId === category._id;
+        <div className="relative rounded-md border bg-popover py-1 shadow-lg">
+          {moreCategories.map((category) => {
+            const subcategories = childrenMap.get(category._id) || [];
+            const isSubOpen = activeSubId === category._id;
+            const hasSubs = subcategories.length > 0;
 
-          return (
-            <div key={category._id} className="border-b border-border/40 last:border-0">
-              <div className="flex items-center justify-between px-3 py-2 text-sm font-medium hover:bg-accent">
-                <Link
-                  href={`/category/${category.slug || category._id}`}
-                  onClick={() => {
-                    setOpenId(null);
-                    setHoverId(null);
-                  }}
-                  className="flex-1 truncate"
-                >
-                  {category.name}
-                </Link>
-
-                {subcategories.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setActiveSubId((prev) => (prev === category._id ? null : category._id));
+            return (
+              <div
+                key={category._id}
+                className="group/item relative"
+                onMouseEnter={() => setActiveSubId(category._id)}
+              >
+                <div className="flex items-center justify-between px-3 py-2 text-sm font-medium hover:bg-accent text-popover-foreground transition-colors cursor-pointer">
+                  <Link
+                    href={`/category/${category.slug || category._id}`}
+                    onClick={() => {
+                      setOpenId(null);
+                      setHoverId(null);
                     }}
-                    className="ml-2 p-1 text-muted-foreground hover:text-foreground"
+                    className="flex-1 truncate"
                   >
-                    <ChevronRight
-                      className={cn("size-3.5 transition-transform", isSubOpen && "rotate-90")}
-                    />
-                  </button>
+                    {category.name}
+                  </Link>
+
+                  {hasSubs && (
+                    <ChevronRight className="ml-2 size-3.5 text-muted-foreground shrink-0" />
+                  )}
+                </div>
+
+                {/* Side Fly-out Dropdown for Subcategories */}
+                {hasSubs && isSubOpen && (
+                  <div className="absolute left-full top-0 z-50 pl-1.5 min-w-52 -mt-1">
+                    <div className="rounded-md border bg-popover py-1 shadow-xl whitespace-normal">
+                      <Link
+                        href={`/category/${category.slug || category._id}`}
+                        onClick={() => {
+                          setOpenId(null);
+                          setHoverId(null);
+                        }}
+                        className="block px-3 py-2 text-sm font-semibold hover:bg-accent text-foreground border-b border-border/40"
+                      >
+                        All {category.name}
+                      </Link>
+                      {subcategories.map((sub) => (
+                        <Link
+                          key={sub._id}
+                          href={`/category/${sub.slug || sub._id}`}
+                          onClick={() => {
+                            setOpenId(null);
+                            setHoverId(null);
+                          }}
+                          className="block px-3 py-2 text-sm text-popover-foreground hover:bg-accent transition-colors"
+                        >
+                          {sub.name}
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
                 )}
               </div>
-
-              {subcategories.length > 0 && isSubOpen && (
-                <div className="bg-muted/40 px-3 py-1">
-                  {subcategories.map((sub) => (
-                    <Link
-                      key={sub._id}
-                      href={`/category/${sub.slug || sub._id}`}
-                      onClick={() => {
-                        setOpenId(null);
-                        setHoverId(null);
-                      }}
-                      className="block py-1.5 text-xs text-muted-foreground hover:text-foreground"
-                    >
-                      {sub.name}
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
     </div>
   );

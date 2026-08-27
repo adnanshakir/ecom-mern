@@ -1,7 +1,7 @@
 import { ThemeProvider } from "@/components/theme-provider";
 import { Navbar } from "@/components/storefront/layout/Navbar";
 import { CategoryNav } from "@/components/storefront/layout/CategoryNav";
-import { Footer } from "@/components/storefront/layout/Footer";
+import { StorefrontFooter } from "@/components/storefront/layout/StorefrontFooter";
 import { ScrollToTop } from "@/components/storefront/layout/ScrollToTop";
 
 export default function StorefrontLayout({ children }) {
@@ -11,9 +11,10 @@ export default function StorefrontLayout({ children }) {
         <Navbar />
         <CategoryNav />
         <main className="flex-1">{children}</main>
-        <Footer />
+        <StorefrontFooter />
         <ScrollToTop />
       </div>
     </ThemeProvider>
   );
 }
+

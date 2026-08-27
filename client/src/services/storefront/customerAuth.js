@@ -7,3 +7,6 @@ export const loginCustomerRequest = (payload) => customerApi.post("/customers/au
 export const refreshCustomerRequest = () => customerApi.post("/customers/auth/refresh");
 
 export const logoutCustomerRequest = () => customerApi.post("/customers/auth/logout");
+
+export const updateCustomerProfileRequest = (payload) => customerApi.put("/customers/auth/profile", payload);
+

@@ -4,6 +4,7 @@ import {
   loginCustomerRequest,
   refreshCustomerRequest,
   logoutCustomerRequest,
+  updateCustomerProfileRequest,
 } from "@/services/storefront/customerAuth";
 
 const initialState = {
@@ -61,6 +62,18 @@ export const customerLogout = createAsyncThunk(
   }
 );
 
+export const updateCustomerProfile = createAsyncThunk(
+  "customerAuth/updateProfile",
+  async (payload, { rejectWithValue }) => {
+    try {
+      const { data } = await updateCustomerProfileRequest(payload);
+      return data.data.user;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || "Failed to update profile");
+    }
+  }
+);
+
 const customerAuthSlice = createSlice({
   name: "customerAuth",
   initialState,
@@ -111,8 +124,15 @@ const customerAuthSlice = createSlice({
         state.status = "unauthenticated";
         state.accessToken = null;
         state.user = null;
+      })
+      .addCase(updateCustomerProfile.fulfilled, (state, action) => {
+        if (state.user) {
+          state.user = { ...state.user, ...action.payload };
+        } else {
+          state.user = action.payload;
+        }
       });
   },
 });
 
-export default customerAuthSlice.reducer;
+export default customerAuthSlice.reducer;
