@@ -16,7 +16,7 @@ export async function generateMetadata({ params }) {
   const slug = resolvedParams?.slug;
   const product = await getProduct(slug);
 
-  return generateProductMetadata(product);
+  return generateProductMetadata(product, slug);
 }
 
 export default async function ProductPage({ params }) {

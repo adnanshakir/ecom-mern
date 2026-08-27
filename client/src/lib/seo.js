@@ -27,37 +27,32 @@ export function stripHtml(html) {
 /**
  * Generates Next.js Metadata object for a product page
  */
-export function generateProductMetadata(product) {
+export function generateProductMetadata(product, fallbackSlug = "") {
   const siteUrl = getSiteUrl();
 
-  if (!product) {
-    return {
-      title: "Product Not Found | Fibio Wholesale",
-      description: "The requested product could not be found.",
-    };
-  }
+  const brandName = product?.brand?.name || "";
+  const categoryName = product?.category?.name || "";
 
-  const cleanDescription =
-    product.seo?.metaDescription ||
-    stripHtml(product.description || "").slice(0, 160) ||
-    `Buy ${product.name} at wholesale price on Fibio Wholesale.`;
+  const title = product
+    ? (product.seo?.metaTitle ||
+       `${product.name}${brandName ? ` - ${brandName}` : ""}${categoryName ? ` (${categoryName})` : ""} | Fibio Wholesale`)
+    : "Fibio Wholesale - Quality Products at Wholesale Prices";
 
-  const brandName = product.brand?.name || "";
-  const categoryName = product.category?.name || "";
-  
-  const title =
-    product.seo?.metaTitle ||
-    `${product.name}${brandName ? ` - ${brandName}` : ""}${categoryName ? ` (${categoryName})` : ""} | Fibio Wholesale`;
+  const cleanDescription = product
+    ? (product.seo?.metaDescription ||
+       stripHtml(product.description || "").slice(0, 160) ||
+       `Buy ${product.name} at wholesale price on Fibio Wholesale.`)
+    : "Explore Fibio Wholesale for top-rated products, bulk pricing, and unbeatable wholesale deals.";
 
-  const canonicalUrl = `${siteUrl}/product/${product.slug}`;
-  const images = product.images?.map((img) => img.url) || [];
-  const primaryImage = images[0] || `${siteUrl}/og-image.jpg`;
+  const canonicalUrl = `${siteUrl}/product/${product?.slug || fallbackSlug}`;
+  const images = product?.images?.map((img) => img.url).filter(Boolean) || [];
+  const primaryImage = images[0] || `${siteUrl}/banner-1.webp`;
 
   const keywords =
-    product.seo?.keywords?.length > 0
+    product?.seo?.keywords?.length > 0
       ? product.seo.keywords
       : [
-          product.name,
+          product?.name,
           brandName,
           categoryName,
           "wholesale",
@@ -66,8 +61,8 @@ export function generateProductMetadata(product) {
           "Fibio Wholesale",
         ].filter(Boolean);
 
-  const price = getDisplayPrice(product.variants);
-  const inStock = isInStock(product.variants);
+  const price = product ? getDisplayPrice(product.variants) : null;
+  const inStock = product ? isInStock(product.variants) : true;
 
   return {
     title,
@@ -85,7 +80,7 @@ export function generateProductMetadata(product) {
       images: [
         {
           url: primaryImage,
-          alt: product.name,
+          alt: product?.name || "Fibio Wholesale Product",
           width: 1200,
           height: 630,
         },
