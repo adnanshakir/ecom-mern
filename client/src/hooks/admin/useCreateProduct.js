@@ -23,6 +23,11 @@ const DETAILS_FIELDS = [
 const DEFAULTS = {
   name: "",
   description: "",
+  seo: {
+    metaTitle: "",
+    metaDescription: "",
+    keywords: "",
+  },
   optionTypes: [],
   category: "",
   brand: "",
@@ -74,8 +79,20 @@ export function useCreateProduct(open, onCreated) {
     setSubmitting(true);
     setFormError(null);
 
+    const formattedKeywords =
+      typeof values.seo?.keywords === "string"
+        ? values.seo.keywords.split(",").map((k) => k.trim()).filter(Boolean)
+        : Array.isArray(values.seo?.keywords)
+        ? values.seo.keywords
+        : [];
+
     const payload = {
       ...values,
+      seo: {
+        metaTitle: values.seo?.metaTitle || undefined,
+        metaDescription: values.seo?.metaDescription || undefined,
+        keywords: formattedKeywords,
+      },
       images: values.images?.length ? values.images : undefined,
       optionTypes: cleanOptionTypes(values.optionTypes),
       variants: values.variants.map(cleanVariantPayload),

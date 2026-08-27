@@ -168,6 +168,79 @@ export function ProductDetailsFields({ form, categories, brands, refetchCategori
           </FormItem>
         )}
       />
+
+      {/* Search Engine Optimization (SEO) Section */}
+      <div className="rounded-lg border border-border/60 p-4 space-y-4 bg-muted/20">
+        <div className="flex items-center justify-between">
+          <h4 className="text-sm font-semibold text-foreground">SEO Settings (Optional)</h4>
+          <span className="text-xs text-muted-foreground">Custom Search & Social Meta</span>
+        </div>
+
+        <FormField
+          control={form.control}
+          name="seo.metaTitle"
+          render={({ field }) => {
+            const length = field.value?.length || 0;
+            return (
+              <FormItem>
+                <div className="flex items-center justify-between">
+                  <FormLabel className="text-xs">Meta Title</FormLabel>
+                  <span className={`text-[10px] ${length > 60 ? "text-amber-500 font-medium" : "text-muted-foreground"}`}>
+                    {length}/60 chars
+                  </span>
+                </div>
+                <FormControl>
+                  <Input placeholder="Custom title tag for search engines..." {...field} value={field.value || ""} />
+                </FormControl>
+              </FormItem>
+            );
+          }}
+        />
+
+        <FormField
+          control={form.control}
+          name="seo.metaDescription"
+          render={({ field }) => {
+            const length = field.value?.length || 0;
+            return (
+              <FormItem>
+                <div className="flex items-center justify-between">
+                  <FormLabel className="text-xs">Meta Description</FormLabel>
+                  <span className={`text-[10px] ${length > 160 ? "text-amber-500 font-medium" : "text-muted-foreground"}`}>
+                    {length}/160 chars
+                  </span>
+                </div>
+                <FormControl>
+                  <Textarea
+                    rows={2}
+                    placeholder="Custom meta description snippet..."
+                    className="resize-none"
+                    {...field}
+                    value={field.value || ""}
+                  />
+                </FormControl>
+              </FormItem>
+            );
+          }}
+        />
+
+        <FormField
+          control={form.control}
+          name="seo.keywords"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="text-xs">Meta Keywords (comma-separated)</FormLabel>
+              <FormControl>
+                <Input
+                  placeholder="e.g. wholesale, cotton, t-shirt, fashion"
+                  {...field}
+                  value={Array.isArray(field.value) ? field.value.join(", ") : field.value || ""}
+                />
+              </FormControl>
+            </FormItem>
+          )}
+        />
+      </div>
     </div>
   );
 }

@@ -9,6 +9,32 @@ import { TrustFeaturesBar } from "@/components/storefront/home/TrustFeaturesBar"
 import { FaqSection } from "@/components/storefront/home/FaqSection";
 import { RecentlyViewedProducts } from "@/components/storefront/products/RecentlyViewedProducts";
 import { ExploreProducts } from "@/components/storefront";
+import { getSiteUrl } from "@/lib/seo";
+
+const siteUrl = getSiteUrl();
+
+export const metadata = {
+  title: "Fibio Wholesale - Quality Products at Wholesale Prices",
+  description:
+    "Explore Fibio Wholesale for top-rated products, bulk pricing, and unbeatable wholesale deals across electronics, footwear, apparel, and more.",
+  alternates: {
+    canonical: siteUrl,
+  },
+  openGraph: {
+    title: "Fibio Wholesale - Quality Products at Wholesale Prices",
+    description:
+      "Explore Fibio Wholesale for top-rated products, bulk pricing, and unbeatable wholesale deals across electronics, footwear, apparel, and more.",
+    url: siteUrl,
+    siteName: "Fibio Wholesale",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Fibio Wholesale - Quality Products at Wholesale Prices",
+    description:
+      "Explore Fibio Wholesale for top-rated products, bulk pricing, and unbeatable wholesale deals across electronics, footwear, apparel, and more.",
+  },
+};
 
 export default function Home() {
   return (

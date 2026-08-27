@@ -64,6 +64,14 @@ export const productSchema = z.object({
     )
     .optional()
     .default([]),
+  seo: z
+    .object({
+      metaTitle: z.string().optional(),
+      metaDescription: z.string().optional(),
+      keywords: z.string().optional().or(z.array(z.string())).optional(),
+    })
+    .optional()
+    .default({ metaTitle: "", metaDescription: "", keywords: "" }),
   variants: z.array(variantSchema).min(1, "At least one variant is required"),
 });
 

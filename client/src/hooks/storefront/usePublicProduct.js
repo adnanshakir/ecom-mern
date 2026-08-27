@@ -3,23 +3,25 @@
 import { useState, useEffect, useCallback } from "react";
 import { getPublicProductBySlug } from "@/services/storefront/publicCatalog";
 
-export function usePublicProduct(slug) {
-  const [product, setProduct] = useState(null);
-  const [loading, setLoading] = useState(true);
+export function usePublicProduct(slug, initialData = null) {
+  const [product, setProduct] = useState(initialData);
+  const [loading, setLoading] = useState(!initialData);
   const [error, setError] = useState(null);
 
   const fetchProduct = useCallback(() => {
     if (!slug) return;
-    setLoading(true);
+    if (!product) setLoading(true);
     getPublicProductBySlug(slug)
       .then(({ data }) => setProduct(data.data))
       .catch((err) => setError(err.response?.data?.message || "Product not found"))
       .finally(() => setLoading(false));
-  }, [slug]);
+  }, [slug, product]);
 
   useEffect(() => {
-    fetchProduct();
-  }, [fetchProduct]);
+    if (!initialData) {
+      fetchProduct();
+    }
+  }, [fetchProduct, initialData]);
 
   return { product, loading, error };
 }

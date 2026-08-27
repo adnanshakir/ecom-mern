@@ -353,21 +353,46 @@ export function ProductView({ product }) {
           </div>
         )}
 
-        {/* Product Metadata */}
-        {product.slug && (
-          <div className="grid gap-2 border-t border-border/40 pt-4 text-xs">
-            <span className="font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-              <Globe className="size-3.5" />
-              Product Metadata
-            </span>
-            <div className="grid gap-1.5 text-muted-foreground">
+        {/* Product & SEO Metadata */}
+        <div className="grid gap-2 border-t border-border/40 pt-4 text-xs">
+          <span className="font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+            <Globe className="size-3.5" />
+            SEO & Metadata
+          </span>
+          <div className="grid gap-2 text-muted-foreground">
+            {product.slug && (
               <div className="flex items-center gap-2">
-                <span className="font-medium text-foreground">Slug:</span>
-                <span className="font-mono text-muted-foreground">/{product.slug}</span>
+                <span className="font-medium text-foreground">Canonical Slug:</span>
+                <span className="font-mono text-muted-foreground">/product/{product.slug}</span>
               </div>
-            </div>
+            )}
+
+            {product.seo?.metaTitle && (
+              <div className="flex flex-col gap-0.5">
+                <span className="font-medium text-foreground">Custom Meta Title:</span>
+                <span className="text-muted-foreground">{product.seo.metaTitle}</span>
+              </div>
+            )}
+
+            {product.seo?.metaDescription && (
+              <div className="flex flex-col gap-0.5">
+                <span className="font-medium text-foreground">Custom Meta Description:</span>
+                <span className="text-muted-foreground">{product.seo.metaDescription}</span>
+              </div>
+            )}
+
+            {product.seo?.keywords?.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                <span className="font-medium text-foreground">Keywords:</span>
+                {product.seo.keywords.map((kw, i) => (
+                  <span key={i} className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-foreground">
+                    {kw}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
     </div>
   );

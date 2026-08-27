@@ -129,12 +129,33 @@ const HEADER_SPEC = [
     example: "450",
     note: "Weight in grams for shipping calculations.",
   },
+  {
+    field: "SEO Meta Title",
+    required: false,
+    headers: ["SEO Title", "Meta Title", "Page Title"],
+    example: "Buy Nike Air Max 270 Online | Wholesale Price",
+    note: "Custom page title tag (~60 chars max) for search engines.",
+  },
+  {
+    field: "SEO Meta Description",
+    required: false,
+    headers: ["SEO Description", "Meta Description", "Page Description"],
+    example: "Get Nike Air Max 270 at best wholesale price. Breathable mesh upper & Max Air unit.",
+    note: "Custom search result snippet (~160 chars max).",
+  },
+  {
+    field: "SEO Keywords",
+    required: false,
+    headers: ["SEO Keywords", "Meta Keywords", "Keywords"],
+    example: "nike, sneakers, air max, wholesale shoes",
+    note: "Comma-separated target keywords.",
+  },
 ];
 
-const SAMPLE_CSV_CONTENT = `Title,URL handle,Description,Vendor,Product category,Category Image URL,SKU,Barcode,Option1 name,Option1 value,Price,Compare-at price,Cost per item,Inventory quantity,Weight value (grams),Product Image URL,Image position
-Nike Air Max 270,nike-air-max-270,Premium lifestyle sneakers with max air unit.,Nike,Footwear > Sneakers,https://images.unsplash.com/photo-1549298916-b41d501d3772,NAM270-BLK-9,883412345,Color,Black,4499,5499,2800,15,450,https://images.unsplash.com/photo-1542291026-7eec264c27ff,1
-,nike-air-max-270,,Nike,Footwear > Sneakers,https://images.unsplash.com/photo-1549298916-b41d501d3772,NAM270-WHT-9,883412346,Color,White,4499,5499,2800,10,450,https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a,2
-Urban Graphic Hoodie,urban-graphic-hoodie,Soft heavyweight fleece hoodie.,Puma,Apparel > Hoodies,https://images.unsplash.com/photo-1516257984-b1b4d707412e,UGH-BLK-M,883412347,Size,Medium,2999,3999,1800,30,650,https://images.unsplash.com/photo-1556905055-8f358a7a47b2,1
+const SAMPLE_CSV_CONTENT = `Title,URL handle,Description,SEO Title,SEO Description,SEO Keywords,Vendor,Product category,Category Image URL,SKU,Barcode,Option1 name,Option1 value,Price,Compare-at price,Cost per item,Inventory quantity,Weight value (grams),Product Image URL,Image position
+Nike Air Max 270,nike-air-max-270,Premium lifestyle sneakers with max air unit.,Buy Nike Air Max 270 Online | Fibio Wholesale,Get Nike Air Max 270 at best wholesale price. Breathable mesh upper & Max Air unit.,nike; sneakers; air max; wholesale,Nike,Footwear > Sneakers,https://images.unsplash.com/photo-1549298916-b41d501d3772,NAM270-BLK-9,883412345,Color,Black,4499,5499,2800,15,450,https://images.unsplash.com/photo-1542291026-7eec264c27ff,1
+,nike-air-max-270,,,,,,Nike,Footwear > Sneakers,https://images.unsplash.com/photo-1549298916-b41d501d3772,NAM270-WHT-9,883412346,Color,White,4499,5499,2800,10,450,https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a,2
+Urban Graphic Hoodie,urban-graphic-hoodie,Soft heavyweight fleece hoodie.,Buy Urban Graphic Hoodie | Fibio Wholesale,Soft heavyweight fleece hoodie at bulk rates.,hoodie; puma; apparel; fleece,Puma,Apparel > Hoodies,https://images.unsplash.com/photo-1516257984-b1b4d707412e,UGH-BLK-M,883412347,Size,Medium,2999,3999,1800,30,650,https://images.unsplash.com/photo-1556905055-8f358a7a47b2,1
 `;
 
 export function handleDownloadSampleCsv() {

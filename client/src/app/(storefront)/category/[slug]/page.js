@@ -1,42 +1,29 @@
-"use client";
+import { getPublicCategories } from "@/services/storefront/publicCatalog";
+import { generateCategoryMetadata } from "@/lib/seo";
+import { CategoryPageClient } from "@/components/storefront/category/CategoryPageClient";
 
-import { use, Suspense } from "react";
-import { Loader2 } from "lucide-react";
-import { usePublicCategories } from "@/hooks/storefront/usePublicCategories";
-import { ProductCatalogFilterView } from "@/components/storefront/products/ProductCatalogFilterView";
-
-function CategoryContent({ params }) {
-  const { slug } = use(params);
-  const activeCategorySlug = (slug === "allcategories" || slug === "all") ? null : slug;
-  const { categories } = usePublicCategories();
-
-  const currentCategory = activeCategorySlug
-    ? categories.find((c) => c.slug === activeCategorySlug || c._id === activeCategorySlug) || null
-    : null;
-
-  return (
-    <ProductCatalogFilterView
-      initialCategory={activeCategorySlug}
-      titleOverride={currentCategory ? currentCategory.name : undefined}
-      breadcrumbs={[
-        { label: "Home", href: "/" },
-        { label: "Categories", href: "/category" },
-        ...(currentCategory ? [{ label: currentCategory.name }] : []),
-      ]}
-    />
-  );
+async function getCategory(slug) {
+  if (!slug || slug === "allcategories" || slug === "all") return null;
+  try {
+    const res = await getPublicCategories();
+    const categories = res.data?.data || [];
+    return categories.find((c) => c.slug === slug || c._id === slug) || null;
+  } catch (err) {
+    return null;
+  }
 }
 
-export default function CategoryPage({ params }) {
-  return (
-    <Suspense
-      fallback={
-        <div className="flex items-center justify-center py-20 text-muted-foreground">
-          <Loader2 className="size-8 animate-spin text-[#033936]" />
-        </div>
-      }
-    >
-      <CategoryContent params={params} />
-    </Suspense>
-  );
+export async function generateMetadata({ params }) {
+  const resolvedParams = await params;
+  const slug = resolvedParams?.slug;
+  const category = await getCategory(slug);
+
+  return generateCategoryMetadata(slug, category?.name);
+}
+
+export default async function CategoryPage({ params }) {
+  const resolvedParams = await params;
+  const slug = resolvedParams?.slug;
+
+  return <CategoryPageClient slug={slug} />;
 }

@@ -20,6 +20,11 @@ export function useEditProduct(productId) {
     defaultValues: {
       name: "",
       description: "",
+      seo: {
+        metaTitle: "",
+        metaDescription: "",
+        keywords: "",
+      },
       optionTypes: [],
       category: "",
       brand: "",
@@ -39,6 +44,13 @@ export function useEditProduct(productId) {
         form.reset({
           name: product.name || "",
           description: product.description || "",
+          seo: {
+            metaTitle: product.seo?.metaTitle || "",
+            metaDescription: product.seo?.metaDescription || "",
+            keywords: Array.isArray(product.seo?.keywords)
+              ? product.seo.keywords.join(", ")
+              : product.seo?.keywords || "",
+          },
           optionTypes: (product.optionTypes || []).map((ot) => ({
             name: ot.name,
             values: (ot.values || []).map((v) => ({ value: v })),
@@ -60,8 +72,20 @@ export function useEditProduct(productId) {
     setFormError(null);
     setSaved(false);
 
+    const formattedKeywords =
+      typeof values.seo?.keywords === "string"
+        ? values.seo.keywords.split(",").map((k) => k.trim()).filter(Boolean)
+        : Array.isArray(values.seo?.keywords)
+        ? values.seo.keywords
+        : [];
+
     const payload = {
       ...values,
+      seo: {
+        metaTitle: values.seo?.metaTitle || "",
+        metaDescription: values.seo?.metaDescription || "",
+        keywords: formattedKeywords,
+      },
       images: values.images || [],
       optionTypes: cleanOptionTypes(values.optionTypes) || [],
     };
@@ -69,8 +93,10 @@ export function useEditProduct(productId) {
     try {
       await updateProduct(productId, payload);
       setSaved(true);
+      return true;
     } catch (err) {
       setFormError(err.response?.data?.message || "Failed to save product");
+      return false;
     } finally {
       setSubmitting(false);
     }

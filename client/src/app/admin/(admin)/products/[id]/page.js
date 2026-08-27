@@ -90,8 +90,8 @@ export default function ProductDetailPage() {
                 <TabsContent value="details" className="pt-4">
                   <DetailsTab
                     productId={id}
-                    onSaved={() => {
-                      refetch();
+                    onSaved={async () => {
+                      await refetch();
                       setEditing(false);
                     }}
                   />
@@ -127,8 +127,10 @@ function DetailsTab({ productId, onSaved }) {
   if (loadError) return <p className="text-sm text-destructive">{loadError}</p>;
 
   const handleSubmit = async (values) => {
-    await submit(values);
-    onSaved?.();
+    const success = await submit(values);
+    if (success) {
+      await onSaved?.();
+    }
   };
 
   // Runs when handleSubmit's own zod validation fails — this is the case

@@ -85,7 +85,7 @@ export function ProductCard({ product, showCartOnHover = false }) {
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={thumbnail}
-              alt={product.name}
+              alt={product.images?.[0]?.altText || product.name}
               loading="lazy"
               decoding="async"
               className={cn(
@@ -124,7 +124,7 @@ export function ProductCard({ product, showCartOnHover = false }) {
               className={cn(
                 "absolute bottom-0 left-0 right-0 flex items-center justify-center gap-1.5 py-2.5 text-xs font-bold uppercase tracking-wide transition-all duration-200",
                 "translate-y-full opacity-0 group-hover:translate-y-0 group-hover:opacity-100",
-                isAlreadyInCart ? "bg-emerald-400 text-white" : "bg-red-500 text-white hover:bg-red-600"
+                isAlreadyInCart ? "bg-emerald-500 text-white" : "bg-red-500 text-white hover:bg-red-600"
               )}
             >
               {isAddingToCart ? (
@@ -132,7 +132,8 @@ export function ProductCard({ product, showCartOnHover = false }) {
               ) : isAlreadyInCart ? (
                 <>
                   <Check className="size-3.5" />
-                  <span>In Cart</span>
+                  <span>In Cart
+                  </span>
                 </>
               ) : (
                 <>
@@ -146,7 +147,7 @@ export function ProductCard({ product, showCartOnHover = false }) {
 
         {/* Product info */}
         <div className="grid gap-1 p-3">
-          <p className="line-clamp-1 text-sm font-medium">{product.name}</p>
+          <h3 className="line-clamp-1 text-sm font-medium">{product.name}</h3>
           {product.description && (
             <p className="line-clamp-1 text-xs text-muted-foreground">
               {product.description.replace(/<[^>]*>?/gm, "").trim()}
@@ -180,7 +181,7 @@ export function ProductCard({ product, showCartOnHover = false }) {
             disabled={isAddingToCart}
             className={cn(
               "flex w-full items-center justify-center gap-1.5 py-2 text-xs font-bold uppercase tracking-wide transition-colors duration-200",
-              isAlreadyInCart ? "bg-emerald-700 text-white" : "bg-red-500 text-white hover:bg-red-600"
+              isAlreadyInCart ? "bg-emerald-500 text-white" : "bg-red-500 text-white hover:bg-red-600"
             )}
           >
             {isAddingToCart ? (
@@ -188,7 +189,7 @@ export function ProductCard({ product, showCartOnHover = false }) {
             ) : isAlreadyInCart ? (
               <>
                 <Check className="size-3.5" />
-                <span>In Cart</span>
+                <span>In Cart!</span>
               </>
             ) : (
               <>
