@@ -1,0 +1,1898 @@
+{
+  "info": {
+    "_postman_id": "ecom-mern-api-collection",
+    "name": "ecom-mern API",
+    "description": "Complete API collection for the ecom-mern backend.\n\n**Base URL:** `{{baseUrl}}` (default: `http://localhost:5000`)\n\n---\n\n## Authentication\n\n### Admin / Staff routes\nProtected endpoints use `Authorization: Bearer {{accessToken}}`.\nThe token is a **short-lived JWT** returned by `POST /api/auth/login`.\nSet the `accessToken` environment variable after a successful login.\n\nThe collection-level auth is set to **Bearer Token → `{{accessToken}}`**.\nAll protected Admin requests inherit it automatically.\n\n### Customer routes\nCustomer-protected endpoints use `Authorization: Bearer {{customerAccessToken}}`.\nSet `customerAccessToken` after `POST /api/customers/auth/login`.\n\n### Refresh Tokens\nBoth Admin and Customer refresh tokens are stored in **HttpOnly cookies**.\nPostman handles cookies automatically as long as the Cookie Jar is enabled.\n\n---\n\n## Roles\n| Role | Description |\n|------|-------------|\n| `super_admin` | Full access incl. user management & registration |\n| `admin` | Products, categories, brands, inventory, banners |\n| `staff` | Read-only access to most resources |",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["health"]
+            },
+            "description": "Returns server uptime and health status. No authentication required."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Server is healthy\",\n  \"uptime\": 123.456,\n  \"timestamp\": \"2026-08-29T07:00:00.000Z\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Admin — Auth",
+      "description": "Admin/staff authentication endpoints.\n\n**Rate limits:**\n- Login & Register: 10 requests per 15 minutes per IP\n- Refresh: 30 requests per 15 minutes per IP",
+      "item": [
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.success && json.data && json.data.accessToken) {",
+                  "  pm.environment.set('accessToken', json.data.accessToken);",
+                  "  pm.environment.set('adminUserId', json.data.user.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@example.com\",\n  \"password\": \"password123\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            },
+            "description": "Authenticates an admin/staff user.\n\n**Returns:** `accessToken` (JWT, short-lived) in the response body. A `refreshToken` HttpOnly cookie is set automatically.\n\n**Rate limit:** 10 requests per 15-minute window.\n\n**Required fields:**\n- `email` — string, valid email format\n- `password` — string, min 1 character\n\n**Error codes:**\n- `401` — Invalid email or password\n- `403` — Account deactivated\n- `429` — Rate limit exceeded"
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Login successful\",\n  \"data\": {\n    \"accessToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\",\n    \"user\": {\n      \"id\": \"60c72b2f9b1e8a001c8e4f10\",\n      \"name\": \"Admin User\",\n      \"email\": \"admin@example.com\",\n      \"role\": \"admin\"\n    }\n  }\n}"
+            },
+            {
+              "name": "401 Invalid Credentials",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Invalid email or password\"\n}"
+            },
+            {
+              "name": "403 Deactivated Account",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": false,\n  \"message\": \"This account has been deactivated\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Register New Admin/Staff (super_admin only)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"New Staff Member\",\n  \"email\": \"staff@example.com\",\n  \"password\": \"password123\",\n  \"role\": \"staff\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "register"]
+            },
+            "description": "Creates a new admin panel user. **Only `super_admin` can call this.**\n\n**Required fields:**\n- `name` — string, min 1 character\n- `email` — string, valid email format\n- `password` — string, min 6 characters\n\n**Optional fields:**\n- `role` — enum: `super_admin` | `admin` | `staff` (default: `staff`)\n\n**Error codes:**\n- `401` — Not authenticated\n- `403` — Not authorized (not super_admin)\n- `409` — Email already in use\n- `422` — Validation error"
+          },
+          "response": [
+            {
+              "name": "201 Created",
+              "status": "Created",
+              "code": 201,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"User registered successfully\",\n  \"data\": {\n    \"id\": \"60c72b2f9b1e8a001c8e4f11\",\n    \"name\": \"New Staff Member\",\n    \"email\": \"staff@example.com\",\n    \"role\": \"staff\"\n  }\n}"
+            },
+            {
+              "name": "409 Email Conflict",
+              "status": "Conflict",
+              "code": 409,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Email already in use\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Refresh Access Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.success && json.data && json.data.accessToken) {",
+                  "  pm.environment.set('accessToken', json.data.accessToken);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/refresh",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "refresh"]
+            },
+            "description": "Exchanges the `refreshToken` HttpOnly cookie for a new access token.\n\n**No request body needed.** The refresh token is read automatically from the cookie jar.\n\n**Rate limit:** 30 requests per 15-minute window.\n\n**Error codes:**\n- `401` — No/invalid/expired/revoked refresh token"
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"accessToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/logout",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "logout"]
+            },
+            "description": "Revokes the `refreshToken` cookie and clears it. No request body needed.\n\nThe access token remains valid until it expires (short-lived by design)."
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Logged out successfully\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Admin — Users",
+      "description": "Admin panel user management. All routes require `Authorization: Bearer {{accessToken}}`.\n\n**Access:** `super_admin` only (except `GET /api/users/me` which any authenticated admin role can call).",
+      "item": [
+        {
+          "name": "Get My Profile (me)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "users", "me"]
+            },
+            "description": "Returns the authenticated admin/staff user's own profile.\n\n**Access:** Any authenticated admin role (super_admin, admin, staff)."
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"_id\": \"60c72b2f9b1e8a001c8e4f10\",\n    \"name\": \"Admin User\",\n    \"email\": \"admin@example.com\",\n    \"role\": \"admin\",\n    \"isActive\": true,\n    \"lastLogin\": \"2026-08-29T07:00:00.000Z\",\n    \"createdAt\": \"2026-01-01T00:00:00.000Z\",\n    \"updatedAt\": \"2026-08-29T07:00:00.000Z\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "List All Users",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/users?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "users"],
+              "query": [
+                { "key": "page", "value": "1", "description": "Page number (default: 1)" },
+                { "key": "limit", "value": "20", "description": "Items per page, max 100 (default: 20)" },
+                { "key": "role", "value": "", "description": "Filter by role: super_admin | admin | staff", "disabled": true },
+                { "key": "isActive", "value": "", "description": "Filter by active status: true | false", "disabled": true },
+                { "key": "search", "value": "", "description": "Search by name (case-insensitive regex)", "disabled": true }
+              ]
+            },
+            "description": "Lists all admin panel users with optional filters and pagination.\n\n**Access:** `super_admin` only.\n\n**Query parameters:**\n- `page` — number (default: 1)\n- `limit` — number (default: 20, max: 100)\n- `role` — enum: `super_admin` | `admin` | `staff`\n- `isActive` — `true` | `false`\n- `search` — partial name search"
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"data\": [\n    {\n      \"_id\": \"60c72b2f9b1e8a001c8e4f10\",\n      \"name\": \"Super Admin\",\n      \"email\": \"super@example.com\",\n      \"role\": \"super_admin\",\n      \"isActive\": true,\n      \"lastLogin\": \"2026-08-29T07:00:00.000Z\",\n      \"createdAt\": \"2026-01-01T00:00:00.000Z\",\n      \"updatedAt\": \"2026-08-29T07:00:00.000Z\"\n    }\n  ],\n  \"pagination\": {\n    \"total\": 5,\n    \"page\": 1,\n    \"pages\": 1\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get User by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "users", "{{userId}}"]
+            },
+            "description": "Fetches a single admin user by MongoDB ObjectId.\n\n**Access:** `super_admin` only.\n\n**Path params:**\n- `userId` — MongoDB ObjectId of the user\n\n**Error codes:** `404` — User not found"
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"_id\": \"60c72b2f9b1e8a001c8e4f10\",\n    \"name\": \"Admin User\",\n    \"email\": \"admin@example.com\",\n    \"role\": \"admin\",\n    \"isActive\": true,\n    \"lastLogin\": \"2026-08-29T07:00:00.000Z\",\n    \"createdAt\": \"2026-01-01T00:00:00.000Z\",\n    \"updatedAt\": \"2026-08-29T07:00:00.000Z\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update User",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Name\",\n  \"role\": \"admin\",\n  \"isActive\": true\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/users/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "users", "{{userId}}"]
+            },
+            "description": "Updates a user's `name`, `role`, or `isActive` status.\n\n**Access:** `super_admin` only.\n\n**Restrictions:**\n- A super_admin cannot change their own role or deactivate themselves.\n\n**All fields are optional:**\n- `name` — string, min 1 character\n- `role` — enum: `super_admin` | `admin` | `staff`\n- `isActive` — boolean\n\n**Error codes:**\n- `400` — Self-modification of role/status blocked\n- `404` — User not found"
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"_id\": \"60c72b2f9b1e8a001c8e4f10\",\n    \"name\": \"Updated Name\",\n    \"email\": \"admin@example.com\",\n    \"role\": \"admin\",\n    \"isActive\": true,\n    \"updatedAt\": \"2026-08-29T07:30:00.000Z\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Delete User",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "users", "{{userId}}"]
+            },
+            "description": "Hard-deletes a user and revokes all their refresh tokens.\n\n**Access:** `super_admin` only.\n\n**Restrictions:** A super_admin cannot delete themselves.\n\n**Error codes:**\n- `400` — Self-deletion blocked\n- `404` — User not found"
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"User deleted\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Admin — Dashboard",
+      "description": "Dashboard aggregation stats. Requires `Authorization: Bearer {{accessToken}}`.",
+      "item": [
+        {
+          "name": "Get Dashboard Stats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/dashboard/stats",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "dashboard", "stats"]
+            },
+            "description": "Returns aggregated statistics:\n- Total product / category / brand counts\n- Low-stock variants (below configured threshold)\n- 10 most recent activity log entries\n- 5 most recent CSV import jobs\n\n**Access:** Any authenticated admin role."
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"totalProducts\": 120,\n    \"totalCategories\": 15,\n    \"totalBrands\": 8,\n    \"lowStock\": {\n      \"threshold\": 5,\n      \"count\": 3,\n      \"items\": [\n        {\n          \"_id\": \"60c72b2f9b1e8a001c8e4f20\",\n          \"sku\": \"SKU-001\",\n          \"stock\": 2,\n          \"product\": { \"_id\": \"60c72b2f9b1e8a001c8e4f21\", \"name\": \"Test Product\" }\n        }\n      ]\n    },\n    \"latestActivity\": [],\n    \"recentImports\": [],\n    \"csvImportStatus\": null\n  }\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Admin — Brands",
+      "description": "Brand management. Requires `Authorization: Bearer {{accessToken}}`.\n\n**Access:**\n- GET: any authenticated admin role\n- POST, PUT, DELETE: `super_admin` or `admin` only",
+      "item": [
+        {
+          "name": "List All Brands",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/brands",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "brands"]
+            },
+            "description": "Returns all brands sorted alphabetically by name."
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"data\": [\n    {\n      \"_id\": \"60c72b2f9b1e8a001c8e4f30\",\n      \"name\": \"Nike\",\n      \"slug\": \"nike\",\n      \"logo\": \"https://ik.imagekit.io/example/nike-logo.png\",\n      \"isActive\": true,\n      \"createdAt\": \"2026-01-01T00:00:00.000Z\",\n      \"updatedAt\": \"2026-01-01T00:00:00.000Z\"\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Brand by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/brands/{{brandId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "brands", "{{brandId}}"]
+            },
+            "description": "Fetches a single brand by MongoDB ObjectId.\n\n**Error codes:** `404` — Brand not found"
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"_id\": \"60c72b2f9b1e8a001c8e4f30\",\n    \"name\": \"Nike\",\n    \"slug\": \"nike\",\n    \"logo\": \"https://ik.imagekit.io/example/nike-logo.png\",\n    \"isActive\": true,\n    \"createdAt\": \"2026-01-01T00:00:00.000Z\",\n    \"updatedAt\": \"2026-01-01T00:00:00.000Z\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Create Brand",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Nike\",\n  \"logo\": \"https://ik.imagekit.io/example/nike-logo.png\",\n  \"isActive\": true\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/brands",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "brands"]
+            },
+            "description": "Creates a new brand. The `slug` is auto-generated server-side from `name`.\n\n**Access:** `super_admin` or `admin`.\n\n**Required fields:**\n- `name` — string, min 2 chars, max 100 chars\n\n**Optional fields:**\n- `logo` — valid URL string\n- `isActive` — boolean (default: true)"
+          },
+          "response": [
+            {
+              "name": "201 Created",
+              "status": "Created",
+              "code": 201,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"_id\": \"60c72b2f9b1e8a001c8e4f30\",\n    \"name\": \"Nike\",\n    \"slug\": \"nike\",\n    \"logo\": \"https://ik.imagekit.io/example/nike-logo.png\",\n    \"isActive\": true,\n    \"createdAt\": \"2026-08-29T07:00:00.000Z\",\n    \"updatedAt\": \"2026-08-29T07:00:00.000Z\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update Brand",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Nike Updated\",\n  \"logo\": \"https://ik.imagekit.io/example/nike-logo-v2.png\",\n  \"isActive\": true\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/brands/{{brandId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "brands", "{{brandId}}"]
+            },
+            "description": "Updates a brand. All fields are optional.\n\n**Access:** `super_admin` or `admin`.\n\nIf `name` is changed, `slug` is regenerated automatically.\n\n**Error codes:** `404` — Brand not found"
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"_id\": \"60c72b2f9b1e8a001c8e4f30\",\n    \"name\": \"Nike Updated\",\n    \"slug\": \"nike-updated\",\n    \"logo\": \"https://ik.imagekit.io/example/nike-logo-v2.png\",\n    \"isActive\": true,\n    \"updatedAt\": \"2026-08-29T08:00:00.000Z\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Delete Brand",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/brands/{{brandId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "brands", "{{brandId}}"]
+            },
+            "description": "Deletes a brand.\n\n**Access:** `super_admin` or `admin`.\n\n**Blocked if:** any product is currently assigned to this brand.\n\n**Error codes:**\n- `400` — Brand has products assigned to it\n- `404` — Brand not found"
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Brand deleted\"\n}"
+            },
+            {
+              "name": "400 Brand In Use",
+              "status": "Bad Request",
+              "code": 400,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Cannot delete a brand that has products assigned to it\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Admin — Categories",
+      "description": "Category management. Supports nested categories via the `parent` field.\n\nRequires `Authorization: Bearer {{accessToken}}`.\n\n**Access:**\n- GET: any authenticated admin role\n- POST, PUT, DELETE: `super_admin` or `admin` only",
+      "item": [
+        {
+          "name": "List All Categories",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/categories",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "categories"]
+            },
+            "description": "Returns all categories sorted alphabetically by name."
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"data\": [\n    {\n      \"_id\": \"60c72b2f9b1e8a001c8e4f40\",\n      \"name\": \"Electronics\",\n      \"slug\": \"electronics\",\n      \"parent\": null,\n      \"isActive\": true,\n      \"image\": { \"url\": \"\", \"fileId\": \"\" },\n      \"createdAt\": \"2026-01-01T00:00:00.000Z\",\n      \"updatedAt\": \"2026-01-01T00:00:00.000Z\"\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Category by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/categories/{{categoryId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "categories", "{{categoryId}}"]
+            },
+            "description": "Fetches a single category by MongoDB ObjectId.\n\n**Error codes:** `404` — Category not found"
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"_id\": \"60c72b2f9b1e8a001c8e4f40\",\n    \"name\": \"Electronics\",\n    \"slug\": \"electronics\",\n    \"parent\": null,\n    \"isActive\": true,\n    \"image\": { \"url\": \"\", \"fileId\": \"\" }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Create Category",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Laptops\",\n  \"description\": \"Laptop computers and accessories\",\n  \"parent\": \"60c72b2f9b1e8a001c8e4f40\",\n  \"isActive\": true,\n  \"image\": {\n    \"url\": \"https://ik.imagekit.io/example/laptops.jpg\",\n    \"fileId\": \"imagekit-file-id\"\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/categories",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "categories"]
+            },
+            "description": "Creates a new category. The `slug` is auto-generated from `name`.\n\n**Access:** `super_admin` or `admin`.\n\n**Required fields:**\n- `name` — string, min 2 chars, max 100 chars\n\n**Optional fields:**\n- `description` — string\n- `parent` — MongoDB ObjectId of parent category (for nested categories)\n- `isActive` — boolean (default: true)\n- `image.url` — string\n- `image.fileId` — string\n\n**Error codes:**\n- `400` — Parent category not found"
+          },
+          "response": [
+            {
+              "name": "201 Created",
+              "status": "Created",
+              "code": 201,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"_id\": \"60c72b2f9b1e8a001c8e4f41\",\n    \"name\": \"Laptops\",\n    \"slug\": \"laptops\",\n    \"parent\": \"60c72b2f9b1e8a001c8e4f40\",\n    \"isActive\": true,\n    \"image\": { \"url\": \"https://ik.imagekit.io/example/laptops.jpg\", \"fileId\": \"imagekit-file-id\" },\n    \"createdAt\": \"2026-08-29T07:00:00.000Z\",\n    \"updatedAt\": \"2026-08-29T07:00:00.000Z\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update Category",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Laptops & Notebooks\",\n  \"isActive\": true\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/categories/{{categoryId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "categories", "{{categoryId}}"]
+            },
+            "description": "Updates a category. All fields optional.\n\n**Access:** `super_admin` or `admin`.\n\n**Error codes:**\n- `400` — Category cannot be its own parent\n- `400` — Parent category not found\n- `404` — Category not found"
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"_id\": \"60c72b2f9b1e8a001c8e4f41\",\n    \"name\": \"Laptops & Notebooks\",\n    \"slug\": \"laptops-notebooks\",\n    \"isActive\": true\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Delete Category",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/categories/{{categoryId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "categories", "{{categoryId}}"]
+            },
+            "description": "Deletes a category.\n\n**Access:** `super_admin` or `admin`.\n\n**Blocked if:**\n- Category has child subcategories\n- Any product is assigned to this category\n\n**Error codes:**\n- `400` — Has subcategories or products\n- `404` — Category not found"
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Category deleted\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Admin — Products",
+      "description": "Product management with variant support. All routes require `Authorization: Bearer {{accessToken}}`.\n\n**Access:**\n- GET: any authenticated admin role\n- POST, PUT, PATCH, DELETE: `super_admin` or `admin` only\n\n**Note:** Stock is ledger-only — use `POST /api/inventory/movements` to adjust stock levels. Direct stock writes via the product/variant endpoints are intentionally blocked.",
+      "item": [
+        {
+          "name": "List Products",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/products?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "products"],
+              "query": [
+                { "key": "page", "value": "1", "description": "Page number (default: 1)" },
+                { "key": "limit", "value": "20", "description": "Items per page, max 100 (default: 20)" },
+                { "key": "category", "value": "", "description": "Filter by category MongoDB ObjectId", "disabled": true },
+                { "key": "brand", "value": "", "description": "Filter by brand MongoDB ObjectId", "disabled": true },
+                { "key": "status", "value": "", "description": "Filter by status: draft | active | archived", "disabled": true },
+                { "key": "featured", "value": "", "description": "Filter by featured: true | false", "disabled": true },
+                { "key": "search", "value": "", "description": "Search by product name (case-insensitive)", "disabled": true }
+              ]
+            },
+            "description": "Returns a paginated list of products. Each product includes its populated `category`, `brand`, and `variants` array."
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"data\": [\n    {\n      \"_id\": \"60c72b2f9b1e8a001c8e4f50\",\n      \"name\": \"MacBook Pro 14\",\n      \"slug\": \"macbook-pro-14\",\n      \"description\": \"Apple MacBook Pro with M3 chip\",\n      \"category\": { \"_id\": \"60c72b2f9b1e8a001c8e4f41\", \"name\": \"Laptops\", \"slug\": \"laptops\" },\n      \"brand\": { \"_id\": \"60c72b2f9b1e8a001c8e4f30\", \"name\": \"Apple\", \"slug\": \"apple\" },\n      \"status\": \"active\",\n      \"featured\": false,\n      \"images\": [],\n      \"optionTypes\": [],\n      \"seo\": { \"metaTitle\": \"\", \"metaDescription\": \"\", \"keywords\": [] },\n      \"variants\": [\n        {\n          \"_id\": \"60c72b2f9b1e8a001c8e4f60\",\n          \"sku\": \"MBP14-M3-16GB\",\n          \"price\": 1999.99,\n          \"salePrice\": 1799.99,\n          \"stock\": 25,\n          \"isActive\": true\n        }\n      ],\n      \"createdAt\": \"2026-01-01T00:00:00.000Z\",\n      \"updatedAt\": \"2026-08-29T07:00:00.000Z\"\n    }\n  ],\n  \"pagination\": { \"total\": 120, \"page\": 1, \"pages\": 6 }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Product by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/products/{{productId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "products", "{{productId}}"]
+            },
+            "description": "Fetches a single product with populated category and brand and all its variants.\n\n**Error codes:** `404` — Product not found"
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"_id\": \"60c72b2f9b1e8a001c8e4f50\",\n    \"name\": \"MacBook Pro 14\",\n    \"slug\": \"macbook-pro-14\",\n    \"description\": \"Apple MacBook Pro with M3 chip\",\n    \"category\": { \"_id\": \"60c72b2f9b1e8a001c8e4f41\", \"name\": \"Laptops\", \"slug\": \"laptops\" },\n    \"brand\": { \"_id\": \"60c72b2f9b1e8a001c8e4f30\", \"name\": \"Apple\", \"slug\": \"apple\" },\n    \"status\": \"draft\",\n    \"featured\": false,\n    \"images\": [],\n    \"optionTypes\": [\n      { \"name\": \"Storage\", \"values\": [\"512GB\", \"1TB\"] }\n    ],\n    \"seo\": { \"metaTitle\": \"MacBook Pro 14\", \"metaDescription\": \"Best laptop\", \"keywords\": [\"laptop\", \"apple\"] },\n    \"variants\": [\n      {\n        \"_id\": \"60c72b2f9b1e8a001c8e4f60\",\n        \"sku\": \"MBP14-512GB\",\n        \"barcode\": \"1234567890\",\n        \"options\": [{ \"name\": \"Storage\", \"value\": \"512GB\" }],\n        \"price\": 1999.99,\n        \"salePrice\": 1799.99,\n        \"costPrice\": 1500.00,\n        \"stock\": 25,\n        \"weight\": { \"value\": 1.6, \"unit\": \"kg\" },\n        \"images\": [],\n        \"isActive\": true\n      }\n    ]\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Create Product (with variants)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"MacBook Pro 14\",\n  \"description\": \"Apple MacBook Pro with M3 chip, 16GB RAM\",\n  \"category\": \"{{categoryId}}\",\n  \"brand\": \"{{brandId}}\",\n  \"status\": \"draft\",\n  \"featured\": false,\n  \"images\": [\n    {\n      \"url\": \"https://ik.imagekit.io/example/macbook-front.jpg\",\n      \"fileId\": \"ik_file_id_123\",\n      \"source\": \"imagekit\",\n      \"altText\": \"MacBook Pro front view\",\n      \"position\": 0\n    }\n  ],\n  \"optionTypes\": [\n    {\n      \"name\": \"Storage\",\n      \"values\": [\"512GB\", \"1TB\"]\n    }\n  ],\n  \"seo\": {\n    \"metaTitle\": \"MacBook Pro 14 — Best Performance Laptop\",\n    \"metaDescription\": \"Shop the MacBook Pro 14 with M3 chip.\",\n    \"keywords\": [\"macbook\", \"laptop\", \"apple\"]\n  },\n  \"variants\": [\n    {\n      \"sku\": \"MBP14-512GB\",\n      \"barcode\": \"1234567890\",\n      \"options\": [\n        { \"name\": \"Storage\", \"value\": \"512GB\" }\n      ],\n      \"price\": 1999.99,\n      \"salePrice\": 1799.99,\n      \"costPrice\": 1500.00,\n      \"stock\": 10,\n      \"weight\": { \"value\": 1.6, \"unit\": \"kg\" },\n      \"images\": [\n        { \"url\": \"https://ik.imagekit.io/example/variant1.jpg\", \"fileId\": \"ik_var_123\" }\n      ],\n      \"isActive\": true\n    },\n    {\n      \"sku\": \"MBP14-1TB\",\n      \"options\": [\n        { \"name\": \"Storage\", \"value\": \"1TB\" }\n      ],\n      \"price\": 2399.99,\n      \"stock\": 5\n    }\n  ]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/products",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "products"]
+            },
+            "description": "Creates a product together with at least one variant in a single **transactional** request. Stock is initialized via the inventory ledger (not written directly).\n\n**Access:** `super_admin` or `admin`.\n\n**Required fields:**\n- `name` — string, min 2, max 200\n- `category` — MongoDB ObjectId (must exist)\n- `brand` — MongoDB ObjectId (must exist)\n- `variants` — array (min 1 item), each variant requires:\n  - `sku` — string, min 1, max 100, globally unique\n  - `price` — number ≥ 0\n  - `stock` — integer ≥ 0\n\n**Optional variant fields:**\n- `barcode` — string\n- `options` — array of `{ name, value }` objects\n- `salePrice` — number ≥ 0 (must be ≤ price)\n- `costPrice` — number ≥ 0\n- `weight` — `{ value: number, unit: \"g\"|\"kg\"|\"lb\"|\"oz\" }`\n- `images` — array of `{ url, fileId }`, max 4\n- `isActive` — boolean\n\n**Optional product fields:**\n- `description`, `status` (draft|active|archived), `featured`, `images`, `optionTypes`, `seo`\n\n**Error codes:**\n- `400` — Category or brand not found\n- `422` — Validation error"
+          },
+          "response": [
+            {
+              "name": "201 Created",
+              "status": "Created",
+              "code": 201,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"_id\": \"60c72b2f9b1e8a001c8e4f50\",\n    \"name\": \"MacBook Pro 14\",\n    \"slug\": \"macbook-pro-14\",\n    \"variants\": [\n      { \"_id\": \"60c72b2f9b1e8a001c8e4f60\", \"sku\": \"MBP14-512GB\", \"price\": 1999.99, \"stock\": 10 },\n      { \"_id\": \"60c72b2f9b1e8a001c8e4f61\", \"sku\": \"MBP14-1TB\", \"price\": 2399.99, \"stock\": 5 }\n    ]\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update Product",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"MacBook Pro 14 (M3)\",\n  \"description\": \"Updated description\",\n  \"status\": \"active\",\n  \"featured\": true\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/products/{{productId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "products", "{{productId}}"]
+            },
+            "description": "Updates product fields. **Does not modify variants** — use the variant endpoints for that.\n\n**Access:** `super_admin` or `admin`. All fields are optional.\n\n**Note:** Passing `variants` in the body is silently ignored.\n\n**Error codes:**\n- `400` — Category or brand not found\n- `404` — Product not found"
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"_id\": \"60c72b2f9b1e8a001c8e4f50\",\n    \"name\": \"MacBook Pro 14 (M3)\",\n    \"status\": \"active\",\n    \"featured\": true,\n    \"variants\": []\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Delete Product",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/products/{{productId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "products", "{{productId}}"]
+            },
+            "description": "Deletes a product and **cascade-deletes all its variants** in a single transaction.\n\n**Access:** `super_admin` or `admin`.\n\n**Error codes:** `404` — Product not found"
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Product and its variants deleted\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Bulk Update Products (status/featured)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ids\": [\"60c72b2f9b1e8a001c8e4f50\", \"60c72b2f9b1e8a001c8e4f51\"],\n  \"updates\": {\n    \"status\": \"active\",\n    \"featured\": false\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/products/bulk",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "products", "bulk"]
+            },
+            "description": "Bulk-updates `status` and/or `featured` for multiple products in one request.\n\n**Access:** `super_admin` or `admin`.\n\n**Required fields:**\n- `ids` — non-empty array of MongoDB ObjectIds\n- `updates` — object with at least one of:\n  - `status` — enum: `draft` | `active` | `archived`\n  - `featured` — boolean\n\n**Error codes:** `400` — No IDs or no valid update fields provided"
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Updated 2 product(s)\",\n  \"modifiedCount\": 2\n}"
+            }
+          ]
+        },
+        {
+          "name": "Bulk Delete Products",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ids\": [\"60c72b2f9b1e8a001c8e4f50\", \"60c72b2f9b1e8a001c8e4f51\"]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/products/bulk",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "products", "bulk"]
+            },
+            "description": "Bulk-deletes products and all their variants in a transaction.\n\n**Access:** `super_admin` or `admin`.\n\n**Required fields:**\n- `ids` — non-empty array of MongoDB ObjectIds\n\n**Error codes:** `400` — No product IDs provided"
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Deleted 2 product(s)\",\n  \"deletedCount\": 2\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Admin — Product Variants",
+      "description": "Variant management nested under a product. Requires `Authorization: Bearer {{accessToken}}`.\n\n**Important:** Stock cannot be changed here. Use `POST /api/inventory/movements` instead.\n\n**Access:**\n- GET: any authenticated admin role\n- POST, PUT, DELETE: `super_admin` or `admin` only",
+      "item": [
+        {
+          "name": "List Variants for Product",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/products/{{productId}}/variants",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "products", "{{productId}}", "variants"]
+            },
+            "description": "Returns all variants belonging to the specified product."
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"data\": [\n    {\n      \"_id\": \"60c72b2f9b1e8a001c8e4f60\",\n      \"product\": \"60c72b2f9b1e8a001c8e4f50\",\n      \"sku\": \"MBP14-512GB\",\n      \"barcode\": \"1234567890\",\n      \"options\": [{ \"name\": \"Storage\", \"value\": \"512GB\" }],\n      \"price\": 1999.99,\n      \"salePrice\": 1799.99,\n      \"costPrice\": 1500.00,\n      \"stock\": 25,\n      \"weight\": { \"value\": 1.6, \"unit\": \"kg\" },\n      \"images\": [],\n      \"isActive\": true\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Variant by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/products/{{productId}}/variants/{{variantId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "products", "{{productId}}", "variants", "{{variantId}}"]
+            },
+            "description": "Fetches a single variant by its ID.\n\n**Error codes:** `404` — Variant not found"
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"_id\": \"60c72b2f9b1e8a001c8e4f60\",\n    \"sku\": \"MBP14-512GB\",\n    \"price\": 1999.99,\n    \"stock\": 25\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Add Variant to Product",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sku\": \"MBP14-2TB\",\n  \"barcode\": \"9876543210\",\n  \"options\": [\n    { \"name\": \"Storage\", \"value\": \"2TB\" }\n  ],\n  \"price\": 2799.99,\n  \"salePrice\": 2599.99,\n  \"costPrice\": 2000.00,\n  \"stock\": 8,\n  \"weight\": { \"value\": 1.6, \"unit\": \"kg\" },\n  \"images\": [\n    { \"url\": \"https://ik.imagekit.io/example/variant-2tb.jpg\", \"fileId\": \"ik_2tb_123\" }\n  ],\n  \"isActive\": true\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/products/{{productId}}/variants",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "products", "{{productId}}", "variants"]
+            },
+            "description": "Adds a new variant to an existing product.\n\n**Access:** `super_admin` or `admin`.\n\n**Required fields:**\n- `sku` — string, globally unique\n- `price` — number ≥ 0\n- `stock` — integer ≥ 0\n\n**Optional fields:**\n- `barcode`, `options`, `salePrice` (must be ≤ price), `costPrice`, `weight`, `images` (max 4), `isActive`\n\n**Note:** `product` field is automatically taken from the URL `productId` — do not send it in the body."
+          },
+          "response": [
+            {
+              "name": "201 Created",
+              "status": "Created",
+              "code": 201,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"_id\": \"60c72b2f9b1e8a001c8e4f62\",\n    \"product\": \"60c72b2f9b1e8a001c8e4f50\",\n    \"sku\": \"MBP14-2TB\",\n    \"price\": 2799.99,\n    \"stock\": 8,\n    \"isActive\": true\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update Variant",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sku\": \"MBP14-512GB-V2\",\n  \"price\": 2099.99,\n  \"salePrice\": 1899.99,\n  \"isActive\": false\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/products/{{productId}}/variants/{{variantId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "products", "{{productId}}", "variants", "{{variantId}}"]
+            },
+            "description": "Updates variant fields. All fields are optional.\n\n**Access:** `super_admin` or `admin`.\n\n**Cannot update:** `product` (immutable) or `stock` (use inventory endpoint).\n\n**Error codes:** `404` — Variant not found"
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"_id\": \"60c72b2f9b1e8a001c8e4f60\",\n    \"sku\": \"MBP14-512GB-V2\",\n    \"price\": 2099.99,\n    \"salePrice\": 1899.99,\n    \"isActive\": false\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Delete Variant",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/products/{{productId}}/variants/{{variantId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "products", "{{productId}}", "variants", "{{variantId}}"]
+            },
+            "description": "Deletes a variant.\n\n**Access:** `super_admin` or `admin`.\n\n**Blocked if:** The variant is the product's only remaining variant (delete the product instead).\n\n**Error codes:**\n- `400` — Cannot delete the only variant\n- `404` — Variant not found"
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Variant deleted\"\n}"
+            },
+            {
+              "name": "400 Last Variant",
+              "status": "Bad Request",
+              "code": 400,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Cannot delete the only variant of a product. Delete the product instead.\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Admin — Inventory",
+      "description": "Inventory movement ledger. Stock is a derived value computed from movements.\n\nRequires `Authorization: Bearer {{accessToken}}`.",
+      "item": [
+        {
+          "name": "Record Stock Movement",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"variantId\": \"{{variantId}}\",\n  \"type\": \"restock\",\n  \"quantity\": 50,\n  \"reason\": \"Restocked from supplier delivery #INV-2026-08\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/inventory/movements",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "inventory", "movements"]
+            },
+            "description": "Records a stock movement and atomically updates the variant's `stock` field.\n\n**Access:** `super_admin` or `admin`.\n\n**Required fields:**\n- `variantId` — MongoDB ObjectId\n- `type` — enum: `initial` | `restock` | `sale` | `return` | `damage` | `correction`\n- `quantity` — number (must be positive **unless** `type` is `correction`, which accepts signed values)\n\n**Optional fields:**\n- `reason` — string, max 300 chars\n\n**Type descriptions:**\n| Type | Effect |\n|------|--------|\n| `initial` | Sets initial stock on creation |\n| `restock` | Adds stock (positive) |\n| `sale` | Reduces stock (positive qty treated as reduction) |\n| `return` | Adds stock back |\n| `damage` | Reduces stock |\n| `correction` | Manual signed adjustment (can be negative) |"
+          },
+          "response": [
+            {
+              "name": "201 Created",
+              "status": "Created",
+              "code": 201,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"variant\": {\n      \"_id\": \"60c72b2f9b1e8a001c8e4f60\",\n      \"sku\": \"MBP14-512GB\",\n      \"stock\": 75\n    },\n    \"movement\": {\n      \"_id\": \"60c72b2f9b1e8a001c8e4f70\",\n      \"variant\": \"60c72b2f9b1e8a001c8e4f60\",\n      \"type\": \"restock\",\n      \"quantity\": 50,\n      \"quantityChange\": 50,\n      \"reason\": \"Restocked from supplier delivery #INV-2026-08\",\n      \"createdAt\": \"2026-08-29T07:00:00.000Z\"\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Movement History for Variant",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/inventory/movements/{{variantId}}?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "inventory", "movements", "{{variantId}}"],
+              "query": [
+                { "key": "page", "value": "1", "description": "Page number (default: 1)" },
+                { "key": "limit", "value": "20", "description": "Items per page, max 100 (default: 20)" }
+              ]
+            },
+            "description": "Returns paginated movement history for a specific variant, newest first.\n\n**Access:** Any authenticated admin role.\n\n**Path params:**\n- `variantId` — MongoDB ObjectId of the variant"
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"data\": [\n    {\n      \"_id\": \"60c72b2f9b1e8a001c8e4f70\",\n      \"variant\": \"60c72b2f9b1e8a001c8e4f60\",\n      \"type\": \"restock\",\n      \"quantity\": 50,\n      \"quantityChange\": 50,\n      \"reason\": \"Supplier delivery\",\n      \"user\": { \"_id\": \"60c72b2f9b1e8a001c8e4f10\", \"name\": \"Admin\", \"role\": \"admin\" },\n      \"createdAt\": \"2026-08-29T07:00:00.000Z\"\n    }\n  ],\n  \"pagination\": { \"total\": 15, \"page\": 1, \"pages\": 1 }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Reconcile Stock for Variant",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/inventory/reconcile/{{variantId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "inventory", "reconcile", "{{variantId}}"]
+            },
+            "description": "Recomputes the variant's stock by summing the entire movement ledger, then compares to the stored `stock` field.\n\n**Access:** `super_admin` or `admin`.\n\nUseful for detecting drift between `variant.stock` and the true ledger sum.\n\n**Error codes:** `404` — Variant not found"
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"variantId\": \"60c72b2f9b1e8a001c8e4f60\",\n    \"sku\": \"MBP14-512GB\",\n    \"currentStock\": 75,\n    \"computedStock\": 75,\n    \"hasDrift\": false\n  }\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Admin — Images",
+      "description": "Image upload to ImageKit CDN. Requires `Authorization: Bearer {{accessToken}}`.\n\n**Access:** `super_admin` or `admin` only.",
+      "item": [
+        {
+          "name": "Upload Images",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "image",
+                  "type": "file",
+                  "src": [],
+                  "description": "Image file(s) to upload. Field name must be 'image'. Max 4 files."
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/images/upload",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "images", "upload"]
+            },
+            "description": "Uploads 1–4 image files to ImageKit under the `/ecommerce-admin/products` folder.\n\n**Access:** `super_admin` or `admin`.\n\n**Request:** `multipart/form-data` with field name `image` (can include multiple files, max 4).\n\n**Returns:** Array of `{ url, fileId, name }` objects — use these in the product/variant `images` array.\n\n**Error codes:** `400` — No image files provided"
+          },
+          "response": [
+            {
+              "name": "201 Success",
+              "status": "Created",
+              "code": 201,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"data\": [\n    {\n      \"url\": \"https://ik.imagekit.io/yourId/ecommerce-admin/products/photo.jpg\",\n      \"fileId\": \"6ab12cd34ef567890abc\",\n      \"name\": \"photo.jpg\"\n    }\n  ]\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Admin — Banners",
+      "description": "Storefront banner configuration management.\n\nRequires `Authorization: Bearer {{accessToken}}`.\n\n**Banner keys:** `hero`, `budget`, `bottom`\n- `hero` and `budget` — use a `slides` array (hero: max 5 slides)\n- `bottom` — uses individual fields (title, subtitle, image, href, ctaText, isActive)\n\n**Access:**\n- GET: `super_admin`, `admin`, `staff`\n- PUT: `super_admin`, `admin` only",
+      "item": [
+        {
+          "name": "Get All Banners (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/banners",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "banners"]
+            },
+            "description": "Returns all banner configurations merged with defaults. Includes inactive slides (admin view)."
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"hero\": {\n      \"key\": \"hero\",\n      \"slides\": [\n        { \"image\": { \"url\": \"/banner-1.webp\", \"fileId\": \"\" }, \"href\": \"/category/all\", \"order\": 1, \"isActive\": true }\n      ]\n    },\n    \"budget\": {\n      \"key\": \"budget\",\n      \"slides\": [\n        { \"image\": { \"url\": \"/99.webp\", \"fileId\": \"\" }, \"href\": \"/category/all?maxPrice=99\", \"order\": 1, \"isActive\": true }\n      ]\n    },\n    \"bottom\": {\n      \"key\": \"bottom\",\n      \"title\": \"Buying in Bulk?\",\n      \"subtitle\": \"Get special tier discounts...\",\n      \"image\": { \"url\": \"/bottom-banner.webp\", \"fileId\": \"\" },\n      \"href\": \"/contact-us\",\n      \"ctaText\": \"Request a Quote\",\n      \"isActive\": true\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update Hero/Budget Banner (slides)",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"slides\": [\n    {\n      \"image\": {\n        \"url\": \"https://ik.imagekit.io/example/hero-banner-1.webp\",\n        \"fileId\": \"ik_hero_1\"\n      },\n      \"href\": \"/category/electronics\",\n      \"order\": 1,\n      \"isActive\": true\n    },\n    {\n      \"image\": {\n        \"url\": \"https://ik.imagekit.io/example/hero-banner-2.webp\",\n        \"fileId\": \"ik_hero_2\"\n      },\n      \"href\": \"/category/laptops\",\n      \"order\": 2,\n      \"isActive\": true\n    }\n  ]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/banners/hero",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "banners", "hero"]
+            },
+            "description": "Updates the `hero` or `budget` banner (uses `slides` array format).\n\nChange `:key` in the URL to `budget` to update the budget banner.\n\n**Access:** `super_admin` or `admin`.\n\n**Path params:**\n- `key` — `hero` | `budget`\n\n**Required in body:**\n- `slides` — array of slide objects:\n  - `image.url` — string (URL)\n  - `image.fileId` — string\n  - `href` — string\n  - `order` — number\n  - `isActive` — boolean\n\n**Constraint:** `hero` banner max 5 slides.\n\n**Error codes:**\n- `400` — Invalid banner key or missing slides array"
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Banner updated successfully\",\n  \"data\": {\n    \"_id\": \"...\",\n    \"key\": \"hero\",\n    \"slides\": [ { \"image\": { \"url\": \"https://...\", \"fileId\": \"ik_hero_1\" }, \"href\": \"/category/electronics\", \"order\": 1, \"isActive\": true } ]\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update Bottom Banner",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Wholesale Deals\",\n  \"subtitle\": \"Contact us for bulk pricing and custom invoices.\",\n  \"image\": {\n    \"url\": \"https://ik.imagekit.io/example/bulk-banner.webp\",\n    \"fileId\": \"ik_bulk_banner\"\n  },\n  \"href\": \"/contact-us\",\n  \"ctaText\": \"Get a Quote\",\n  \"isActive\": true\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/banners/bottom",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "banners", "bottom"]
+            },
+            "description": "Updates the `bottom` banner (single-image promotional banner).\n\n**Access:** `super_admin` or `admin`.\n\n**All fields optional:**\n- `title` — string\n- `subtitle` — string\n- `image` — `{ url, fileId }`\n- `href` — string\n- `ctaText` — string\n- `isActive` — boolean"
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Banner updated successfully\",\n  \"data\": {\n    \"key\": \"bottom\",\n    \"title\": \"Wholesale Deals\",\n    \"subtitle\": \"Contact us for bulk pricing and custom invoices.\",\n    \"href\": \"/contact-us\",\n    \"ctaText\": \"Get a Quote\",\n    \"isActive\": true\n  }\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Admin — CSV Import",
+      "description": "Import products from a Shopify-format CSV file. The workflow is:\n1. `POST /import/preview` — Upload CSV, get a preview with validation\n2. `POST /import/confirm` — Confirm and commit valid rows to the DB\n3. `POST /import/:id/rollback` — Undo an import if needed\n\nRequires `Authorization: Bearer {{accessToken}}`.\n**Access:** `super_admin` or `admin` only.",
+      "item": [
+        {
+          "name": "Preview CSV Import",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": [],
+                  "description": "Shopify-format CSV file. Field name must be 'file'."
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/products/import/preview",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "products", "import", "preview"]
+            },
+            "description": "Parses and validates a Shopify-format CSV. **No database writes.** Returns per-row validation results grouped into products.\n\n**Required CSV columns:** Title/Handle, SKU, Price or Compare At Price\n\n**Error codes:**\n- `400` — No file provided, empty CSV, or missing required columns"
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"totalRows\": 10,\n    \"totalProducts\": 3,\n    \"validCount\": 2,\n    \"invalidCount\": 1,\n    \"products\": [\n      {\n        \"handle\": \"macbook-pro-14\",\n        \"valid\": true,\n        \"errors\": [],\n        \"product\": { \"name\": \"MacBook Pro 14\", \"brandName\": \"Apple\", \"categoryPath\": [{ \"name\": \"Electronics\" }] },\n        \"variants\": [ { \"sku\": \"MBP14-512GB\", \"price\": 1999.99, \"stock\": 10 } ]\n      },\n      {\n        \"handle\": \"broken-product\",\n        \"valid\": false,\n        \"errors\": [\"Already imported — SKU(s) already exist: SKU-DUP\"],\n        \"product\": {},\n        \"variants\": []\n      }\n    ]\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Confirm CSV Import",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fileName\": \"products-export-2026-08.csv\",\n  \"products\": [\n    {\n      \"handle\": \"macbook-pro-14\",\n      \"valid\": true,\n      \"errors\": [],\n      \"product\": {\n        \"name\": \"MacBook Pro 14\",\n        \"description\": \"...\",\n        \"brandName\": \"Apple\",\n        \"categoryPath\": [{ \"name\": \"Electronics\" }, { \"name\": \"Laptops\" }],\n        \"images\": [{ \"url\": \"https://example.com/img.jpg\", \"position\": 0, \"altText\": \"\" }]\n      },\n      \"variants\": [\n        {\n          \"sku\": \"MBP14-512GB\",\n          \"price\": 1999.99,\n          \"salePrice\": 1799.99,\n          \"stock\": 10,\n          \"options\": [{ \"name\": \"Storage\", \"value\": \"512GB\" }]\n        }\n      ]\n    }\n  ]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/products/import/confirm",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "products", "import", "confirm"]
+            },
+            "description": "Re-validates and commits only the `valid: true` products from the preview response into the database. Creates an `ImportJob` record for potential rollback.\n\n**Pass the full `products` array from the preview response** — invalid items are automatically skipped.\n\n**Required fields:**\n- `products` — array (non-empty) from preview response\n\n**Optional fields:**\n- `fileName` — string, for the ImportJob record"
+          },
+          "response": [
+            {
+              "name": "201 Created",
+              "status": "Created",
+              "code": 201,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"importJobId\": \"60c72b2f9b1e8a001c8e4f80\",\n    \"successCount\": 2,\n    \"skippedCount\": 1,\n    \"errors\": []\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Rollback CSV Import",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/products/import/{{importJobId}}/rollback",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "products", "import", "{{importJobId}}", "rollback"]
+            },
+            "description": "Undoes a completed import by deleting all products, variants, categories, and brands that were created during that import. Also cleans up ImageKit files.\n\n**Access:** `super_admin` or `admin`.\n\n**Path params:**\n- `importJobId` — MongoDB ObjectId of the ImportJob\n\n**Error codes:**\n- `400` — Import already rolled back\n- `404` — Import job not found"
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Rolled back 2 products and their variants\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "List Import Jobs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/products/import?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "products", "import"],
+              "query": [
+                { "key": "page", "value": "1", "description": "Page number (default: 1)" },
+                { "key": "limit", "value": "20", "description": "Items per page, max 100 (default: 20)" },
+                { "key": "status", "value": "", "description": "Filter by status: completed | rolled_back", "disabled": true }
+              ]
+            },
+            "description": "Returns paginated list of ImportJob records for the current user.\n\n**Access:** `super_admin` or `admin`.\n\n**Query params:**\n- `page`, `limit`\n- `status` — `completed` | `rolled_back`"
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"data\": [\n    {\n      \"_id\": \"60c72b2f9b1e8a001c8e4f80\",\n      \"fileName\": \"products-export-2026-08.csv\",\n      \"status\": \"completed\",\n      \"successCount\": 2,\n      \"skippedCount\": 1,\n      \"totalProducts\": 3,\n      \"createdAt\": \"2026-08-29T07:00:00.000Z\"\n    }\n  ],\n  \"pagination\": { \"total\": 1, \"page\": 1, \"pages\": 1 }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Import Job by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/products/import/{{importJobId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "products", "import", "{{importJobId}}"]
+            },
+            "description": "Returns a single ImportJob. Use `status` to determine if rollback is available.\n\n**Access:** `super_admin` or `admin`. Scoped to the requesting user's own jobs.\n\n**Error codes:** `404` — Import job not found or belongs to another user"
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"_id\": \"60c72b2f9b1e8a001c8e4f80\",\n    \"fileName\": \"products-export-2026-08.csv\",\n    \"status\": \"completed\",\n    \"successCount\": 2,\n    \"skippedCount\": 1,\n    \"totalRows\": 3,\n    \"totalProducts\": 3,\n    \"errors\": [],\n    \"user\": \"60c72b2f9b1e8a001c8e4f10\",\n    \"createdAt\": \"2026-08-29T07:00:00.000Z\",\n    \"updatedAt\": \"2026-08-29T07:00:00.000Z\"\n  }\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Customer — Auth",
+      "description": "Customer registration, login, session management, and profile.\n\n**Token separation:** Customer tokens carry `type: \"customer\"` and are **rejected** by admin endpoints (and vice versa).\n\nThe customer refresh token cookie is named `customerRefreshToken`.",
+      "item": [
+        {
+          "name": "Register Customer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.success && json.data && json.data.accessToken) {",
+                  "  pm.environment.set('customerAccessToken', json.data.accessToken);",
+                  "  pm.environment.set('customerId', json.data.user.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Jane Doe\",\n  \"email\": \"jane@example.com\",\n  \"password\": \"password123\",\n  \"phone\": \"+1-555-0100\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "customers", "auth", "register"]
+            },
+            "description": "Registers a new customer and immediately logs them in.\n\n**Rate limit:** 10 requests per 15-minute window.\n\n**Required fields:**\n- `name` — string, min 2 chars\n- `email` — string, valid email\n- `password` — string, min 6 chars\n\n**Optional fields:**\n- `phone` — string\n\n**Error codes:**\n- `409` — Email already in use\n- `422` — Validation error"
+          },
+          "response": [
+            {
+              "name": "201 Created",
+              "status": "Created",
+              "code": 201,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Registration successful\",\n  \"data\": {\n    \"accessToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\",\n    \"user\": {\n      \"id\": \"60c72b2f9b1e8a001c8e4f90\",\n      \"name\": \"Jane Doe\",\n      \"email\": \"jane@example.com\"\n    }\n  }\n}"
+            },
+            {
+              "name": "409 Email Conflict",
+              "status": "Conflict",
+              "code": 409,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Email already in use\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Login Customer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.success && json.data && json.data.accessToken) {",
+                  "  pm.environment.set('customerAccessToken', json.data.accessToken);",
+                  "  pm.environment.set('customerId', json.data.user.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"jane@example.com\",\n  \"password\": \"password123\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "customers", "auth", "login"]
+            },
+            "description": "Logs in a customer.\n\n**Rate limit:** 10 requests per 15-minute window.\n\n**Required fields:**\n- `email` — string, valid email\n- `password` — string\n\n**Error codes:**\n- `401` — Invalid credentials\n- `403` — Account deactivated"
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Login successful\",\n  \"data\": {\n    \"accessToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\",\n    \"user\": {\n      \"id\": \"60c72b2f9b1e8a001c8e4f90\",\n      \"name\": \"Jane Doe\",\n      \"email\": \"jane@example.com\"\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Refresh Customer Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.success && json.data && json.data.accessToken) {",
+                  "  pm.environment.set('customerAccessToken', json.data.accessToken);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/auth/refresh",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "customers", "auth", "refresh"]
+            },
+            "description": "Exchanges the `customerRefreshToken` HttpOnly cookie for a new access token.\n\n**Rate limit:** 30 requests per 15-minute window."
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"accessToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\",\n    \"user\": { \"id\": \"60c72b2f9b1e8a001c8e4f90\", \"name\": \"Jane Doe\", \"email\": \"jane@example.com\" }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Logout Customer",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/auth/logout",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "customers", "auth", "logout"]
+            },
+            "description": "Revokes the `customerRefreshToken` cookie."
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Logged out successfully\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get My Profile (Customer)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{customerAccessToken}}", "type": "string" }]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/auth/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "customers", "auth", "me"]
+            },
+            "description": "Returns the authenticated customer's full profile including addresses.\n\n**Auth:** `Authorization: Bearer {{customerAccessToken}}`"
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"customer\": {\n      \"_id\": \"60c72b2f9b1e8a001c8e4f90\",\n      \"name\": \"Jane Doe\",\n      \"email\": \"jane@example.com\",\n      \"phone\": \"+1-555-0100\",\n      \"isActive\": true,\n      \"addresses\": [],\n      \"lastLogin\": \"2026-08-29T07:00:00.000Z\",\n      \"createdAt\": \"2026-08-29T06:00:00.000Z\"\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update Customer Profile",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{customerAccessToken}}", "type": "string" }]
+            },
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Jane Smith\",\n  \"phone\": \"+1-555-0199\",\n  \"addresses\": [\n    {\n      \"label\": \"Home\",\n      \"line1\": \"123 Main Street\",\n      \"line2\": \"Apt 4B\",\n      \"city\": \"New York\",\n      \"state\": \"NY\",\n      \"postalCode\": \"10001\",\n      \"country\": \"US\",\n      \"phone\": \"+1-555-0100\",\n      \"isDefault\": true\n    }\n  ]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/auth/profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "customers", "auth", "profile"]
+            },
+            "description": "Updates the customer's profile (name, phone) and/or replaces their addresses array.\n\n**Auth:** `Authorization: Bearer {{customerAccessToken}}`\n\n**All fields optional:**\n- `name` — string, min 2 chars\n- `phone` — string (nullable)\n- `addresses` — array; each address:\n  - `line1` *(required)* — string\n  - `city` *(required)* — string\n  - `postalCode` *(required)* — string\n  - `country` *(required)* — string\n  - `label`, `line2`, `state`, `phone`, `isDefault` — all optional"
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Profile updated successfully\",\n  \"data\": {\n    \"user\": {\n      \"id\": \"60c72b2f9b1e8a001c8e4f90\",\n      \"name\": \"Jane Smith\",\n      \"email\": \"jane@example.com\",\n      \"phone\": \"+1-555-0199\",\n      \"addresses\": [\n        {\n          \"_id\": \"60c72b2f9b1e8a001c8e4f91\",\n          \"label\": \"Home\",\n          \"line1\": \"123 Main Street\",\n          \"line2\": \"Apt 4B\",\n          \"city\": \"New York\",\n          \"state\": \"NY\",\n          \"postalCode\": \"10001\",\n          \"country\": \"US\",\n          \"isDefault\": true\n        }\n      ]\n    }\n  }\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Customer — Cart",
+      "description": "Shopping cart management.\n\n**Auth:** `Authorization: Bearer {{customerAccessToken}}`\n\nThe cart is auto-created on first access (find-or-create). Quantity is automatically clamped to available stock.",
+      "item": [
+        {
+          "name": "Get Cart",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{customerAccessToken}}", "type": "string" }]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/cart",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "customers", "cart"]
+            },
+            "description": "Returns the customer's cart. Creates an empty cart if one doesn't exist. Cart items are populated with variant details (sku, price, salePrice, stock, images) and product details (name, slug)."
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"_id\": \"60c72b2f9b1e8a001c8e4fa0\",\n    \"customer\": \"60c72b2f9b1e8a001c8e4f90\",\n    \"items\": [\n      {\n        \"variant\": {\n          \"_id\": \"60c72b2f9b1e8a001c8e4f60\",\n          \"sku\": \"MBP14-512GB\",\n          \"price\": 1999.99,\n          \"salePrice\": 1799.99,\n          \"stock\": 25,\n          \"images\": [],\n          \"product\": { \"_id\": \"60c72b2f9b1e8a001c8e4f50\", \"name\": \"MacBook Pro 14\", \"slug\": \"macbook-pro-14\", \"images\": [] }\n        },\n        \"quantity\": 2\n      }\n    ]\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Add Item to Cart",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{customerAccessToken}}", "type": "string" }]
+            },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"variantId\": \"{{variantId}}\",\n  \"quantity\": 2\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/cart/items",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "customers", "cart", "items"]
+            },
+            "description": "Adds a variant to the cart. If already present, **increments** the quantity. Quantity is clamped to available stock.\n\n**Required fields:**\n- `variantId` — MongoDB ObjectId\n- `quantity` — positive integer\n\n**Error codes:**\n- `400` — Variant is inactive\n- `404` — Variant not found"
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"data\": { \"_id\": \"60c72b2f9b1e8a001c8e4fa0\", \"items\": [ { \"variant\": { \"_id\": \"...\" }, \"quantity\": 2 } ] },\n  \"message\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update Cart Item Quantity",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{customerAccessToken}}", "type": "string" }]
+            },
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"quantity\": 3\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/cart/items/{{variantId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "customers", "cart", "items", "{{variantId}}"]
+            },
+            "description": "Sets the quantity of a cart item to the specified value. Quantity is clamped to available stock.\n\n**Passing `quantity: 0` (or negative) removes the item** from the cart.\n\n**Path params:**\n- `variantId` — MongoDB ObjectId of the variant\n\n**Required fields:**\n- `quantity` — integer ≥ 0\n\n**Error codes:**\n- `404` — Cart or item not found"
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"data\": { \"items\": [ { \"variant\": {}, \"quantity\": 3 } ] }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Remove Item from Cart",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{customerAccessToken}}", "type": "string" }]
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/cart/items/{{variantId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "customers", "cart", "items", "{{variantId}}"]
+            },
+            "description": "Removes a single line item from the cart.\n\n**Path params:**\n- `variantId` — MongoDB ObjectId of the variant to remove\n\n**Error codes:** `404` — Cart not found"
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"data\": { \"items\": [] }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Clear Entire Cart",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{customerAccessToken}}", "type": "string" }]
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/cart",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "customers", "cart"]
+            },
+            "description": "Removes all items from the cart.\n\n**Error codes:** `404` — Cart not found"
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"data\": { \"_id\": \"60c72b2f9b1e8a001c8e4fa0\", \"items\": [] }\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Customer — Wishlist",
+      "description": "Wishlist management.\n\n**Auth:** `Authorization: Bearer {{customerAccessToken}}`\n\nThe wishlist is auto-created on first access.",
+      "item": [
+        {
+          "name": "Get Wishlist",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{customerAccessToken}}", "type": "string" }]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/wishlist",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "customers", "wishlist"]
+            },
+            "description": "Returns the customer's wishlist with populated products (name, slug, images, brand, category, status) and lightweight variant pricing data."
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"_id\": \"60c72b2f9b1e8a001c8e4fb0\",\n    \"customer\": \"60c72b2f9b1e8a001c8e4f90\",\n    \"products\": [\n      {\n        \"_id\": \"60c72b2f9b1e8a001c8e4f50\",\n        \"name\": \"MacBook Pro 14\",\n        \"slug\": \"macbook-pro-14\",\n        \"images\": [],\n        \"brand\": \"60c72b2f9b1e8a001c8e4f30\",\n        \"category\": \"60c72b2f9b1e8a001c8e4f41\",\n        \"status\": \"active\",\n        \"variants\": [\n          { \"_id\": \"60c72b2f9b1e8a001c8e4f60\", \"price\": 1999.99, \"salePrice\": 1799.99, \"stock\": 25 }\n        ]\n      }\n    ]\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Add Product to Wishlist",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{customerAccessToken}}", "type": "string" }]
+            },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": \"{{productId}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/wishlist/items",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "customers", "wishlist", "items"]
+            },
+            "description": "Adds a product to the wishlist. No-op if already present.\n\n**Required fields:**\n- `productId` — MongoDB ObjectId\n\n**Error codes:**\n- `400` — Product is not active (status must be `active`)\n- `404` — Product not found"
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"data\": { \"products\": [ { \"_id\": \"...\", \"name\": \"MacBook Pro 14\" } ] }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Remove Product from Wishlist",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{customerAccessToken}}", "type": "string" }]
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/wishlist/items/{{productId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "customers", "wishlist", "items", "{{productId}}"]
+            },
+            "description": "Removes a product from the wishlist.\n\n**Path params:**\n- `productId` — MongoDB ObjectId of the product\n\n**Error codes:** `404` — Wishlist not found"
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"data\": { \"products\": [] }\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Public — Storefront",
+      "description": "Fully public endpoints — no authentication required. Used by the storefront/frontend.",
+      "item": [
+        {
+          "name": "Get Public Products",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/public/products?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "public", "products"],
+              "query": [
+                { "key": "page", "value": "1", "description": "Page number (default: 1)" },
+                { "key": "limit", "value": "20", "description": "Items per page, max 100 (default: 20)" },
+                { "key": "category", "value": "", "description": "Filter by category ObjectId or slug", "disabled": true },
+                { "key": "search", "value": "", "description": "Full-text product name search", "disabled": true },
+                { "key": "sort", "value": "", "description": "Sort: newest (default) | featured | price_asc | price_desc", "disabled": true },
+                { "key": "minPrice", "value": "", "description": "Minimum variant price filter", "disabled": true },
+                { "key": "maxPrice", "value": "", "description": "Maximum variant price filter", "disabled": true }
+              ]
+            },
+            "description": "Returns a paginated list of **active** products only. Each product includes basic variant pricing (price, salePrice, stock).\n\n**Category filtering supports recursive subcategory inclusion.**\n\n**Query params:**\n- `category` — ObjectId or category slug (includes all subcategories)\n- `search` — product name substring\n- `sort` — `newest` (default) | `featured` | `price_asc` | `price_desc`\n- `minPrice` / `maxPrice` — filter by variant price range\n- `page`, `limit`"
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"data\": [\n    {\n      \"_id\": \"60c72b2f9b1e8a001c8e4f50\",\n      \"name\": \"MacBook Pro 14\",\n      \"slug\": \"macbook-pro-14\",\n      \"description\": \"Apple MacBook Pro with M3 chip\",\n      \"images\": [ { \"url\": \"https://ik.imagekit.io/example/macbook.jpg\" } ],\n      \"brand\": { \"name\": \"Apple\" },\n      \"category\": { \"name\": \"Laptops\" },\n      \"featured\": false,\n      \"variants\": [\n        { \"_id\": \"60c72b2f9b1e8a001c8e4f60\", \"price\": 1999.99, \"salePrice\": 1799.99, \"stock\": 25 }\n      ]\n    }\n  ],\n  \"pagination\": { \"total\": 80, \"page\": 1, \"pages\": 4 }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Public Product by Slug",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/public/products/:slug",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "public", "products", ":slug"],
+              "variable": [
+                {
+                  "key": "slug",
+                  "value": "macbook-pro-14",
+                  "description": "Product URL slug (e.g. macbook-pro-14)"
+                }
+              ]
+            },
+            "description": "Returns full product details for a single **active** product by its URL slug.\n\nReturns `404` for missing or non-active products (draft/archived are hidden).\n\n**Path params:**\n- `slug` — product slug string"
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"_id\": \"60c72b2f9b1e8a001c8e4f50\",\n    \"name\": \"MacBook Pro 14\",\n    \"slug\": \"macbook-pro-14\",\n    \"description\": \"Apple MacBook Pro with M3 chip\",\n    \"images\": [ { \"url\": \"https://ik.imagekit.io/example/macbook.jpg\" } ],\n    \"brand\": { \"name\": \"Apple\" },\n    \"category\": { \"_id\": \"60c72b2f9b1e8a001c8e4f41\", \"name\": \"Laptops\" },\n    \"featured\": false,\n    \"optionTypes\": [ { \"name\": \"Storage\", \"values\": [\"512GB\", \"1TB\"] } ],\n    \"variants\": [\n      {\n        \"_id\": \"60c72b2f9b1e8a001c8e4f60\",\n        \"sku\": \"MBP14-512GB\",\n        \"price\": 1999.99,\n        \"salePrice\": 1799.99,\n        \"stock\": 25,\n        \"images\": [],\n        \"options\": [{ \"name\": \"Storage\", \"value\": \"512GB\" }]\n      }\n    ]\n  }\n}"
+            },
+            {
+              "name": "404 Not Found / Inactive",
+              "status": "Not Found",
+              "code": 404,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Product not found\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Public Categories",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/public/categories",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "public", "categories"],
+              "query": [
+                {
+                  "key": "parentOnly",
+                  "value": "true",
+                  "description": "Pass 'true' to return only top-level categories (parent = null)",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Returns all **active** categories as a flat array. Each category has its `parent` populated as `{ _id, name }`.\n\n**Query params:**\n- `parentOnly=true` — returns only top-level categories"
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"data\": [\n    {\n      \"_id\": \"60c72b2f9b1e8a001c8e4f40\",\n      \"name\": \"Electronics\",\n      \"slug\": \"electronics\",\n      \"parent\": null,\n      \"isActive\": true,\n      \"image\": { \"url\": \"\", \"fileId\": \"\" }\n    },\n    {\n      \"_id\": \"60c72b2f9b1e8a001c8e4f41\",\n      \"name\": \"Laptops\",\n      \"slug\": \"laptops\",\n      \"parent\": { \"_id\": \"60c72b2f9b1e8a001c8e4f40\", \"name\": \"Electronics\" },\n      \"isActive\": true,\n      \"image\": { \"url\": \"\", \"fileId\": \"\" }\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Search Suggestions",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/public/search/suggestions?q=macbook",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "public", "search", "suggestions"],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "macbook",
+                  "description": "Search query string (min 2 characters)"
+                }
+              ]
+            },
+            "description": "Fast autocomplete for search bars. Returns up to 6 matching products and 5 matching categories.\n\n**Query params:**\n- `q` — search string (min 2 chars; returns empty results if shorter)\n\nEach product result includes the lowest variant price for display."
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"products\": [\n      {\n        \"_id\": \"60c72b2f9b1e8a001c8e4f50\",\n        \"name\": \"MacBook Pro 14\",\n        \"slug\": \"macbook-pro-14\",\n        \"image\": \"https://ik.imagekit.io/example/macbook.jpg\",\n        \"categoryName\": \"Laptops\",\n        \"price\": 1799.99\n      }\n    ],\n    \"categories\": []\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Public Banners",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/public/banners",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "public", "banners"]
+            },
+            "description": "Returns active banner configurations for the storefront. Inactive slides are excluded."
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"hero\": {\n      \"key\": \"hero\",\n      \"slides\": [\n        { \"image\": { \"url\": \"/banner-1.webp\", \"fileId\": \"\" }, \"href\": \"/category/all\", \"order\": 1, \"isActive\": true }\n      ]\n    },\n    \"budget\": {\n      \"key\": \"budget\",\n      \"slides\": [\n        { \"image\": { \"url\": \"/99.webp\", \"fileId\": \"\" }, \"href\": \"/category/all?maxPrice=99\", \"order\": 1, \"isActive\": true }\n      ]\n    },\n    \"bottom\": {\n      \"key\": \"bottom\",\n      \"title\": \"Buying in Bulk?\",\n      \"subtitle\": \"Get special tier discounts...\",\n      \"image\": { \"url\": \"/bottom-banner.webp\", \"fileId\": \"\" },\n      \"href\": \"/contact-us\",\n      \"ctaText\": \"Request a Quote\",\n      \"isActive\": true\n    }\n  }\n}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
