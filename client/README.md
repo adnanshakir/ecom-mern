@@ -1,6 +1,6 @@
 # Fibio E-Commerce Frontend Documentation
 
-A state-of-the-art, high-performance wholesale e-commerce storefront and administration dashboard built with **Next.js 14 (App Router)**, **React 18**, **Redux Toolkit**, and **Tailwind CSS**.
+A state-of-the-art, high-performance wholesale e-commerce storefront and administration dashboard built with **Next.js 16 (App Router)**, **React 19**, **Redux Toolkit**, and **Tailwind CSS v4**.
 
 ---
 
@@ -11,15 +11,20 @@ A state-of-the-art, high-performance wholesale e-commerce storefront and adminis
 - [Deep Technical Features](#-deep-technical-features)
   - [1. Next.js App Router & Hybrid Server/Client Components](#1-nextjs-app-router--hybrid-serverclient-components)
   - [2. Redux Toolkit State Management](#2-redux-toolkit-state-management)
-  - [3. Dual-Mode Image Uploader Studio](#3-dual-mode-image-uploader-studio)
-  - [4. Storefront Banner Customization Suite](#4-storefront-banner-customization-suite)
-  - [5. Catalog Filtering & Infinite Scroll Engine](#5-catalog-filtering--infinite-scroll-engine)
+  - [3. Authenticated Axios Factory (`createAuthApi.js`)](#3-authenticated-axios-factory-createauthapiejs)
+  - [4. Dual-Mode Image Uploader Studio](#4-dual-mode-image-uploader-studio)
+  - [5. Storefront Banner Customization Suite](#5-storefront-banner-customization-suite)
+  - [6. Catalog Filtering & Infinite Scroll Engine](#6-catalog-filtering--infinite-scroll-engine)
+  - [7. Route Protection Middleware](#7-route-protection-middleware)
+  - [8. Form Validation with React Hook Form & Zod](#8-form-validation-with-react-hook-form--zod)
 - [Detailed Component Architecture](#-detailed-component-architecture)
   - [App Pages (`src/app/`)](#app-pages-srcapp)
   - [Storefront Components (`src/components/storefront/`)](#storefront-components-srccomponentsstorefront)
   - [Admin Components (`src/components/admin/`)](#admin-components-srccomponentsadmin)
+  - [Custom Hooks (`src/hooks/`)](#custom-hooks-srchooks)
   - [Redux State Slices (`src/redux/slices/`)](#redux-state-slices-srcreduxslices)
   - [API Service Layer (`src/services/`)](#api-service-layer-srcservices)
+  - [Validation Schemas (`src/schemas/`)](#validation-schemas-srcschemas)
 - [Design System & Styling System](#-design-system--styling-system)
 - [Environment Setup & Quick Start](#-environment-setup--quick-start)
 
@@ -28,11 +33,15 @@ A state-of-the-art, high-performance wholesale e-commerce storefront and adminis
 ## 🌟 Key Architecture Highlights
 
 - **Hybrid Server/Client Component Architecture**: Public catalog & product pages leverage Next.js App Router Server Components for optimal SEO and instant initial page loads, while interactive interfaces run seamlessly as Client Components (`"use client"`).
-- **Dual State Management**: Redux Toolkit slices (`authSlice`, `customerAuthSlice`, `cartSlice`, `wishlistSlice`) manage global user sessions and persistent storefront states, paired with custom React hooks (`usePublicProducts`, `usePublicCategories`, `usePublicBanners`) for clean data fetching.
+- **Dual State Management**: Redux Toolkit slices (`authSlice`, `customerAuthSlice`, `cartSlice`, `wishlistSlice`) manage global user sessions and persistent storefront states, paired with a rich library of custom React hooks for clean data fetching and UI logic.
 - **Enterprise Admin Dashboard (`/admin/*`)**: Complete administrative suite supporting product CRUD, multi-variant management, category tree editing, brand management, CSV import processing, inventory stock adjustments, and staff user management.
+- **Authenticated Axios Factory (`createAuthApi.js`)**: A shared factory that creates Axios instances with automatic Bearer token injection, a silent `401 → refresh → retry` interceptor, and concurrent-request queuing during token refresh to prevent duplicate refresh calls.
 - **Dual-Mode Image Uploader (`ImageUploader.jsx`)**: Advanced media uploader offering both **ImageKit cloud file uploads** and **Direct URL paste** with slot limits and single/multi-image high-resolution preview modes.
 - **Dynamic Storefront Banner System**: Admin interface for configuring homepage hero and category banners with overlay color pickers, left/right content placement controls, and instant "Undo Changes" state restoration.
-- **Modern Responsive Design**: Built with Tailwind CSS, custom design tokens, shadcn UI primitives, dark/light theme switching (`next-themes`), and smooth micro-animations.
+- **Next.js Route Guard Middleware**: Server-side cookie-based guard protecting all `/admin/*` routes, redirecting unauthenticated users to `/admin/login`.
+- **Comprehensive Validation**: All forms use **React Hook Form** + **Zod** schemas (from `src/schemas/`) for type-safe, declarative validation with real-time field feedback.
+- **SEO Infrastructure**: Auto-generated `sitemap.xml` (`sitemap.js`) and `robots.txt` (`robots.js`) with environment-aware base URLs.
+- **Modern Responsive Design**: Built with Tailwind CSS v4, custom design tokens, shadcn/Base UI primitives, dark/light theme switching (`next-themes`), and smooth micro-animations.
 
 ---
 
@@ -41,62 +50,126 @@ A state-of-the-art, high-performance wholesale e-commerce storefront and adminis
 ```
 client/
 ├── src/
-│   ├── app/                         # Next.js App Router pages & layouts
-│   │   ├── (storefront)/            # Public storefront route group
-│   │   │   ├── cart/                # Cart view page
-│   │   │   ├── catalog/             # Catalog browsing page
-│   │   │   ├── category/[slug]/     # Server-rendered category page
-│   │   │   ├── login/               # Customer authentication page
-│   │   │   ├── product/[slug]/      # Server-rendered product detail page
-│   │   │   ├── search/              # Search results page
-│   │   │   ├── wishlist/            # Customer wishlist page
-│   │   │   ├── layout.js            # Storefront main layout (Navbar + Footer)
-│   │   │   └── page.js              # Storefront homepage
-│   │   ├── admin/                   # Admin dashboard route group
-│   │   │   ├── (admin)/             # Protected admin shell layout & sub-pages
-│   │   │   │   ├── banners/         # Storefront banner manager page
-│   │   │   │   ├── brands/          # Brand management page
-│   │   │   │   ├── categories/      # Category tree manager page
-│   │   │   │   ├── csv-import/      # Bulk CSV import studio page
-│   │   │   │   ├── dashboard/       # Analytics dashboard page
-│   │   │   │   ├── inventory/       # Stock ledger adjustment page
-│   │   │   │   ├── products/        # Master product catalog manager page
-│   │   │   │   └── users/           # Admin/staff user management page
-│   │   │   └── login/               # Admin login page
-│   │   ├── globals.css              # Custom Tailwind CSS & theme tokens
-│   │   └── layout.js                # Root application HTML & Provider layout
+│   ├── app/                             # Next.js App Router pages & layouts
+│   │   ├── (storefront)/                # Public storefront route group
+│   │   │   ├── account/                 # Customer account hub (profile & orders sub-routes)
+│   │   │   │   ├── orders/              # Customer order history page
+│   │   │   │   └── profile/             # Customer profile edit page
+│   │   │   ├── cart/                    # Cart view page
+│   │   │   ├── category/                # Category browsing pages
+│   │   │   ├── contact-us/              # Contact/enquiry page
+│   │   │   ├── login/                   # Customer authentication page
+│   │   │   ├── product/                 # Product detail pages
+│   │   │   ├── search/                  # Search results page
+│   │   │   ├── wishlist/                # Customer wishlist page
+│   │   │   ├── layout.js                # Storefront main layout (Navbar + Footer)
+│   │   │   └── page.js                  # Storefront homepage
+│   │   ├── admin/                       # Admin dashboard route group
+│   │   │   ├── (admin)/                 # Protected admin shell layout & sub-pages
+│   │   │   │   ├── banners/             # Storefront banner manager page
+│   │   │   │   ├── brands/              # Brand management page
+│   │   │   │   ├── categories/          # Category tree manager page
+│   │   │   │   ├── csv-import/          # Bulk CSV import studio page
+│   │   │   │   ├── dashboard/           # Analytics dashboard page
+│   │   │   │   ├── inventory/           # Stock ledger adjustment page
+│   │   │   │   ├── products/            # Master product catalog manager page
+│   │   │   │   ├── users/               # Admin/staff user management page
+│   │   │   │   └── layout.js            # Admin shell layout (Sidebar + Header)
+│   │   │   └── login/                   # Admin login page
+│   │   ├── globals.css                  # Custom Tailwind CSS v4 & theme tokens
+│   │   ├── layout.js                    # Root application HTML & Provider layout
+│   │   ├── robots.js                    # Auto-generated robots.txt (disallows /admin, /cart, etc.)
+│   │   └── sitemap.js                   # Auto-generated sitemap.xml
 │   ├── components/
-│   │   ├── admin/                   # Admin management UI components
-│   │   │   └── products/            # ImageUploader, ProductDetailsFields, VariantRowFields
-│   │   ├── layout/                  # PageContainer & Section wrappers
-│   │   ├── shared/                  # ApiErrorSummary & common widgets
-│   │   ├── storefront/              # Storefront modular domain components
-│   │   │   ├── auth/                # Customer Auth tabs & forms
-│   │   │   ├── cart/                # Cart item cards & checkout drawer
-│   │   │   ├── home/                # HeroBanner, CategoryBanners, BottomBanner, PopularProducts
-│   │   │   ├── layout/              # Navbar, Footer, CategoryNav, Breadcrumbs, ScrollToTop
-│   │   │   ├── products/            # ProductCard, ProductGrid, Gallery, VariantSelector
-│   │   │   ├── wishlist/            # Wishlist grid view
-│   │   │   └── index.js             # Re-export barrel file for storefront components
-│   │   └── ui/                      # Primitive UI components (Button, Input, Dialog, etc.)
+│   │   ├── admin/                       # Admin management UI components
+│   │   │   └── products/                # ImageUploader, ProductDetailsFields, VariantRowFields
+│   │   ├── layout/                      # PageContainer & Section wrappers
+│   │   ├── shared/                      # ApiErrorSummary & common widgets
+│   │   ├── storefront/                  # Storefront modular domain components
+│   │   │   ├── account/                 # ProfileView, OrdersView customer account components
+│   │   │   ├── auth/                    # Customer Auth tabs & forms
+│   │   │   ├── cart/                    # Cart item cards & checkout drawer
+│   │   │   ├── category/                # Category-specific storefront components
+│   │   │   ├── contact/                 # ContactUsView enquiry form
+│   │   │   ├── home/                    # HeroBanner, CategoryBanners, BottomBanner, PopularProducts
+│   │   │   ├── layout/                  # Navbar, Footer, CategoryNav, Breadcrumbs, ScrollToTop
+│   │   │   ├── products/                # ProductCard, ProductGrid, Gallery, VariantSelector
+│   │   │   ├── wishlist/                # Wishlist grid view
+│   │   │   └── index.js                 # Re-export barrel file for storefront components
+│   │   └── ui/                          # Primitive UI components (Button, Input, Dialog, etc.)
 │   ├── hooks/
-│   │   └── storefront/              # Custom React data-fetching hooks
-│   │       ├── usePublicBanners.js  # Storefront banner state hook
-│   │       ├── usePublicCategories.js# Public category tree hook
-│   │       └── usePublicProducts.js # Paginated product catalog hook
-│   ├── lib/                         # Utility functions & category tree builders
-│   ├── redux/                       # Redux Toolkit store & feature slices
-│   │   ├── slices/                  # auth, customerAuth, cart, wishlist, categories, brands
-│   │   ├── StoreProvider.jsx        # Redux Provider wrapper
-│   │   └── store.js                 # Redux store configuration
-│   └── services/                    # Axios API service instances & endpoint methods
-│       ├── admin/                   # Admin REST API services
-│       ├── storefront/              # Public & Customer REST API services
-│       └── publicApi.js             # Public Axios instance
-├── public/                          # Public static assets & default fallback banners
-├── next.config.mjs                  # Next.js configuration
-├── tailwind.config.js               # Tailwind CSS theme customization
-└── package.json                     # Dependencies & scripts
+│   │   ├── admin/                       # Admin-specific data & UI hooks
+│   │   │   ├── useAuth.js               # Admin auth state & token management
+│   │   │   ├── useBrands.js             # Brand CRUD operations
+│   │   │   ├── useCategories.js         # Category tree CRUD
+│   │   │   ├── useCreateProduct.js      # New product form logic
+│   │   │   ├── useCreateUser.js         # New user form logic
+│   │   │   ├── useCsvImport.js          # CSV upload & job polling
+│   │   │   ├── useEditProduct.js        # Edit product form logic
+│   │   │   ├── useInventoryMovements.js # Inventory ledger data fetching
+│   │   │   ├── useProduct.js            # Single product data fetching
+│   │   │   ├── useProductPicker.js      # Product picker modal state
+│   │   │   ├── useProductVariants.js    # Variant management CRUD
+│   │   │   ├── useProducts.js           # Paginated product list with filters
+│   │   │   ├── useRecentImports.js      # Recent CSV import jobs
+│   │   │   ├── useUrlFilters.js         # URL query param-based filter state
+│   │   │   └── useUsers.js              # Staff/admin user CRUD
+│   │   ├── shared/
+│   │   │   └── useDebouncedValue.js     # Generic debounce hook
+│   │   ├── storefront/                  # Storefront data-fetching & interaction hooks
+│   │   │   ├── useCart.js               # Cart sync & mutation helpers
+│   │   │   ├── usePublicBanners.js      # Storefront banner state hook
+│   │   │   ├── usePublicCategories.js   # Public category tree hook
+│   │   │   ├── usePublicProduct.js      # Single product detail hook
+│   │   │   ├── usePublicProducts.js     # Paginated product catalog hook
+│   │   │   ├── useRecentlyViewed.js     # Recently viewed products (localStorage)
+│   │   │   ├── useSearchSuggestions.js  # Debounced search autocomplete hook
+│   │   │   ├── useVariantSelector.js    # Variant option selection & stock state
+│   │   │   └── useWishlist.js           # Wishlist sync & toggle helpers
+│   │   └── useConfirm.js                # Reusable confirmation dialog hook
+│   ├── lib/                             # Utility functions & category tree builders
+│   ├── middleware.js                    # Next.js Edge middleware (admin route guard)
+│   ├── redux/                           # Redux Toolkit store & feature slices
+│   │   ├── slices/                      # auth, customerAuth, cart, wishlist, categories, brands
+│   │   ├── StoreProvider.jsx            # Redux Provider wrapper
+│   │   └── store.js                     # Redux store configuration
+│   ├── schemas/                         # Zod + React Hook Form validation schemas
+│   │   ├── admin/
+│   │   │   ├── auth.js                  # Admin login schema
+│   │   │   ├── brand.js                 # Brand create/edit schema
+│   │   │   ├── category.js              # Category create/edit schema
+│   │   │   ├── inventory.js             # Stock adjustment schema
+│   │   │   ├── product.js               # Product & variant schemas
+│   │   │   └── user.js                  # User create/edit schema
+│   │   ├── shared/                      # Shared Zod primitives
+│   │   └── storefront/
+│   │       # Customer auth & profile schemas
+│   └── services/                        # Axios API service instances & endpoint methods
+│       ├── admin/                        # Admin REST API services
+│       │   ├── axios.js                 # Admin Axios instance (via createAuthApi factory)
+│       │   ├── auth.js                  # Admin auth API calls
+│       │   ├── banners.js               # Banner CRUD
+│       │   ├── brands.js                # Brand CRUD
+│       │   ├── categories.js            # Category CRUD
+│       │   ├── csvImport.js             # CSV upload & job status
+│       │   ├── images.js                # ImageKit upload
+│       │   ├── inventory.js             # Stock adjustment & movements
+│       │   ├── products.js              # Product CRUD
+│       │   ├── users.js                 # User management
+│       │   └── variants.js              # Variant CRUD
+│       ├── storefront/                  # Public & Customer REST API services
+│       │   ├── customerAxios.js         # Customer Axios instance (via createAuthApi factory)
+│       │   ├── cart.js                  # Cart API calls
+│       │   ├── customerAuth.js          # Customer auth API calls
+│       │   ├── publicBanners.js         # Public banner fetching
+│       │   ├── publicCatalog.js         # Public product & category fetching
+│       │   └── wishlist.js              # Wishlist API calls
+│       ├── createAuthApi.js             # Authenticated Axios factory (shared by admin & customer)
+│       └── publicApi.js                 # Unauthenticated public Axios instance
+├── public/                              # Public static assets & default fallback banners
+├── next.config.mjs                      # Next.js configuration
+├── tailwind.config.js                   # Tailwind CSS v4 theme customization
+└── package.json                         # Dependencies & scripts
 ```
 
 ---
@@ -105,32 +178,52 @@ client/
 
 ### 1. Next.js App Router & Hybrid Server/Client Components
 The frontend separates static SEO content from interactive client views:
-- **Server Components** (`category/[slug]/page.js`, `product/[slug]/page.js`): Fetch data on the server during request time, generating complete HTML for search engines and ensuring zero client-side fetching delay on entry.
+- **Server Components** (`product/[slug]/page.js`, category pages): Fetch data on the server during request time, generating complete HTML for search engines and ensuring zero client-side fetching delay on entry.
 - **Client Components** (`ProductCatalogFilterView.jsx`, `ProductInteractiveSection.jsx`): Manage interactive UI states (price sliders, active category selection, variant selection, cart additions).
+- **SEO Automation**: `robots.js` generates a `robots.txt` at runtime disallowing `/admin`, `/cart`, `/account`, `/orders`, `/wishlist`, etc. `sitemap.js` generates a `sitemap.xml` from the live product & category catalog.
 
 ---
 
 ### 2. Redux Toolkit State Management
 Global client state is partitioned into clean feature slices:
-- **`authSlice`**: Admin user authentication token, role state (`super_admin`, `admin`, `staff`), and permission logic.
-- **`customerAuthSlice`**: Storefront customer authentication session and address book.
+- **`authSlice`**: Admin user `accessToken`, role state (`super_admin`, `admin`, `staff`), and permission logic. The token lives in memory only (never localStorage) for XSS safety.
+- **`customerAuthSlice`**: Storefront customer authentication session, `accessToken`, and address book.
 - **`cartSlice`**: Synchronizes local cart items with backend `/api/customers/cart` API.
 - **`wishlistSlice`**: Synchronizes customer saved items with `/api/customers/wishlist` API.
-- **`categoriesSlice` & `brandsSlice`**: Cached master category tree and brand lists.
+- **`categoriesSlice` & `brandsSlice`**: Cached master category tree and brand lists shared across admin pages.
 
 ---
 
-### 3. Dual-Mode Image Uploader Studio (`ImageUploader.jsx`)
+### 3. Authenticated Axios Factory (`createAuthApi.js`)
+A shared factory function used to create both the admin and customer Axios instances:
+
+```
+createAuthenticatedApi({ stateKey, refreshUrlFragment, loadAuth })
+        │
+        ├──► Injects Bearer token from Redux state on every request
+        │
+        └──► On 401 response:
+              ├── If already refreshing → queue request until refresh completes
+              ├── Dispatch refreshThunk() using the HttpOnly refresh cookie
+              ├── On success → update token in Redux, retry original request
+              └── On failure → dispatch logoutAction(), reject all queued requests
+```
+
+This ensures only one refresh call is in-flight at a time, even when multiple requests fail simultaneously with a 401.
+
+---
+
+### 4. Dual-Mode Image Uploader Studio (`ImageUploader.jsx`)
 Reusable image management component used across Categories, Products, Variants, and Banners:
 - **Dual Source Modes**:
   - **Upload (ImageKit)**: Uploads files directly to ImageKit CDN returning cloud `{ url, fileId }`.
   - **Direct URL**: Allows pasting external public image URLs.
 - **Slot Limit Enforcement**: Supports single image (`maxImages={1}`) or multi-image (`maxImages={4}`) limits.
-- **High-Resolution Previews**: Renders a large preview container (`max-w-lg` up to `h-60`) for single-image modes (Banners/Categories) and compact thumbnail grids for multi-variant modes.
+- **High-Resolution Previews**: Renders a large preview container for single-image modes (Banners/Categories) and compact thumbnail grids for multi-variant modes.
 
 ---
 
-### 4. Storefront Banner Customization Suite (`/admin/banners`)
+### 5. Storefront Banner Customization Suite (`/admin/banners`)
 Admin interface for controlling the 4 main storefront homepage banners (`hero`, `secondary-left`, `secondary-right`, `bottom`):
 - **Hero Banner**: Allows custom image selection, title, subtitle, CTA link, gradient overlay toggle, and custom overlay color selection (presets + custom color picker).
 - **Secondary Category Banners**: Supports image upload, text fields, gradient overlay toggle, and **Content Placement (Left vs Right)**.
@@ -139,7 +232,7 @@ Admin interface for controlling the 4 main storefront homepage banners (`hero`, 
 
 ---
 
-### 5. Catalog Filtering & Infinite Scroll Engine
+### 6. Catalog Filtering & Infinite Scroll Engine
 Catalog page (`ProductCatalogFilterView.jsx`) features:
 - **Category Tree Navigation**: Expandable parent-child category tree with active item indicators.
 - **Price Range Filter**: Min/Max price inputs and range slider with quick preset buttons (Under ₹500, ₹500 - ₹2,000, etc.).
@@ -148,7 +241,63 @@ Catalog page (`ProductCatalogFilterView.jsx`) features:
 
 ---
 
+### 7. Route Protection Middleware
+`src/middleware.js` runs as a Next.js Edge Middleware and guards all `/admin/*` routes:
+
+```
+Incoming request to /admin/*
+        │
+        ├── Has `refreshToken` HttpOnly cookie?
+        │       ├── No  → Redirect to /admin/login?from=<pathname>
+        │       └── Yes → Is route /admin/login?
+        │                   ├── Yes → Redirect to /admin/dashboard (already logged in)
+        │                   └── No  → Allow through
+        │
+        └── All non-admin routes → Allow through (customer auth handled separately)
+```
+
+---
+
+### 8. Form Validation with React Hook Form & Zod
+All forms across both admin and storefront use **React Hook Form** with **Zod** resolvers:
+- Schemas live in `src/schemas/` mirroring the server's validation structure.
+- `@hookform/resolvers/zod` connects schema to form, providing real-time per-field error messages.
+- `isomorphic-dompurify` sanitizes any rich-text/HTML content before submission.
+- **Sonner** (`sonner`) is used for toast notifications on form success and error states.
+
+---
+
 ## 🔍 Detailed Component Architecture
+
+### App Pages (`src/app/`)
+
+#### Storefront Pages (`src/app/(storefront)/`)
+| Route | Description |
+| :--- | :--- |
+| `/` | Homepage (HeroBanner, CategoryBanners, PopularProducts, BottomBanner) |
+| `/category/[slug]` | Category product listing |
+| `/product/[slug]` | Product detail with variant selection & add-to-cart |
+| `/cart` | Shopping cart |
+| `/wishlist` | Saved items |
+| `/search` | Search results |
+| `/login` | Customer login & registration |
+| `/account/profile` | Customer profile editing |
+| `/account/orders` | Customer order history |
+| `/contact-us` | Contact/enquiry form |
+
+#### Admin Pages (`src/app/admin/(admin)/`)
+| Route | Description |
+| :--- | :--- |
+| `/admin/dashboard` | Analytics overview & stock alerts |
+| `/admin/products` | Product list, create, edit, bulk operations |
+| `/admin/categories` | Category tree management |
+| `/admin/brands` | Brand management |
+| `/admin/banners` | Homepage banner configuration |
+| `/admin/inventory` | Manual stock adjustments & movement log |
+| `/admin/csv-import` | Bulk product CSV import |
+| `/admin/users` | Staff & admin user management |
+
+---
 
 ### Storefront Modular Components (`src/components/storefront/`)
 
@@ -177,6 +326,13 @@ Catalog page (`ProductCatalogFilterView.jsx`) features:
 - **`QuantitySelector.jsx`**: Increment/decrement quantity input control.
 - **`RelatedProducts.jsx`**: Recommended products from the same category.
 
+#### Account (`src/components/storefront/account/`)
+- **`ProfileView.jsx`**: Customer profile editing form — personal info, password change, and address book management (add/edit/delete addresses).
+- **`OrdersView.jsx`**: Customer order history listing with order status display.
+
+#### Contact (`src/components/storefront/contact/`)
+- **`ContactUsView.jsx`**: Full contact/enquiry page with form validation, business details, and map/location info.
+
 ---
 
 ### Admin Dashboard Components (`src/components/admin/`)
@@ -186,19 +342,100 @@ Catalog page (`ProductCatalogFilterView.jsx`) features:
 
 ---
 
+### Custom Hooks (`src/hooks/`)
+
+#### Admin Hooks (`src/hooks/admin/`)
+Encapsulate all admin data-fetching, form logic, and mutation operations. Each hook owns its loading, error, and data state, exposing clean APIs to page components:
+
+| Hook | Purpose |
+| :--- | :--- |
+| `useAuth` | Admin token refresh & logout |
+| `useProducts` | Paginated products list + bulk operations |
+| `useProduct` | Single product data fetching |
+| `useCreateProduct` | Create product form state & submission |
+| `useEditProduct` | Edit product form state & submission |
+| `useProductVariants` | Variant list CRUD per product |
+| `useProductPicker` | Product search picker modal |
+| `useCategories` | Category tree CRUD |
+| `useBrands` | Brand CRUD |
+| `useUsers` | Staff/admin user CRUD |
+| `useCreateUser` | New user form |
+| `useCsvImport` | CSV file upload & import job polling |
+| `useRecentImports` | Recent import jobs list |
+| `useInventoryMovements` | Inventory ledger data |
+| `useUrlFilters` | Syncs filter state to URL query params |
+
+#### Storefront Hooks (`src/hooks/storefront/`)
+
+| Hook | Purpose |
+| :--- | :--- |
+| `usePublicProducts` | Paginated product catalog with filters |
+| `usePublicProduct` | Single product detail |
+| `usePublicCategories` | Public category tree |
+| `usePublicBanners` | Storefront banner configs |
+| `useSearchSuggestions` | Debounced autocomplete search |
+| `useCart` | Cart sync, add, update, remove |
+| `useWishlist` | Wishlist sync & toggle |
+| `useVariantSelector` | Variant option selection & live stock |
+| `useRecentlyViewed` | Recently viewed products (localStorage) |
+
+#### Shared Hooks
+- **`useConfirm`**: Reusable confirmation dialog hook — returns a `confirm()` promise that resolves on user acceptance.
+- **`useDebouncedValue`**: Generic debounce hook used by search inputs.
+
+---
+
+### Redux State Slices (`src/redux/slices/`)
+- **`authSlice`**: Admin access token (in-memory), user info, role, loading state.
+- **`customerAuthSlice`**: Customer access token (in-memory), customer info, addresses.
+- **`cartSlice`**: Cart items array, total count, syncing state.
+- **`wishlistSlice`**: Wishlist product IDs, syncing state.
+- **`categoriesSlice`**: Cached flat & tree category lists for admin dropdowns.
+- **`brandsSlice`**: Cached brand list for admin dropdowns.
+
+---
+
 ### API Service Layer (`src/services/`)
 
+#### Authenticated Axios Factory
+**`createAuthApi.js`** — creates Axios instances with automatic token injection and `401 → silent refresh → retry` interceptor. Both admin and customer Axios instances (`services/admin/axios.js` and `services/storefront/customerAxios.js`) are built using this factory.
+
 #### Admin Services (`src/services/admin/`)
-- **`axios.js`**: Configured Axios instance with `baseURL: "/api"`, JWT Bearer token interceptor, and token refresh handling.
+- **`axios.js`**: Admin Axios instance with `baseURL: "/api"`.
+- **`auth.js`**: `login`, `logout`, `refresh`, `getMe`.
 - **`products.js`**: `getProducts`, `createProduct`, `updateProduct`, `deleteProduct`, `bulkUpdateProducts`, `bulkDeleteProducts`.
+- **`variants.js`**: `createVariant`, `updateVariant`, `deleteVariant`.
 - **`banners.js`**: `getAdminBanners`, `updateAdminBanner`.
 - **`csvImport.js`**: `uploadCSV`, `getImportJobs`, `getImportJobById`.
 - **`inventory.js`**: `adjustInventoryStock`, `getInventoryMovements`.
-- **`categories.js` & `brands.js`**: Category and brand API methods.
+- **`categories.js`**: Category CRUD.
+- **`brands.js`**: Brand CRUD.
+- **`images.js`**: `uploadImage` — uploads to ImageKit via `/api/images/upload`.
+- **`users.js`**: Staff/admin user CRUD.
 
 #### Storefront Services (`src/services/storefront/`)
+- **`customerAxios.js`**: Customer Axios instance with auto token refresh.
 - **`publicCatalog.js`**: `getPublicProducts`, `getPublicProductBySlug`, `getPublicCategories`, `getSearchSuggestions`.
 - **`publicBanners.js`**: `getPublicBanners`.
+- **`customerAuth.js`**: `register`, `login`, `logout`, `refresh`, `getProfile`.
+- **`cart.js`**: `getCart`, `addToCart`, `updateCartItem`, `removeFromCart`, `clearCart`.
+- **`wishlist.js`**: `getWishlist`, `toggleWishlist`.
+
+#### Public Services
+- **`publicApi.js`**: Unauthenticated Axios instance for public endpoints.
+
+---
+
+### Validation Schemas (`src/schemas/`)
+Zod schemas used with React Hook Form across all forms:
+
+#### Admin Schemas (`src/schemas/admin/`)
+- **`auth.js`**: Admin login form schema.
+- **`product.js`**: Product create/edit and variant schemas.
+- **`category.js`**: Category create/edit.
+- **`brand.js`**: Brand create/edit.
+- **`inventory.js`**: Stock adjustment form.
+- **`user.js`**: User create/edit with role validation.
 
 ---
 
@@ -206,8 +443,11 @@ Catalog page (`ProductCatalogFilterView.jsx`) features:
 
 - **Color Palette**: Custom HSL-tailored colors featuring primary deep teal (`#033936`), slate darks, muted accents, and crisp light/dark mode contrasts.
 - **Typography**: Clean, modern sans-serif typography powered by Google Fonts Inter.
-- **Components & Icons**: Built on top of Radix UI / shadcn primitive components and Lucide React icons.
+- **Component Libraries**: Built on top of **shadcn** (Radix UI primitives) and **Base UI** (`@base-ui/react`) for accessible, unstyled components.
+- **Icons**: Lucide React (`lucide-react`).
+- **Toasts**: Sonner (`sonner`) for lightweight, accessible notifications.
 - **Theme Support**: Seamless dark/light theme switching managed by `next-themes`.
+- **Tailwind CSS v4**: Uses the new PostCSS-based Tailwind v4 pipeline with `@tailwindcss/postcss`.
 
 ---
 
@@ -215,7 +455,7 @@ Catalog page (`ProductCatalogFilterView.jsx`) features:
 
 ### Prerequisites
 - **Node.js**: `v18.0.0` or higher
-- **Backend API**: Running instance of `fibio-backend` (default `http://localhost:5000`)
+- **Backend API**: Running instance of the `server/` (default `http://localhost:5000`)
 
 ### 1. Installation
 ```bash
@@ -224,9 +464,10 @@ npm install
 ```
 
 ### 2. Environment File Configuration
-Create a `.env.local` file in the `client` root directory:
+Create a `.env.local` file in the `client/` root directory:
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:5000/api
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
 ```
 
 ### 3. Run Development Server
@@ -245,3 +486,19 @@ npm run build
 # Start production server
 npm start
 ```
+
+### 5. Linting & Formatting
+```bash
+# Run ESLint
+npm run lint
+
+# Auto-fix ESLint issues
+npm run lint:fix
+
+# Format with Prettier
+npm run format
+
+# Check formatting without writing
+npm run format:check
+```
+Husky + lint-staged run Prettier and ESLint automatically on every `git commit`.
