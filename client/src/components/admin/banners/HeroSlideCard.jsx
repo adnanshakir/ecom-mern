@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowUp, ArrowDown, Trash2, Link2 } from "lucide-react";
+import { ArrowUp, ArrowDown, Trash2, Link2, Tag } from "lucide-react";
 import { ImageUploader } from "@/components/admin/products/ImageUploader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,7 +23,9 @@ export function HeroSlideCard({
           <span className="flex size-6 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
             {index + 1}
           </span>
-          <span className="text-sm font-semibold">Banner Slide #{index + 1}</span>
+          <span className="text-sm font-semibold truncate max-w-[220px] sm:max-w-[350px]">
+            Banner Slide #{index + 1} {slide.name ? `- ${slide.name}` : ""}
+          </span>
         </div>
 
         <div className="flex items-center gap-2">
@@ -88,20 +90,38 @@ export function HeroSlideCard({
           />
         </div>
 
-        <div className="md:col-span-6 space-y-2">
-          <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-            <Link2 className="size-3.5 text-primary" />
-            Click Redirect Link (Href)
-          </label>
-          <Input
-            value={slide.href || ""}
-            onChange={(e) => onChange(index, "href", e.target.value)}
-            placeholder="e.g. /category/jewellery or /product/my-item"
-            disabled={!canWrite}
-          />
-          <p className="text-[11px] text-muted-foreground">
-            URL to open when the user clicks on this hero banner slide.
-          </p>
+        <div className="md:col-span-6 space-y-4">
+          <div className="space-y-2">
+            <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+              <Tag className="size-3.5 text-primary" />
+              Banner Name
+            </label>
+            <Input
+              value={slide.name || ""}
+              onChange={(e) => onChange(index, "name", e.target.value)}
+              placeholder="e.g. Festive Offer, Hero Slide 1, Under 99 Store"
+              disabled={!canWrite}
+            />
+            <p className="text-[11px] text-muted-foreground">
+              Internal name identifier for this banner card.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+              <Link2 className="size-3.5 text-primary" />
+              Click Redirect Link (Href)
+            </label>
+            <Input
+              value={slide.href || ""}
+              onChange={(e) => onChange(index, "href", e.target.value)}
+              placeholder="e.g. /category/jewellery or /product/my-item"
+              disabled={!canWrite}
+            />
+            <p className="text-[11px] text-muted-foreground">
+              URL to open when the user clicks on this banner slide.
+            </p>
+          </div>
         </div>
       </div>
     </div>

@@ -47,6 +47,7 @@ export function HeroBannersTab({
       }
 
       const newSlide = {
+        name: "",
         image: { url: "", fileId: "" },
         href: "/category/all",
         order: currentSlides.length + 1,

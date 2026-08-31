@@ -43,6 +43,7 @@ export function BudgetBannersTab({
       const currentSlides = budget.slides || [];
 
       const newSlide = {
+        name: "",
         image: { url: "", fileId: "" },
         href: "/category/all?maxPrice=500",
         order: currentSlides.length + 1,
