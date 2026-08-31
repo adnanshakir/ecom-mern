@@ -34,7 +34,7 @@ export const config = {
   },
   jwtSecret: {
     secret: process.env.JWT_SECRET,
-    accessExpiry: "60m", // TODO: revert to "15m" before production release
+    accessExpiry: "15m",
     refreshExpiry: "7d",
   },
   nodeEnv,
