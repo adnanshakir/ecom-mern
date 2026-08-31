@@ -1,10 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, Plus, Upload, Link as LinkIcon, X, CheckCircle2 } from "lucide-react";
+import { Loader2, Plus, Upload, Link as LinkIcon, X, CheckCircle2, AlertCircle } from "lucide-react";
 import { uploadImages } from "@/services/admin/images";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+
+const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5MB limit
+const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif", "image/avif"];
 
 export function ImageUploader({
   images = [],
@@ -45,15 +48,30 @@ export function ImageUploader({
 
   const handleFiles = async (fileList) => {
     const files = Array.from(fileList);
-    const remainingSlots = effectiveMax - currentImages.length;
+    if (files.length === 0) return;
 
+    const remainingSlots = effectiveMax - currentImages.length;
     if (files.length > remainingSlots) {
       setError(
         `You can upload up to ${effectiveMax} image${effectiveMax > 1 ? "s" : ""} — ${remainingSlots} slot${remainingSlots === 1 ? "" : "s"} left.`
       );
       return;
     }
-    if (files.length === 0) return;
+
+    // Validate size and format for all selected files before making request
+    for (const file of files) {
+      if (file.size > MAX_FILE_SIZE_BYTES) {
+        const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
+        setError(
+          `Image "${file.name}" is ${sizeMB}MB, which exceeds the 5MB limit. Please upload an image smaller than 5MB or compress it to .WEBP.`
+        );
+        return;
+      }
+      if (file.type && !ALLOWED_IMAGE_TYPES.includes(file.type.toLowerCase()) && !file.type.startsWith("image/")) {
+        setError(`File "${file.name}" is not a supported image format. Please upload JPEG, PNG, or WebP.`);
+        return;
+      }
+    }
 
     setUploading(true);
     setError(null);
@@ -72,7 +90,9 @@ export function ImageUploader({
 
       emitChange([...currentImages, ...uploaded]);
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to upload image to ImageKit");
+      setError(
+        err.response?.data?.message || "Failed to upload image. Please verify file size is under 5MB and try again."
+      );
     } finally {
       setUploading(false);
     }
@@ -251,7 +271,22 @@ export function ImageUploader({
         </div>
       )}
 
-      {error && <p className="text-xs text-destructive">{error}</p>}
+      {error && (
+        <div className="flex items-start justify-between gap-2 rounded-md border border-destructive/40 bg-destructive/10 p-2.5 text-xs text-destructive">
+          <div className="flex items-start gap-2">
+            <AlertCircle className="size-4 shrink-0 mt-0.5" />
+            <span>{error}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setError(null)}
+            className="text-destructive/70 hover:text-destructive shrink-0"
+            title="Dismiss error"
+          >
+            <X className="size-3.5" />
+          </button>
+        </div>
+      )}
     </div>
   );
 }
