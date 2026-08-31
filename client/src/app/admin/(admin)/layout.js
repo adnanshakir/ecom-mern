@@ -20,6 +20,7 @@ import {
   X,
   Sun,
   Moon,
+  Loader2,
 } from "lucide-react";
 
 import { logout } from "@/redux/slices/authSlice";
@@ -56,17 +57,36 @@ function AdminLayoutContent({ children }) {
   const pathname = usePathname();
   const dispatch = useDispatch();
   const router = useRouter();
-  const user = useSelector((state) => state.auth.user);
+  const { user, status, authReady } = useSelector((state) => state.auth);
   const { theme, setTheme } = useTheme();
 
   const [mounted, setMounted] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [prevPathname, setPrevPathname] = useState(pathname);
+
+  // Close mobile drawer when route changes
+  if (prevPathname !== pathname) {
+    setPrevPathname(pathname);
+    setMobileOpen(false);
+  }
 
   useEffect(() => {
-    setMounted(true);
-    if (localStorage.getItem(COLLAPSE_KEY) === "true") setCollapsed(true);
+    const timer = setTimeout(() => {
+      setMounted(true);
+      if (localStorage.getItem(COLLAPSE_KEY) === "true") {
+        setCollapsed(true);
+      }
+    }, 0);
+    return () => clearTimeout(timer);
   }, []);
+
+  // Strict Auth Protection: Redirect to login if unauthenticated or missing user when auth is ready
+  useEffect(() => {
+    if (authReady && (status === "unauthenticated" || !user)) {
+      router.replace("/admin/login");
+    }
+  }, [authReady, status, user, router]);
 
   // Ensure dark class is removed from html element when navigating out of admin layout
   useEffect(() => {
@@ -86,10 +106,6 @@ function AdminLayoutContent({ children }) {
     });
   };
 
-  useEffect(() => {
-    setMobileOpen(false);
-  }, [pathname]);
-
   const handleLogout = async () => {
     await dispatch(logout());
     router.push("/admin/login");
@@ -98,6 +114,30 @@ function AdminLayoutContent({ children }) {
   const effectiveCollapsed = collapsed && !mobileOpen;
 
   const visibleNavItems = NAV_ITEMS.filter((item) => user?.role && item.allow.includes(user.role));
+
+  // 1. Session verification loading state
+  if (!authReady || status === "loading" || status === "idle") {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background text-foreground">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="size-8 animate-spin text-primary" />
+          <p className="text-sm font-medium text-muted-foreground">Verifying admin session...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // 2. Unauthenticated / missing user state: Show redirecting indicator while routing to /admin/login
+  if (status === "unauthenticated" || !user) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background text-foreground">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="size-8 animate-spin text-primary" />
+          <p className="text-sm font-medium text-muted-foreground">Redirecting to login...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <TooltipProvider delayDuration={200}>

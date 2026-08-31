@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useSelector } from "react-redux";
-import { Loader2, MoreVertical, Plus, CheckSquare, Square } from "lucide-react";
+import { Loader2 } from "lucide-react";
 
 import { useDebouncedValue } from "@/hooks/shared/useDebouncedValue";
 import { useProducts } from "@/hooks/admin/useProducts";
@@ -10,17 +10,10 @@ import { useCategories } from "@/hooks/admin/useCategories";
 import { useBrands } from "@/hooks/admin/useBrands";
 import { CreateProductDialog } from "@/components/admin/products/CreateProductDialog";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { ProductCard } from "@/components/admin/products/ProductCard";
+import { ProductTableToolbar } from "@/components/admin/products/ProductTableToolbar";
+import { ProductBulkActionsBar } from "@/components/admin/products/ProductBulkActionsBar";
+import { ProductPaginationBar } from "@/components/admin/products/ProductPaginationBar";
 
 const CAN_WRITE_ROLES = ["super_admin", "admin"];
 const STATUS_OPTIONS = [
@@ -67,7 +60,8 @@ function ProductsContent() {
     if (debouncedSearch !== (filters.search || "")) {
       setFilter("search", debouncedSearch);
     }
-  }, [debouncedSearch]);
+  }, [debouncedSearch, filters.search, setFilter]);
+
   const { categories } = useCategories();
   const { brands } = useBrands();
 
@@ -77,6 +71,12 @@ function ProductsContent() {
   const resolveName = (field, map) => (field && typeof field === "object" ? field.name : map[field] || "—");
 
   const selectionActive = isSelecting || selectedIds.length > 0;
+  const activeFilterCount = [
+    filters.category,
+    filters.brand,
+    filters.status,
+    filters.limit && filters.limit !== 20 ? filters.limit : null,
+  ].filter(Boolean).length;
 
   const toggleSelectAll = () => {
     if (selectedIds.length === products.length && products.length > 0) {
@@ -117,206 +117,43 @@ function ProductsContent() {
         <h1 className="text-xl font-semibold">Products</h1>
       </div>
 
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex flex-col sm:flex-row flex-wrap gap-2 w-full sm:w-auto">
-          <Input
-            placeholder="Search products..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full sm:w-56"
-          />
-
-          <Select value={filters.category || "all"} onValueChange={(v) => setFilter("category", v === "all" ? "" : v)}>
-            <SelectTrigger className="w-full sm:w-40">
-              <SelectValue placeholder="Category">
-                {filters.category ? categoryById[filters.category] : "All categories"}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All categories</SelectItem>
-              {categories.map((c) => (
-                <SelectItem key={c._id} value={c._id}>
-                  {c.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select value={filters.brand || "all"} onValueChange={(v) => setFilter("brand", v === "all" ? "" : v)}>
-            <SelectTrigger className="w-full sm:w-40">
-              <SelectValue placeholder="Brand">{filters.brand ? brandById[filters.brand] : "All brands"}</SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All brands</SelectItem>
-              {brands.map((b) => (
-                <SelectItem key={b._id} value={b._id}>
-                  {b.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select value={filters.status || "all"} onValueChange={(v) => setFilter("status", v === "all" ? "" : v)}>
-            <SelectTrigger className="w-full sm:w-36">
-              <SelectValue placeholder="Status">
-                {filters.status
-                  ? STATUS_OPTIONS.find((s) => s.value === filters.status)?.label || filters.status
-                  : "All statuses"}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All statuses</SelectItem>
-              {STATUS_OPTIONS.map((s) => (
-                <SelectItem key={s.value} value={s.value}>
-                  {s.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select value={String(filters.limit || 20)} onValueChange={(v) => setFilter("limit", Number(v))}>
-            <SelectTrigger className="w-full sm:w-36">
-              <SelectValue placeholder="Per page">{filters.limit || 20} per page</SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              {LIMIT_OPTIONS.map((l) => (
-                <SelectItem key={l.value} value={l.value}>
-                  {l.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {canWrite && (
-            <Button onClick={() => setCreateOpen(true)}>
-              <Plus className="size-4" />
-              New product
-            </Button>
-          )}
-
-          {canWrite && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon" title="Options and bulk actions">
-                  <MoreVertical className="size-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                {!selectionActive ? (
-                  <DropdownMenuItem onClick={() => setIsSelecting(true)}>
-                    <CheckSquare className="size-4" />
-                    Select products
-                  </DropdownMenuItem>
-                ) : (
-                  <>
-                    <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
-                      {selectedIds.length} of {products.length} selected
-                    </div>
-                    <DropdownMenuItem onClick={toggleSelectAll}>
-                      {selectedIds.length === products.length && products.length > 0 ? (
-                        <>
-                          <Square className="size-4" />
-                          Deselect all
-                        </>
-                      ) : (
-                        <>
-                          <CheckSquare className="size-4" />
-                          Select all on page ({products.length})
-                        </>
-                      )}
-                    </DropdownMenuItem>
-
-                    {selectedIds.length > 0 && (
-                      <>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => handleBulkStatusChange("active")}>
-                          Set Status: Active
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleBulkStatusChange("draft")}>
-                          Set Status: Draft
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleBulkStatusChange("archived")}>
-                          Set Status: Archived
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => handleBulkFeaturedChange(true)}>
-                          Mark as Featured
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleBulkFeaturedChange(false)}>
-                          Unmark Featured
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          className="text-destructive focus:bg-destructive focus:text-destructive-foreground"
-                          onClick={handleBulkDelete}
-                        >
-                          Delete selected ({selectedIds.length})
-                        </DropdownMenuItem>
-                      </>
-                    )}
-
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      onClick={() => {
-                        setIsSelecting(false);
-                        setSelectedIds([]);
-                      }}
-                    >
-                      Cancel selection
-                    </DropdownMenuItem>
-                  </>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-        </div>
-      </div>
+      <ProductTableToolbar
+        searchTerm={searchTerm}
+        setSearchTerm={setSearchTerm}
+        filters={filters}
+        setFilter={setFilter}
+        categories={categories}
+        brands={brands}
+        categoryById={categoryById}
+        brandById={brandById}
+        activeFilterCount={activeFilterCount}
+        canWrite={canWrite}
+        setCreateOpen={setCreateOpen}
+        selectionActive={selectionActive}
+        selectedIds={selectedIds}
+        products={products}
+        setIsSelecting={setIsSelecting}
+        setSelectedIds={setSelectedIds}
+        toggleSelectAll={toggleSelectAll}
+        handleBulkStatusChange={handleBulkStatusChange}
+        handleBulkFeaturedChange={handleBulkFeaturedChange}
+        handleBulkDelete={handleBulkDelete}
+        statusOptions={STATUS_OPTIONS}
+        limitOptions={LIMIT_OPTIONS}
+      />
 
       {canWrite && selectionActive && (
-        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-muted/30 px-3 py-2 text-sm">
-          <div className="flex items-center gap-2">
-            <span className="font-medium">{selectedIds.length} selected</span>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={toggleSelectAll}
-              className="h-7 px-2 text-xs"
-            >
-              {selectedIds.length === products.length && products.length > 0 ? "Deselect all" : "Select all on page"}
-            </Button>
-          </div>
-
-          {selectedIds.length > 0 && (
-            <div className="flex flex-wrap items-center gap-1.5">
-              <Button variant="outline" size="sm" onClick={() => handleBulkStatusChange("active")} className="h-7 text-xs">
-                Set Active
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => handleBulkStatusChange("draft")} className="h-7 text-xs">
-                Set Draft
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => handleBulkStatusChange("archived")} className="h-7 text-xs">
-                Set Archived
-              </Button>
-              <Button variant="destructive" size="sm" onClick={handleBulkDelete} className="h-7 text-xs">
-                Delete ({selectedIds.length})
-              </Button>
-            </div>
-          )}
-
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              setIsSelecting(false);
-              setSelectedIds([]);
-            }}
-            className="h-7 px-2 text-xs text-muted-foreground"
-          >
-            Cancel
-          </Button>
-        </div>
+        <ProductBulkActionsBar
+          selectedIds={selectedIds}
+          productsLength={products.length}
+          toggleSelectAll={toggleSelectAll}
+          handleBulkStatusChange={handleBulkStatusChange}
+          handleBulkDelete={handleBulkDelete}
+          onCancel={() => {
+            setIsSelecting(false);
+            setSelectedIds([]);
+          }}
+        />
       )}
 
       {loading && (
@@ -347,49 +184,18 @@ function ProductsContent() {
             ))}
           </div>
 
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-sm text-muted-foreground pt-2">
-            <div className="flex items-center gap-3">
-              <span>
-                Showing {products.length > 0 ? (pagination.page - 1) * (filters.limit || 20) + 1 : 0} -{" "}
-                {Math.min(pagination.page * (filters.limit || 20), pagination.total)} of {pagination.total} products
-              </span>
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs">Per page:</span>
-                <Select value={String(filters.limit || 20)} onValueChange={(v) => setFilter("limit", Number(v))}>
-                  <SelectTrigger className="h-8 w-23.75 text-xs">
-                    <SelectValue placeholder="Limit">{filters.limit || 20} / page</SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {LIMIT_OPTIONS.map((l) => (
-                      <SelectItem key={l.value} value={l.value} className="text-xs">
-                        {l.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" disabled={pagination.page <= 1} onClick={() => setPage(pagination.page - 1)}>
-                Previous
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={pagination.page >= pagination.pages}
-                onClick={() => setPage(pagination.page + 1)}
-              >
-                Next
-              </Button>
-            </div>
-          </div>
+          <ProductPaginationBar
+            pagination={pagination}
+            filters={filters}
+            setFilter={setFilter}
+            setPage={setPage}
+            productsLength={products.length}
+            limitOptions={LIMIT_OPTIONS}
+          />
         </>
       )}
 
       <CreateProductDialog open={createOpen} onOpenChange={setCreateOpen} onCreated={fetchProducts} />
-
-      {/* Delete Confirm Dialog */}
       <ConfirmDialog {...confirmState} onConfirm={handleConfirm} onCancel={handleCancel} />
     </div>
   );

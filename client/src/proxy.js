@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 const ADMIN_PUBLIC_ROUTES = ["/admin/login"];
 
-export function middleware(request) {
+export function proxy(request) {
   const { pathname } = request.nextUrl;
 
   // Only gate /admin/* routes — the customer storefront is unrelated to
@@ -28,6 +28,9 @@ export function middleware(request) {
 
   return NextResponse.next();
 }
+
+// Alias for backward compatibility if needed
+export const middleware = proxy;
 
 export const config = {
   matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],

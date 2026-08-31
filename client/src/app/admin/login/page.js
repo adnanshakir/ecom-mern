@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useSelector } from "react-redux";
 import { Loader2, Eye, EyeOff } from "lucide-react";
 
 import { useAuth } from "@/hooks/admin/useAuth";
@@ -11,8 +13,16 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 
 export default function LoginPage() {
+  const router = useRouter();
   const { loginForm: form, isLoginSubmitting: isSubmitting, serverError, submitLogin: submit } = useAuth();
+  const { user, status, authReady } = useSelector((state) => state.auth);
   const [showPassword, setShowPassword] = useState(false);
+
+  useEffect(() => {
+    if (authReady && status === "authenticated" && user) {
+      router.replace("/admin/dashboard");
+    }
+  }, [authReady, status, user, router]);
 
   return (
     <PageContainer className="flex min-h-screen items-center justify-center">

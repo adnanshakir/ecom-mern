@@ -14,6 +14,7 @@ import {
   Check,
   Plus,
   Minus,
+  Share2,
 } from "lucide-react";
 import { useSelector } from "react-redux";
 import { toast } from "sonner";
@@ -115,6 +116,7 @@ export function ProductInteractiveSection({ product, variantSelectorProps }) {
   const [buyNowPending, setBuyNowPending] = useState(false);
   const [activeSlide, setActiveSlide] = useState(0); // 0 = Delivery timeline (appears first), 1 = Trust badges
   const [copiedSku, setCopiedSku] = useState(false);
+  const [copiedShare, setCopiedShare] = useState(false);
   const [isDescriptionOpen, setIsDescriptionOpen] = useState(false);
 
   const internalVariantSelector = useVariantSelector(product);
@@ -190,6 +192,34 @@ export function ProductInteractiveSection({ product, variantSelectorProps }) {
       return;
     }
     toggleWishlist();
+  };
+
+  const handleShare = async () => {
+    const shareData = {
+      title: product?.name || "Product",
+      text: `Check out ${product?.name || "this product"}!`,
+      url: typeof window !== "undefined" ? window.location.href : "",
+    };
+
+    if (typeof navigator !== "undefined" && navigator.share) {
+      try {
+        await navigator.share(shareData);
+        return;
+      } catch (err) {
+        if (err.name === "AbortError") return;
+      }
+    }
+
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      try {
+        await navigator.clipboard.writeText(window.location.href);
+        setCopiedShare(true);
+        toast.success("Product link copied to clipboard!");
+        setTimeout(() => setCopiedShare(false), 2000);
+      } catch (err) {
+        toast.error("Failed to copy link");
+      }
+    }
   };
 
   return (
@@ -292,7 +322,7 @@ export function ProductInteractiveSection({ product, variantSelectorProps }) {
             onClick={handleToggleWishlist}
             title={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
             className={cn(
-              "flex size-[38px] shrink-0 items-center justify-center rounded-lg border border-slate-300 dark:border-slate-700 bg-background transition-all duration-200 hover:bg-muted active:scale-95 shadow-2xs",
+              "flex size-[38px] shrink-0 items-center justify-center rounded-lg border border-slate-300 dark:border-slate-700 bg-background transition-all duration-200 hover:bg-muted active:scale-95 shadow-2xs cursor-pointer",
               isWishlisted && "border-rose-500 bg-rose-50 dark:bg-rose-950/40"
             )}
           >
@@ -302,6 +332,20 @@ export function ProductInteractiveSection({ product, variantSelectorProps }) {
                 isWishlisted ? "fill-rose-500 text-rose-500" : "text-slate-700 dark:text-slate-300"
               )}
             />
+          </button>
+
+          {/* Share Button */}
+          <button
+            type="button"
+            onClick={handleShare}
+            title="Share product"
+            className="flex size-[38px] shrink-0 items-center justify-center rounded-lg border border-slate-300 dark:border-slate-700 bg-background transition-all duration-200 hover:bg-muted text-slate-700 dark:text-slate-300 hover:text-foreground active:scale-95 shadow-2xs cursor-pointer"
+          >
+            {copiedShare ? (
+              <Check className="size-4.5 text-emerald-600 dark:text-emerald-400 stroke-[2.5]" />
+            ) : (
+              <Share2 className="size-4.5 stroke-[2]" />
+            )}
           </button>
         </div>
 

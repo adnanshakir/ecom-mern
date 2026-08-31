@@ -53,14 +53,14 @@ export function ProductGallery({ productImages, variantImages, allVariants }) {
   }, [variantImages]);
 
   const [active, setActive] = useState(0);
+  const [prevVariantKey, setPrevVariantKey] = useState(variantKey);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Switch active image to the selected variant's first image whenever variant changes
-  useEffect(() => {
-    if (variantKey) {
-      setActive(0);
-    }
-  }, [variantKey]);
+  if (variantKey !== prevVariantKey) {
+    setPrevVariantKey(variantKey);
+    setActive(0);
+  }
 
   const handlePrev = useCallback(() => {
     setActive((prev) => (prev === 0 ? images.length - 1 : prev - 1));
@@ -96,37 +96,40 @@ export function ProductGallery({ productImages, variantImages, allVariants }) {
 
   return (
     <div className="w-full">
-      {/* Gallery Layout: Left Thumbnails + Main Image */}
+      {/* Gallery Layout: Left Thumbnails + Main Display Image */}
       <div className="flex flex-col-reverse md:flex-row gap-4 items-start w-full">
-        {/* Thumbnails Column (Stacked Vertically on MD+) */}
-        {images.length > 1 && (
-          <div className="flex md:flex-col flex-row gap-2.5 overflow-x-auto md:overflow-y-auto max-h-[480px] w-full md:w-auto shrink-0 py-1 scrollbar-none [&::-webkit-scrollbar]:hidden">
+        {/* Thumbnails Column (Stacked Vertically on MD+, Always visible if images exist) */}
+        {images.length > 0 && (
+          <div className="flex md:flex-col flex-row gap-3 overflow-x-auto md:overflow-y-auto max-h-[500px] w-full md:w-auto shrink-0 py-1.5 px-0.5 scrollbar-none [&::-webkit-scrollbar]:hidden ">
             {images.map((img, i) => (
               <button
                 key={img.url + i}
                 type="button"
                 onClick={() => setActive(i)}
+                aria-label={`Select product image ${i + 1}`}
                 className={cn(
-                  "relative size-16 sm:size-18 shrink-0 overflow-hidden border-2 transition-all duration-200 focus:outline-hidden",
+                  "relative size-16 sm:size-18 shrink-0 rounded-xl p-0.5 bg-background transition-all duration-200 focus:outline-hidden cursor-pointer group",
                   active === i
-                    ? "border-[#033936] ring-2 ring-[#033936]/20 shadow-xs scale-102"
-                    : "border-slate-200 hover:border-slate-400 opacity-75 hover:opacity-100"
+                    ? "border border-black/20 dark:ring-white/50 ring-offset-2 ring-offset-background opacity-100 scale-102 shadow-xs"
+                    : "border border-white/20 dark:ring-slate-800 hover:ring-slate-400 dark:hover:ring-slate-600 opacity-70 hover:opacity-100"
                 )}
               >
-                <Image
-                  src={img.url}
-                  alt={`Product thumbnail ${i + 1}`}
-                  fill
-                  sizes="72px"
-                  className="object-cover"
-                />
+                <div className="relative size-full rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-800">
+                  <Image
+                    src={img.url}
+                    alt={`Product thumbnail ${i + 1}`}
+                    fill
+                    sizes="72px"
+                    className="object-cover transition-transform duration-300 group-hover:scale-105"
+                  />
+                </div>
               </button>
             ))}
           </div>
         )}
 
         {/* Main Display Image */}
-        <div className="relative flex-1 aspect-square max-w-[500px] w-full mx-auto overflow-hidden bg-muted border border-slate-200/80 shadow-xs group/main">
+        <div className="relative flex-1 aspect-square max-w-[500px] w-full mx-auto overflow-hidden bg-muted border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-xs group/main">
           {images[active] ? (
             <Image
               src={images[active].url}
@@ -137,7 +140,9 @@ export function ProductGallery({ productImages, variantImages, allVariants }) {
               priority
             />
           ) : (
-            <ImageIcon className="size-10 text-muted-foreground" />
+            <div className="flex size-full items-center justify-center">
+              <ImageIcon className="size-10 text-muted-foreground" />
+            </div>
           )}
 
           {/* Fullscreen Trigger Button */}
@@ -145,7 +150,7 @@ export function ProductGallery({ productImages, variantImages, allVariants }) {
             <button
               type="button"
               onClick={() => setIsFullscreen(true)}
-              className="absolute top-3 right-3 z-10 flex size-9 items-center justify-center rounded-full bg-white/90 text-slate-800 shadow-md backdrop-blur-xs transition-all duration-200 hover:bg-white hover:scale-110 active:scale-95"
+              className="absolute top-3 right-3 z-10 flex size-9 items-center justify-center rounded-full bg-white/90 dark:bg-slate-900/90 text-slate-800 dark:text-slate-100 shadow-md backdrop-blur-xs transition-all duration-200 hover:bg-white dark:hover:bg-slate-800 hover:scale-110 active:scale-95 cursor-pointer"
               title="View image full screen"
             >
               <Maximize2 className="size-4 stroke-[2.2]" />

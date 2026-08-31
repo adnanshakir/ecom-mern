@@ -39,16 +39,16 @@ export function ShopByCategory() {
 
   if (loading) {
     return (
-      <section className="space-y-6 pt-4">
+      <section className="space-y-4 pt-2">
         <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
           <div className="space-y-2">
-            <div className="h-4 w-32 rounded bg-muted animate-pulse" />
-            <div className="h-7 w-64 rounded bg-muted animate-pulse" />
+            <div className="h-4 w-32 rounded-md bg-muted animate-pulse" />
+            <div className="h-7 w-64 rounded-md bg-muted animate-pulse" />
           </div>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-3.5">
           {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="min-h-48.75 sm:min-h-52.5 rounded bg-muted/60 animate-pulse" />
+            <div key={i} className="min-h-48.75 sm:min-h-52.5 rounded-xl bg-muted/60 animate-pulse" />
           ))}
         </div>
       </section>
@@ -56,7 +56,7 @@ export function ShopByCategory() {
   }
 
   return (
-    <section className="space-y-6 pt-4">
+    <section className="space-y-4 pt-2">
       {/* Section Header */}
       <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
         <div>
@@ -76,12 +76,12 @@ export function ShopByCategory() {
       </div>
 
       {/* Grid: 4 columns on large screens (First 7 category cards + 1 highlight card) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-3.5">
         {displayItems.map((item) => (
           <Link
             key={item.id}
             href={item.href}
-            className="group relative flex flex-col justify-between overflow-hidden rounded border border-border/40 bg-muted/40 p-5 transition-all duration-300 min-h-48.75 sm:min-h-52.5"
+            className="group relative flex flex-col justify-between overflow-hidden rounded-xl border border-border/40 bg-muted/40 p-4 sm:p-5 transition-all duration-300 min-h-48.75 sm:min-h-52.5 hover:shadow-md"
           >
             {/* Background image */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -105,7 +105,7 @@ export function ShopByCategory() {
         {/* 8th Highlight Card: Explore All Categories */}
         <Link
           href="/category"
-          className="group relative flex flex-col justify-between overflow-hidden rounded bg-[#0B192C] p-6 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 min-h-48.75 sm:min-h-52.5"
+          className="group relative flex flex-col justify-between overflow-hidden rounded-xl bg-[#0B192C] p-5 sm:p-6 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 min-h-48.75 sm:min-h-52.5"
         >
           {/* Header */}
           <div className="relative z-10">
