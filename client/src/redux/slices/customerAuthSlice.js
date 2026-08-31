@@ -46,7 +46,10 @@ export const refreshCustomerToken = createAsyncThunk(
       const { data } = await refreshCustomerRequest();
       return data.data; // {accessToken}
     } catch (err) {
-      return rejectWithValue(err.response?.data?.message || "Session expired");
+      return rejectWithValue({
+        message: err.response?.data?.message || "Session expired",
+        status: err.response?.status,
+      });
     }
   }
 );
@@ -114,10 +117,13 @@ const customerAuthSlice = createSlice({
         state.user = action.payload.user;
         state.authReady = true;
       })
-      .addCase(refreshCustomerToken.rejected, (state) => {
-        state.status = "unauthenticated";
-        state.accessToken = null;
-        state.user = null;
+      .addCase(refreshCustomerToken.rejected, (state, action) => {
+        const status = action.payload?.status;
+        if (!status || status === 401) {
+          state.status = "unauthenticated";
+          state.accessToken = null;
+          state.user = null;
+        }
         state.authReady = true;
       })
       .addCase(customerLogout.fulfilled, (state) => {

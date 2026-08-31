@@ -31,11 +31,20 @@ export function createAuthenticatedApi({
     withCredentials: true,
   });
 
+  const setAuthHeader = (headers, token) => {
+    if (!headers || !token) return;
+    if (typeof headers.set === "function") {
+      headers.set("Authorization", `Bearer ${token}`);
+    } else {
+      headers.Authorization = `Bearer ${token}`;
+    }
+  };
+
   // Attach the in-memory access token to every request.
   api.interceptors.request.use((config) => {
     const accessToken = store?.getState()?.[stateKey]?.accessToken;
     if (accessToken) {
-      config.headers.Authorization = `Bearer ${accessToken}`;
+      setAuthHeader(config.headers, accessToken);
     }
     return config;
   });
@@ -71,7 +80,7 @@ export function createAuthenticatedApi({
           pendingQueue.push({ resolve, reject });
         })
           .then((token) => {
-            originalRequest.headers.Authorization = `Bearer ${token}`;
+            setAuthHeader(originalRequest.headers, token);
             return api(originalRequest);
           })
           .catch((err) => Promise.reject(err));
@@ -85,14 +94,18 @@ export function createAuthenticatedApi({
         const result = await store.dispatch(refreshThunk());
 
         if (refreshThunk.rejected.match(result)) {
-          store.dispatch(logoutAction());
+          // Only force client logout if the refresh returned 401 (unauthorized).
+          // If it was a temporary 429 rate limit or network issue, don't destroy session state.
+          if (result.payload?.status === 401 || result.meta?.rejectedWithValue) {
+            store.dispatch(logoutAction());
+          }
           processQueue(error, null);
           return Promise.reject(error);
         }
 
         const newToken = result.payload.accessToken;
         processQueue(null, newToken);
-        originalRequest.headers.Authorization = `Bearer ${newToken}`;
+        setAuthHeader(originalRequest.headers, newToken);
         return api(originalRequest);
       } catch (refreshError) {
         processQueue(refreshError, null);
