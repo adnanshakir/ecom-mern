@@ -77,9 +77,9 @@ export function ProductCard({ product, showCartOnHover = false }) {
   };
 
   return (
-    <div className="group relative flex flex-col border overflow-hidden bg-card transition-shadow duration-200 ">
+    <div className="group relative flex flex-col border overflow-hidden bg-card transition-all duration-200 hover:shadow-md">
       <Link href={`/product/${product.slug}`} className="relative block">
-        {/* Image */}
+        {/* Image Container with overflow-hidden to keep zoom inside container */}
         <div className="relative aspect-square w-full overflow-hidden bg-muted">
           {thumbnail ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -89,7 +89,7 @@ export function ProductCard({ product, showCartOnHover = false }) {
               loading="lazy"
               decoding="async"
               className={cn(
-                "absolute inset-0 w-full p-2 h-full object-cover transition-transform duration-300 group-hover:scale-105",
+                "size-full object-cover object-center transition-transform duration-500 ease-out group-hover:scale-105",
                 !inStock && "opacity-50"
               )}
             />
@@ -148,11 +148,6 @@ export function ProductCard({ product, showCartOnHover = false }) {
         {/* Product info */}
         <div className="grid gap-1 p-3">
           <h3 className="line-clamp-1 text-sm font-medium">{product.name}</h3>
-          {product.description && (
-            <p className="line-clamp-1 text-xs text-muted-foreground">
-              {product.description.replace(/<[^>]*>?/gm, "").trim()}
-            </p>
-          )}
 
           <div className="mt-1 flex items-baseline gap-1.5 flex-wrap">
             {discountedVariant ? (

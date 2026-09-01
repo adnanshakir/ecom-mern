@@ -9,7 +9,7 @@ export function ProductScrollRow({
   loading = false,
   error = null,
   emptyMessage = "No products found.",
-  itemClassName = "w-44 xs:w-48 sm:w-56 shrink-0",
+  itemClassName = "w-48 sm:w-60 md:w-[260px] shrink-0",
 }) {
   const scrollContainerRef = useRef(null);
   const [showLeftMask, setShowLeftMask] = useState(false);

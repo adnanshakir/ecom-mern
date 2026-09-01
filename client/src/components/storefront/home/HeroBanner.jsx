@@ -49,46 +49,63 @@ export function HeroBanner() {
 
   return (
     <section
-      className="relative w-full overflow-hidden mx-auto max-w-[1800px] group bg-muted/10"
+      className="relative w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 pt-3 sm:pt-4 group"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >
-      {/* Banner Slide Content - Optimized height to prevent corner cropping */}
-      <div className="relative border-4 w-full aspect-[2.4/1] sm:aspect-[2.8/1] max-h-[380px] sm:max-h-[430px] flex items-center justify-center">
-        <Link href={href} className="block w-full h-full">
+      {/* Banner Slide Container with rounded corners & shadow */}
+      <div className="relative w-full overflow-hidden rounded-2xl sm:rounded-3xl shadow-lg sm:shadow-xl border border-border/40 bg-muted/20 aspect-[2.2/1] sm:aspect-[2.7/1] md:aspect-[3/1] lg:aspect-[3.2/1] max-h-[480px] sm:max-h-[540px] flex items-center justify-center">
+        <Link href={href} className="block w-full h-full relative group/link">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             key={imageUrl}
             src={imageUrl}
-            alt="Hero Banner"
+            alt={currentSlide.title || "Hero Banner"}
             decoding="async"
-            className="w-full h-full object-contain sm:object-cover object-center transition-all duration-700 ease-in-out"
+            className="w-full h-full object-cover object-center transition-all duration-700 ease-in-out group-hover/link:scale-[1.01]"
           />
         </Link>
+
+        {/* Manual Back & Forward Arrow Navigation */}
+        {slides.length > 1 && (
+          <>
+            <button
+              type="button"
+              onClick={prevSlide}
+              aria-label="Previous Banner"
+              className="absolute left-3 sm:left-5 top-1/2 -translate-y-1/2 z-20 flex size-9 sm:size-11 items-center justify-center rounded-full bg-black/40 text-white backdrop-blur-md border border-white/20 transition-all hover:bg-black/70 hover:scale-110 focus:outline-none opacity-80 sm:opacity-0 sm:group-hover:opacity-100 shadow-md"
+            >
+              <ChevronLeft className="size-5 sm:size-6" />
+            </button>
+
+            <button
+              type="button"
+              onClick={nextSlide}
+              aria-label="Next Banner"
+              className="absolute right-3 sm:right-5 top-1/2 -translate-y-1/2 z-20 flex size-9 sm:size-11 items-center justify-center rounded-full bg-black/40 text-white backdrop-blur-md border border-white/20 transition-all hover:bg-black/70 hover:scale-110 focus:outline-none opacity-80 sm:opacity-0 sm:group-hover:opacity-100 shadow-md"
+            >
+              <ChevronRight className="size-5 sm:size-6" />
+            </button>
+
+            {/* Pagination Dots */}
+            <div className="absolute bottom-3 sm:bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 sm:gap-2 px-3 py-1.5 rounded-full bg-black/30 backdrop-blur-md border border-white/10">
+              {slides.map((_, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => setCurrentIndex(idx)}
+                  aria-label={`Go to slide ${idx + 1}`}
+                  className={`h-2 rounded-full transition-all duration-300 ${
+                    currentIndex === idx
+                      ? "w-6 sm:w-8 bg-white"
+                      : "w-2 bg-white/50 hover:bg-white/80"
+                  }`}
+                />
+              ))}
+            </div>
+          </>
+        )}
       </div>
-
-      {/* Manual Back & Forward Arrow Navigation */}
-      {slides.length > 1 && (
-        <>
-          <button
-            type="button"
-            onClick={prevSlide}
-            aria-label="Previous Banner"
-            className="absolute left-3 sm:left-5 top-1/2 -translate-y-1/2 z-20 flex size-9 sm:size-11 items-center justify-center rounded-full bg-black/40 text-white backdrop-blur-md border border-white/20 transition-all hover:bg-black/70 hover:scale-110 focus:outline-none opacity-80 sm:opacity-0 sm:group-hover:opacity-100 shadow-md"
-          >
-            <ChevronLeft className="size-5 sm:size-6" />
-          </button>
-
-          <button
-            type="button"
-            onClick={nextSlide}
-            aria-label="Next Banner"
-            className="absolute right-3 sm:right-5 top-1/2 -translate-y-1/2 z-20 flex size-9 sm:size-11 items-center justify-center rounded-full bg-black/40 text-white backdrop-blur-md border border-white/20 transition-all hover:bg-black/70 hover:scale-110 focus:outline-none opacity-80 sm:opacity-0 sm:group-hover:opacity-100 shadow-md"
-          >
-            <ChevronRight className="size-5 sm:size-6" />
-          </button>
-        </>
-      )}
     </section>
   );
 }

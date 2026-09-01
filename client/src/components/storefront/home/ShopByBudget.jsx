@@ -10,16 +10,16 @@ export function ShopByBudget() {
   const budgetSlides = (banners.budget?.slides || []).filter((slide) => slide.isActive !== false);
 
   return (
-    <section className="space-y-6 ">
+    <section className="mx-auto max-w-[1300px] space-y-4">
       {/* Budget Banner Grid */}
       {loading ? (
         <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, idx) => (
             <div
               key={idx}
-              className="relative aspect-4/3 sm:aspect-square w-full overflow-hidden rounded-2xl border border-border/40 bg-card p-1.5 shadow-2xs"
+              className="relative aspect-[4/3] sm:aspect-[1.15/1] max-h-[230px] w-full overflow-hidden rounded-xl sm:rounded-2xl border border-border/40 bg-card p-1.5 shadow-2xs"
             >
-              <Skeleton className="size-full rounded-xl" />
+              <Skeleton className="size-full rounded-lg sm:rounded-xl" />
             </div>
           ))}
         </div>
@@ -37,9 +37,9 @@ export function ShopByBudget() {
               <Link
                 key={slide._id || idx}
                 href={href}
-                className="group relative block overflow-hidden rounded-2xl border border-border/50 bg-card shadow-xs transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
+                className="group relative block overflow-hidden rounded-xl sm:rounded-2xl border border-border/50 bg-card shadow-2xs transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5"
               >
-                <div className="relative aspect-4/3 sm:aspect-square w-full overflow-hidden bg-muted">
+                <div className="relative aspect-[4/3] sm:aspect-[1.15/1] max-h-[230px] w-full overflow-hidden bg-muted">
                   {imageUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
