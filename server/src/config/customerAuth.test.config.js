@@ -29,6 +29,7 @@ export async function createTestCustomerAuth() {
       "[CUSTOMER AUTH TEST INDEX ERROR] Failed to create unique sparse index on customerUser.phoneNumber:",
       err
     );
+    throw err;
   }
 
   testCustomerAuthInstance = betterAuth({

@@ -25,20 +25,20 @@ import wishlistRoutes from "./routes/customer/wishlist.routes.js";
 import { errorHandler, notFound } from "./middleware/error.middleware.js";
 
 const app = express();
-const allowedFrontendUrl = (process.env.FRONTEND_URL || "").replace(/\/$/, "");
 
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin) return callback(null, true); // same-origin / non-browser (curl, mobile) requests
+      if (!origin) return callback(null, true);
+
+      const allowedFrontendUrls = (process.env.FRONTEND_URL || "")
+        .split(",")
+        .map((url) => url.trim().replace(/\/$/, ""))
+        .filter(Boolean);
 
       const normalizedOrigin = origin.replace(/\/$/, "");
 
-      const isAllowed =
-        !allowedFrontendUrl || // no FRONTEND_URL set yet → permissive for now, tighten before prod
-        normalizedOrigin === allowedFrontendUrl ||
-        normalizedOrigin.endsWith(".vercel.app") ||
-        normalizedOrigin.includes("localhost");
+      const isAllowed = allowedFrontendUrls.includes(normalizedOrigin);
 
       if (isAllowed) {
         return callback(null, true);

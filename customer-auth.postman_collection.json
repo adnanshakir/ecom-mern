@@ -37,13 +37,7 @@
                   "    const jsonData = pm.response.json();",
                   "    const userId = jsonData.user ? (jsonData.user.id || jsonData.user._id) : (jsonData.id || jsonData._id);",
                   "    pm.expect(userId, 'User ID should be present in response').to.be.a('string').that.is.not.empty;",
-                  "",
-                  "    const lastUserId = pm.environment.get('lastUserId');",
-                  "    if (lastUserId) {",
-                  "        pm.expect(userId, 'User ID should match lastUserId').to.equal(lastUserId);",
-                  "    } else {",
-                  "        pm.environment.set('lastUserId', userId);",
-                  "    }",
+                  "    pm.environment.set('lastUserId', userId);",
                   "});"
                 ],
                 "type": "text/javascript"

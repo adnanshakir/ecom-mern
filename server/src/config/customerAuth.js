@@ -28,6 +28,33 @@ export async function createCustomerAuth() {
       "[CUSTOMER AUTH INDEX ERROR] Failed to create unique sparse index on customerUser.phoneNumber:",
       err
     );
+    throw err;
+  }
+
+  let baseURL = process.env.BETTER_AUTH_URL;
+
+  if (process.env.NODE_ENV === "production") {
+    if (!baseURL) {
+      throw new Error("BETTER_AUTH_URL environment variable is required in production");
+    }
+
+    try {
+      const parsedUrl = new URL(baseURL);
+      const isLocalhost =
+        parsedUrl.hostname === "localhost" ||
+        parsedUrl.hostname === "127.0.0.1" ||
+        parsedUrl.hostname === "::1" ||
+        parsedUrl.hostname === "0.0.0.0";
+
+      if (parsedUrl.protocol !== "https:" || isLocalhost) {
+        throw new Error("BETTER_AUTH_URL must be a valid public HTTPS origin in production");
+      }
+    } catch (err) {
+      if (err.message.includes("BETTER_AUTH_URL")) throw err;
+      throw new Error(`Invalid BETTER_AUTH_URL in production: ${baseURL}`);
+    }
+  } else {
+    baseURL = baseURL || `http://localhost:${process.env.PORT || 5000}`;
   }
 
   const allowedOrigins = process.env.TRUSTED_ORIGINS
@@ -44,7 +71,7 @@ export async function createCustomerAuth() {
       disabled: false,
     },
     basePath: "/api/v1/customers/auth",
-    baseURL: process.env.BETTER_AUTH_URL || `http://localhost:${process.env.PORT || 5000}`,
+    baseURL,
     secret: process.env.BETTER_AUTH_SECRET || process.env.JWT_SECRET,
     database: mongodbAdapter(db, {
       client: client,
