@@ -20,10 +20,9 @@ export async function createCustomerAuth() {
   }
 
   try {
-    await db.collection("customerUser").createIndex(
-      { phoneNumber: 1 },
-      { unique: true, sparse: true }
-    );
+    await db
+      .collection("customerUser")
+      .createIndex({ phoneNumber: 1 }, { unique: true, sparse: true });
   } catch (err) {
     console.error(
       "[CUSTOMER AUTH INDEX ERROR] Failed to create unique sparse index on customerUser.phoneNumber:",
@@ -91,6 +90,12 @@ export async function createCustomerAuth() {
         create: {
           before: async (user) => {
             if (user.phoneNumber) {
+              const digits = user.phoneNumber.replace(/\D/g, "");
+              const localDigits =
+                digits.length === 12 && digits.startsWith("91") ? digits.slice(2) : digits;
+              if (/^[6-9]\d{9}$/.test(localDigits)) {
+                user.phoneNumber = `+91${localDigits}`;
+              }
               const db = mongoose.connection.db;
               if (db) {
                 const existingUser = await db.collection("customerUser").findOne({
@@ -125,17 +130,37 @@ export async function createCustomerAuth() {
           }
           console.log(`[CUSTOMER AUTH OTP] Phone: ${phoneNumber} | Code: ${code}`);
         },
-        // Indian phone validation: accept 10 bare digits (local) or +91 prefix
-        // (12 digits starting with 91 after stripping non-digits).
+        // Indian phone validation: accept supported 10- or 12-digit inputs with optional + prefix
+        // (local digits matching ^[6-9]\d{9}$) and normalize to canonical E.164 (+91XXXXXXXXXX).
         phoneNumberValidator: async (phone) => {
+          if (!phone || typeof phone !== "string") return false;
           const digits = phone.replace(/\D/g, "");
-          if (digits.length === 10) return true;
-          if (digits.length === 12 && digits.startsWith("91")) return true;
-          return false;
+          let localDigits = "";
+          if (digits.length === 10) {
+            localDigits = digits;
+          } else if (digits.length === 12 && digits.startsWith("91")) {
+            localDigits = digits.slice(2);
+          } else {
+            return false;
+          }
+          return /^[6-9]\d{9}$/.test(localDigits);
         },
         signUpOnVerification: {
-          getTempEmail: (phoneNumber) => `${phoneNumber.replace(/[^0-9]/g, "")}@customer.local`,
-          getTempName: (phoneNumber) => phoneNumber,
+          getTempEmail: (phoneNumber) => {
+            const digits = phoneNumber.replace(/\D/g, "");
+            const localDigits =
+              digits.length === 12 && digits.startsWith("91") ? digits.slice(2) : digits;
+            const canonical = /^[6-9]\d{9}$/.test(localDigits)
+              ? `+91${localDigits}`
+              : phoneNumber;
+            return `${canonical.replace(/[^0-9]/g, "")}@customer.local`;
+          },
+          getTempName: (phoneNumber) => {
+            const digits = phoneNumber.replace(/\D/g, "");
+            const localDigits =
+              digits.length === 12 && digits.startsWith("91") ? digits.slice(2) : digits;
+            return /^[6-9]\d{9}$/.test(localDigits) ? `+91${localDigits}` : phoneNumber;
+          },
         },
       }),
       emailOTP({

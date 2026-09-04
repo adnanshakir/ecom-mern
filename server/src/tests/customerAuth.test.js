@@ -156,7 +156,18 @@ describe("Customer Auth - Phone number validation (Indian format)", () => {
     expect(res.status).toBe(200);
   });
 
+  it("accepts 10-digit number with + prefix (+9876543210)", async () => {
+    const res = await sendOTP("+9876543210");
+    expect(res.status).toBe(200);
+  });
+
   // --- invalid formats ---
+  it("rejects 10-digit number starting with invalid digit (e.g. 1234567890)", async () => {
+    const res = await sendOTP("1234567890");
+    expect(res.status).toBeGreaterThanOrEqual(400);
+    expect(res.status).toBeLessThan(500);
+  });
+
   it("rejects a US-format number (+1 country code)", async () => {
     const res = await sendOTP("+15550001111");
     expect(res.status).toBeGreaterThanOrEqual(400);
@@ -179,6 +190,18 @@ describe("Customer Auth - Phone number validation (Indian format)", () => {
     const res = await sendOTP("");
     expect(res.status).toBeGreaterThanOrEqual(400);
     expect(res.status).toBeLessThan(500);
+  });
+
+  it("normalizes bare 10-digit inputs to canonical E.164 (+91XXXXXXXXXX) upon persistence", async () => {
+    const { verifyRes } = await phoneSignUp(testApp, "9876543210");
+    expect(verifyRes.status).toBe(200);
+    expect(verifyRes.body.user).toBeDefined();
+    expect(verifyRes.body.user.phoneNumber).toBe("+919876543210");
+
+    const db = mongoose.connection.db;
+    const userDoc = await db.collection("customerUser").findOne({ phoneNumber: "+919876543210" });
+    expect(userDoc).toBeDefined();
+    expect(userDoc.phoneNumber).toBe("+919876543210");
   });
 });
 
