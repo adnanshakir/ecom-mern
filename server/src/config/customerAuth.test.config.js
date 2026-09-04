@@ -1,6 +1,7 @@
 import { betterAuth } from "better-auth/minimal";
 import { mongodbAdapter } from "better-auth/adapters/mongodb";
 import { phoneNumber } from "better-auth/plugins/phone-number";
+import { emailOTP } from "better-auth/plugins";
 import { testUtils } from "better-auth/plugins";
 import { toNodeHandler } from "better-auth/node";
 import { APIError } from "better-auth/api";
@@ -85,28 +86,28 @@ export async function createTestCustomerAuth() {
     verification: {
       modelName: "customerVerification",
     },
-    emailAndPassword: {
-      enabled: true,
-      requireEmailVerification: false,
-      minPasswordLength: 8,
-      maxPasswordLength: 128,
-    },
-    emailVerification: {
-      sendVerificationEmail: ({ user, url, token }) => {
-        console.log(
-          `[TEST EMAIL VERIFICATION] User: ${user.email} | URL: ${url} | Token: ${token}`
-        );
-      },
-      autoSignInAfterVerification: true,
-    },
     plugins: [
       phoneNumber({
         sendOTP: ({ phoneNumber, code }) => {
           console.log(`[TEST OTP] Phone: ${phoneNumber} | Code: ${code}`);
         },
+        // Indian phone validation: accept 10 bare digits (local) or +91 prefix
+        // (12 digits starting with 91 after stripping non-digits).
+        phoneNumberValidator: async (phone) => {
+          const digits = phone.replace(/\D/g, "");
+          if (digits.length === 10) return true;
+          if (digits.length === 12 && digits.startsWith("91")) return true;
+          return false;
+        },
         signUpOnVerification: {
           getTempEmail: (phoneNumber) => `${phoneNumber.replace(/[^0-9]/g, "")}@customer.local`,
           getTempName: (phoneNumber) => phoneNumber,
+        },
+      }),
+      emailOTP({
+        disableSignUp: true,
+        sendVerificationOTP: ({ email, otp, type }) => {
+          console.log(`[TEST EMAIL OTP] Email: ${email} | Type: ${type} | Code: ${otp}`);
         },
       }),
       testUtils({ captureOTP: true }),

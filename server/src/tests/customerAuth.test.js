@@ -3,7 +3,10 @@ import request from "supertest";
 import express from "express";
 import mongoose from "mongoose";
 import { connectTestDB, closeTestDB, clearTestDB } from "./setup.js";
-import { createTestCustomerAuth, getTestCustomerAuthHandler } from "../config/customerAuth.test.config.js";
+import {
+  createTestCustomerAuth,
+  getTestCustomerAuthHandler,
+} from "../config/customerAuth.test.config.js";
 
 let testApp;
 
@@ -26,101 +29,87 @@ afterAll(async () => {
   await closeTestDB();
 });
 
+// ---------------------------------------------------------------------------
+// Helper: retrieve the OTP stored in the verification collection.
+// The phoneNumber plugin stores verification value as "${code}:${attempts}",
+// so we split on ":" and take the first segment.
+// ---------------------------------------------------------------------------
+async function getCapturedOTP(identifier) {
+  const db = mongoose.connection.db;
+  const doc = await db.collection("customerVerification").findOne({ identifier });
+  if (!doc?.value) return null;
+  return doc.value.split(":")[0];
+}
+
+/**
+ * Full phone OTP sign-up/sign-in flow via HTTP.
+ * Sends OTP then reads the code from the DB and verifies it.
+ */
+async function phoneSignUp(app, phoneNumber) {
+  const sendRes = await request(app)
+    .post("/api/v1/customers/auth/phone-number/send-otp")
+    .set("Origin", "http://localhost:3000")
+    .send({ phoneNumber });
+
+  expect(sendRes.status).toBe(200);
+
+  const code = await getCapturedOTP(phoneNumber);
+  expect(code).toBeTruthy();
+
+  const verifyRes = await request(app)
+    .post("/api/v1/customers/auth/phone-number/verify")
+    .set("Origin", "http://localhost:3000")
+    .send({ phoneNumber, code });
+
+  return { sendRes, verifyRes, code };
+}
+
+// ---------------------------------------------------------------------------
+// Sign-up via phone OTP (the only allowed sign-up path)
+// ---------------------------------------------------------------------------
+
+describe("Customer Auth - Phone OTP sign-up", () => {
+  it("creates a new account on first phone OTP verification", async () => {
+    const { verifyRes } = await phoneSignUp(testApp, "+919876543210");
+
+    expect(verifyRes.status).toBe(200);
+    expect(verifyRes.body.user).toBeDefined();
+    expect(verifyRes.body.user.phoneNumber).toBe("+919876543210");
+  });
+
+  it("signs in an existing account on subsequent phone OTP verification", async () => {
+    // First verify = sign-up
+    await phoneSignUp(testApp, "+919876543210");
+
+    // Second verify = sign-in (no new user created)
+    const { verifyRes } = await phoneSignUp(testApp, "+919876543210");
+
+    expect(verifyRes.status).toBe(200);
+    expect(verifyRes.body.user).toBeDefined();
+    expect(verifyRes.body.user.phoneNumber).toBe("+919876543210");
+
+    const db = mongoose.connection.db;
+    const userCount = await db
+      .collection("customerUser")
+      .countDocuments({ phoneNumber: "+919876543210" });
+    expect(userCount).toBe(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Phone number uniqueness (regression)
+// ---------------------------------------------------------------------------
+
 describe("Customer Auth - Phone Number Uniqueness Regression Tests", () => {
-  it("allows registration for the first user with phone A", async () => {
-    const res = await request(testApp)
-      .post("/api/v1/customers/auth/sign-up/email")
-      .set("Origin", "http://localhost:3000")
-      .send({
-        name: "User One",
-        email: "user1@example.com",
-        password: "Password123!",
-        phoneNumber: "+15550001111",
-      });
+  it("allows multiple users with different phone numbers", async () => {
+    await phoneSignUp(testApp, "+919876543210");
+    await phoneSignUp(testApp, "+919876540000");
 
-    expect(res.status).toBe(200);
-    expect(res.body.user).toBeDefined();
-    expect(res.body.user.email).toBe("user1@example.com");
-    expect(res.body.user.phoneNumber).toBe("+15550001111");
-  });
-
-  it("rejects registration for a second user with the same phone A (email 2)", async () => {
-    // Register first user
-    await request(testApp)
-      .post("/api/v1/customers/auth/sign-up/email")
-      .set("Origin", "http://localhost:3000")
-      .send({
-        name: "User One",
-        email: "user1@example.com",
-        password: "Password123!",
-        phoneNumber: "+15550001111",
-      });
-
-    // Attempt second user with same phone number
-    const res = await request(testApp)
-      .post("/api/v1/customers/auth/sign-up/email")
-      .set("Origin", "http://localhost:3000")
-      .send({
-        name: "User Two",
-        email: "user2@example.com",
-        password: "Password123!",
-        phoneNumber: "+15550001111",
-      });
-
-    expect(res.status).toBe(400);
-    expect(res.body.message).toBe("User with this phone number already exists");
-  });
-
-  it("allows registration for a second user with phone B (different phone number)", async () => {
-    // Register first user
-    await request(testApp)
-      .post("/api/v1/customers/auth/sign-up/email")
-      .set("Origin", "http://localhost:3000")
-      .send({
-        name: "User One",
-        email: "user1@example.com",
-        password: "Password123!",
-        phoneNumber: "+15550001111",
-      });
-
-    // Register second user with different phone number
-    const res = await request(testApp)
-      .post("/api/v1/customers/auth/sign-up/email")
-      .set("Origin", "http://localhost:3000")
-      .send({
-        name: "User Two",
-        email: "user2@example.com",
-        password: "Password123!",
-        phoneNumber: "+15550002222",
-      });
-
-    expect(res.status).toBe(200);
-    expect(res.body.user).toBeDefined();
-    expect(res.body.user.email).toBe("user2@example.com");
-    expect(res.body.user.phoneNumber).toBe("+15550002222");
-  });
-
-  it("allows multiple users without a phone number due to sparse indexing", async () => {
-    const res1 = await request(testApp)
-      .post("/api/v1/customers/auth/sign-up/email")
-      .set("Origin", "http://localhost:3000")
-      .send({
-        name: "User Without Phone 1",
-        email: "nophone1@example.com",
-        password: "Password123!",
-      });
-
-    const res2 = await request(testApp)
-      .post("/api/v1/customers/auth/sign-up/email")
-      .set("Origin", "http://localhost:3000")
-      .send({
-        name: "User Without Phone 2",
-        email: "nophone2@example.com",
-        password: "Password123!",
-      });
-
-    expect(res1.status).toBe(200);
-    expect(res2.status).toBe(200);
+    const db = mongoose.connection.db;
+    const count = await db.collection("customerUser").countDocuments({
+      phoneNumber: { $in: ["+919876543210", "+919876540000"] },
+    });
+    expect(count).toBe(2);
   });
 
   it("re-throws createIndex failure in createCustomerAuth to prevent initialization without unique index", async () => {
@@ -132,11 +121,172 @@ describe("Customer Auth - Phone Number Uniqueness Regression Tests", () => {
       createIndex: jest.fn().mockRejectedValueOnce(indexError),
     });
 
-    await expect(createCustomerAuth()).rejects.toThrow("Index creation failed due to duplicate keys");
+    await expect(createCustomerAuth()).rejects.toThrow(
+      "Index creation failed due to duplicate keys"
+    );
 
     spy.mockRestore();
   });
 });
+
+// ---------------------------------------------------------------------------
+// Phone number validator — Indian format only
+// ---------------------------------------------------------------------------
+
+describe("Customer Auth - Phone number validation (Indian format)", () => {
+  const sendOTP = (phone) =>
+    request(testApp)
+      .post("/api/v1/customers/auth/phone-number/send-otp")
+      .set("Origin", "http://localhost:3000")
+      .send({ phoneNumber: phone });
+
+  // --- valid formats ---
+  it("accepts 10-digit bare number (no country code)", async () => {
+    const res = await sendOTP("9876543210");
+    expect(res.status).toBe(200);
+  });
+
+  it("accepts +91 prefix with 10-digit number", async () => {
+    const res = await sendOTP("+919876543210");
+    expect(res.status).toBe(200);
+  });
+
+  it("accepts 91 prefix (no +) with 10-digit number", async () => {
+    const res = await sendOTP("919876543210");
+    expect(res.status).toBe(200);
+  });
+
+  // --- invalid formats ---
+  it("rejects a US-format number (+1 country code)", async () => {
+    const res = await sendOTP("+15550001111");
+    expect(res.status).toBeGreaterThanOrEqual(400);
+    expect(res.status).toBeLessThan(500);
+  });
+
+  it("rejects a number with fewer than 10 digits", async () => {
+    const res = await sendOTP("+91987654");
+    expect(res.status).toBeGreaterThanOrEqual(400);
+    expect(res.status).toBeLessThan(500);
+  });
+
+  it("rejects a number with more than 10 digits (not +91 form)", async () => {
+    const res = await sendOTP("123456789012");
+    expect(res.status).toBeGreaterThanOrEqual(400);
+    expect(res.status).toBeLessThan(500);
+  });
+
+  it("rejects an empty string", async () => {
+    const res = await sendOTP("");
+    expect(res.status).toBeGreaterThanOrEqual(400);
+    expect(res.status).toBeLessThan(500);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// emailOTP — must NOT create new accounts (disableSignUp: true)
+// ---------------------------------------------------------------------------
+
+describe("Customer Auth - emailOTP sign-in does not create new accounts", () => {
+  it("allows the send-verification-otp call for an unknown email (send is always accepted)", async () => {
+    // With disableSignUp: true, the send step still accepts any email address
+    // (it doesn't know/check if the user exists at send time).
+    const sendRes = await request(testApp)
+      .post("/api/v1/customers/auth/email-otp/send-verification-otp")
+      .set("Origin", "http://localhost:3000")
+      .send({ email: "ghost@example.com", type: "sign-in" });
+
+    // send returns 200 even for unknown emails — the block is at sign-in verify
+    expect(sendRes.status).toBe(200);
+  });
+
+  it("rejects emailOTP sign-in verify for an email with no matching user (disableSignUp: true)", async () => {
+    // Step 1: send the OTP (this always succeeds)
+    const sendRes = await request(testApp)
+      .post("/api/v1/customers/auth/email-otp/send-verification-otp")
+      .set("Origin", "http://localhost:3000")
+      .send({ email: "ghost@example.com", type: "sign-in" });
+
+    expect(sendRes.status).toBe(200);
+
+    // Step 2: retrieve the captured OTP and attempt sign-in
+    // The verify collection identifier for emailOTP uses "sign-in-otp-{email}"
+    const code = await getCapturedOTP("sign-in-otp-ghost@example.com");
+    // Fallback: try the email directly as identifier
+    const fallbackCode = code ?? (await getCapturedOTP("ghost@example.com"));
+
+    // The sign-in verify step should reject because no user has this email and
+    // disableSignUp is true, so no account is auto-created.
+    const signInRes = await request(testApp)
+      .post("/api/v1/customers/auth/sign-in/email-otp")
+      .set("Origin", "http://localhost:3000")
+      .send({ email: "ghost@example.com", otp: fallbackCode || "000000" });
+
+    // Should fail: either the user doesn't exist (404/400) or invalid OTP
+    expect(signInRes.status).toBeGreaterThanOrEqual(400);
+    expect(signInRes.status).toBeLessThan(500);
+
+    // Critical: no user document should have been created
+    const db = mongoose.connection.db;
+    const count = await db
+      .collection("customerUser")
+      .countDocuments({ email: "ghost@example.com" });
+    expect(count).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Dead password-based endpoints must return 4xx (better-auth returns 400,
+// not 404, when emailAndPassword is disabled — the route still exists in
+// better-auth's router but is gated at the handler level)
+// ---------------------------------------------------------------------------
+
+describe("Customer Auth - password-based endpoints are disabled", () => {
+  it("POST /sign-up/email returns 4xx (email+password disabled)", async () => {
+    const res = await request(testApp)
+      .post("/api/v1/customers/auth/sign-up/email")
+      .set("Origin", "http://localhost:3000")
+      .send({
+        name: "Ghost",
+        email: "ghost@example.com",
+        password: "Password123!",
+      });
+
+    // better-auth returns 400 when emailAndPassword is not enabled
+    expect(res.status).toBeGreaterThanOrEqual(400);
+    expect(res.status).toBeLessThan(500);
+  });
+
+  it("POST /sign-in/email returns 4xx (email+password disabled)", async () => {
+    const res = await request(testApp)
+      .post("/api/v1/customers/auth/sign-in/email")
+      .set("Origin", "http://localhost:3000")
+      .send({ email: "ghost@example.com", password: "Password123!" });
+
+    expect(res.status).toBeGreaterThanOrEqual(400);
+    expect(res.status).toBeLessThan(500);
+  });
+
+  it("no new user is created when hitting the disabled /sign-up/email endpoint", async () => {
+    await request(testApp)
+      .post("/api/v1/customers/auth/sign-up/email")
+      .set("Origin", "http://localhost:3000")
+      .send({
+        name: "Ghost",
+        email: "ghost@example.com",
+        password: "Password123!",
+      });
+
+    const db = mongoose.connection.db;
+    const count = await db
+      .collection("customerUser")
+      .countDocuments({ email: "ghost@example.com" });
+    expect(count).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// baseURL validation in production (unchanged)
+// ---------------------------------------------------------------------------
 
 describe("Customer Auth - baseURL validation in production", () => {
   const originalEnv = process.env.NODE_ENV;

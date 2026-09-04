@@ -1,6 +1,7 @@
 import { betterAuth } from "better-auth/minimal";
 import { mongodbAdapter } from "better-auth/adapters/mongodb";
 import { phoneNumber } from "better-auth/plugins/phone-number";
+import { emailOTP } from "better-auth/plugins";
 import { toNodeHandler } from "better-auth/node";
 import { APIError } from "better-auth/api";
 import mongoose from "mongoose";
@@ -78,8 +79,8 @@ export async function createCustomerAuth() {
       // TODO(better-auth): re-enable transactions once upstream fixes nested
       // transaction handling (tracked: PR #10070 fixed this for 1.6.19, unclear
       // if 1.7.x has it — recheck on next better-auth upgrade).
-      // Confirmed bug on 1.7.2: sign-up/email + phoneNumber plugin nested writes
-      // throw "Cannot call abortTransaction after calling commitTransaction".
+      // Confirmed bug on 1.7.2: phoneNumber plugin nested writes throw
+      // "Cannot call abortTransaction after calling commitTransaction".
       transaction: false,
     }),
     user: {
@@ -115,24 +116,6 @@ export async function createCustomerAuth() {
     verification: {
       modelName: "customerVerification",
     },
-    emailAndPassword: {
-      enabled: true,
-      requireEmailVerification: false,
-      minPasswordLength: 8,
-      maxPasswordLength: 128,
-    },
-    emailVerification: {
-      sendVerificationEmail: ({ user, url, token }, _request) => {
-        if (process.env.NODE_ENV === "production") {
-          // TODO(email-provider): Implement transactional email provider integration for production
-          throw new Error("Email provider not configured for production environment yet.");
-        }
-        console.log(
-          `[CUSTOMER AUTH EMAIL VERIFICATION] User: ${user.email} | URL: ${url} | Token: ${token}`
-        );
-      },
-      autoSignInAfterVerification: true,
-    },
     plugins: [
       phoneNumber({
         sendOTP: ({ phoneNumber, code }, _request) => {
@@ -142,9 +125,30 @@ export async function createCustomerAuth() {
           }
           console.log(`[CUSTOMER AUTH OTP] Phone: ${phoneNumber} | Code: ${code}`);
         },
+        // Indian phone validation: accept 10 bare digits (local) or +91 prefix
+        // (12 digits starting with 91 after stripping non-digits).
+        phoneNumberValidator: async (phone) => {
+          const digits = phone.replace(/\D/g, "");
+          if (digits.length === 10) return true;
+          if (digits.length === 12 && digits.startsWith("91")) return true;
+          return false;
+        },
         signUpOnVerification: {
           getTempEmail: (phoneNumber) => `${phoneNumber.replace(/[^0-9]/g, "")}@customer.local`,
           getTempName: (phoneNumber) => phoneNumber,
+        },
+      }),
+      emailOTP({
+        // disableSignUp prevents emailOTP from creating brand-new accounts.
+        // Email OTP is a second sign-in method only — added via /profile after
+        // the user already has an account (created via phoneNumber sign-up).
+        disableSignUp: true,
+        sendVerificationOTP: ({ email, otp, type }, _request) => {
+          if (process.env.NODE_ENV === "production") {
+            // TODO(email-provider): same pattern as phone SMS — provider not chosen yet
+            throw new Error("Email provider not configured for production environment yet.");
+          }
+          console.log(`[CUSTOMER AUTH EMAIL OTP] Email: ${email} | Type: ${type} | Code: ${otp}`);
         },
       }),
     ],
