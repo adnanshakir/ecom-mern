@@ -116,9 +116,11 @@ export const loadConfig = (envSource = process.env) => {
       get trustedOrigins() {
         const currentTrusted = getEnv("TRUSTED_ORIGINS");
         if (currentTrusted) return parseOrigins(currentTrusted);
-        const currentFrontend = getEnv("FRONTEND_URL");
-        if (currentFrontend) return parseOrigins(currentFrontend);
-        return initialTrustedOrigins;
+        const frontendOrigins = parseOrigins(getEnv("FRONTEND_URL"));
+        if (isProd()) {
+          return frontendOrigins;
+        }
+        return Array.from(new Set([...frontendOrigins, ...initialTrustedOrigins]));
       },
     },
 

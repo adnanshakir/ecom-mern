@@ -8,6 +8,21 @@ export const getApiBaseUrl = () => {
     : "";
 
   if (rawUrl) {
+    if (process.env.NODE_ENV === "production") {
+      try {
+        const parsed = new URL(rawUrl);
+        if (parsed.protocol !== "https:") {
+          throw new Error(
+            "[FATAL CONFIG ERROR] NEXT_PUBLIC_API_URL must use HTTPS protocol in production builds."
+          );
+        }
+      } catch (err) {
+        if (err.message.includes("NEXT_PUBLIC_API_URL")) throw err;
+        throw new Error(
+          `[FATAL CONFIG ERROR] Invalid NEXT_PUBLIC_API_URL in production: ${rawUrl}`
+        );
+      }
+    }
     return rawUrl.replace(/\/+$/, "");
   }
 

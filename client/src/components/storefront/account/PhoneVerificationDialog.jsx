@@ -59,7 +59,7 @@ export function PhoneVerificationDialog({ open, onOpenChange, onSuccess }) {
   const handleSendOtp = async (e) => {
     if (e) e.preventDefault();
     const formatted = formatPhoneNumber(phoneInput);
-    if (!formatted || formatted.length < 12) {
+    if (!formatted || formatted.length < 13) {
       setError("Please enter a valid 10-digit Indian phone number.");
       return;
     }
