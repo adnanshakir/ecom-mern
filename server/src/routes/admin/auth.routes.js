@@ -1,5 +1,6 @@
 import express from "express";
 import rateLimit from "express-rate-limit";
+import { config } from "../../config/config.js";
 import { register, login, logout, refresh } from "../../controllers/admin/auth.controller.js";
 import { authenticate } from "../../middleware/authenticate.middleware.js";
 import { authorize } from "../../middleware/authorize.middleware.js";
@@ -14,7 +15,7 @@ const authLimiter = rateLimit({
   max: 10,
   standardHeaders: true,
   legacyHeaders: false,
-  skip: () => process.env.NODE_ENV === "test",
+  skip: () => config.isTest,
   message: { success: false, message: "Too many attempts, please try again later" },
 });
 
@@ -24,7 +25,7 @@ const refreshLimiter = rateLimit({
   max: 60,
   standardHeaders: true,
   legacyHeaders: false,
-  skip: () => process.env.NODE_ENV === "test",
+  skip: () => config.isTest,
   message: { success: false, message: "Too many refresh requests, please try again later" },
 });
 

@@ -1,3 +1,5 @@
+import { config } from "../config/config.js";
+
 // ============================================================================
 // WARNING: DEV/TESTING MASTER OTP BYPASS.
 // MUST BE DISABLED (ALLOW_MASTER_OTP=false or unset) BEFORE ANY REAL CUSTOMER TRAFFIC!
@@ -11,10 +13,12 @@
  * @returns {boolean} True if Master OTP is enabled and code matches; false otherwise.
  */
 export function isMasterOtpMatch(submittedCode, targetIdentifier) {
-  const isAllowed = process.env.ALLOW_MASTER_OTP === "true";
-  const masterCode = process.env.MASTER_OTP_CODE;
+  const isAllowed = config.masterOtp.isAllowed;
+  const masterCode = config.masterOtp.masterCode;
+  const env = (config.nodeEnv || "").toLowerCase();
+  const isDevOrTest = env === "development" || env === "test" || config.isTest === true;
 
-  if (!isAllowed || !masterCode || !submittedCode || typeof submittedCode !== "string") {
+  if (!isAllowed || !isDevOrTest || !masterCode || !submittedCode || typeof submittedCode !== "string") {
     return false;
   }
 

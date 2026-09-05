@@ -17,7 +17,10 @@ export const restoreCustomerSession = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const { data, error } = await authClient.getSession();
-      if (error || !data?.session || !data?.user) {
+      if (error) {
+        return rejectWithValue(error.message || "Failed to restore session");
+      }
+      if (!data?.session || !data?.user) {
         return null;
       }
       return data.user;
@@ -78,8 +81,7 @@ const customerAuthSlice = createSlice({
         state.authReady = true;
       })
       .addCase(restoreCustomerSession.rejected, (state) => {
-        state.user = null;
-        state.status = "unauthenticated";
+        state.status = state.user ? "authenticated" : "unauthenticated";
         state.authReady = true;
       })
       // customerSignOut — ALWAYS clear local state on both fulfilled and rejected

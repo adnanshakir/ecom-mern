@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useDispatch } from "react-redux";
 import { Phone, Loader2, ArrowLeft } from "lucide-react";
 import { REGEXP_ONLY_DIGITS } from "input-otp";
@@ -26,8 +26,17 @@ export function PhoneVerificationDialog({ open, onOpenChange, onSuccess }) {
   const [step, setStep] = useState("input"); // "input" | "otp"
   const [loading, setLoading] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
   const [error, setError] = useState(null);
   const [resendMessage, setResendMessage] = useState(null);
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = setInterval(() => {
+      setResendCooldown((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [resendCooldown]);
 
   const handleClose = (isOpen) => {
     if (!isOpen) {
@@ -79,6 +88,7 @@ export function PhoneVerificationDialog({ open, onOpenChange, onSuccess }) {
   };
 
   const handleResendOtp = async () => {
+    if (resendCooldown > 0 || resendLoading || loading) return;
     setError(null);
     setResendMessage(null);
     setResendLoading(true);
@@ -93,6 +103,7 @@ export function PhoneVerificationDialog({ open, onOpenChange, onSuccess }) {
         setError(apiErr.message || "Failed to resend OTP code.");
       } else {
         setPhoneOtp("");
+        setResendCooldown(30);
         setResendMessage("OTP code resent successfully!");
         setTimeout(() => setResendMessage(null), 4000);
       }
@@ -248,10 +259,14 @@ export function PhoneVerificationDialog({ open, onOpenChange, onSuccess }) {
               <button
                 type="button"
                 onClick={handleResendOtp}
-                disabled={resendLoading || loading}
+                disabled={resendLoading || loading || resendCooldown > 0}
                 className="text-xs text-muted-foreground hover:text-foreground font-medium disabled:opacity-50"
               >
-                {resendLoading ? "Resending..." : "Resend OTP"}
+                {resendLoading
+                  ? "Resending..."
+                  : resendCooldown > 0
+                  ? `Resend OTP (${resendCooldown}s)`
+                  : "Resend OTP"}
               </button>
 
               <div className="flex gap-2">

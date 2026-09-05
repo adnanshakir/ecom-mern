@@ -106,6 +106,8 @@ export function ProfileView() {
         {/* Profile Completion Widget Card */}
         <ProfileCompletionCard
           completionPercentage={completionPercentage}
+          hasPhone={hasPhone}
+          phone={phone}
           hasName={hasName}
           displayName={displayName}
           hasEmail={hasEmail}

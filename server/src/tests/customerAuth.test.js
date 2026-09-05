@@ -471,6 +471,83 @@ describe("Customer Auth - Master OTP Feature", () => {
     expect(signInRes.body.user).toBeDefined();
     expect(signInRes.body.user.email).toBe("master@example.com");
   });
+
+  it("rejects master OTP code when NODE_ENV is production even if ALLOW_MASTER_OTP=true", async () => {
+    const originalNodeEnv = process.env.NODE_ENV;
+    try {
+      process.env.NODE_ENV = "production";
+      process.env.ALLOW_MASTER_OTP = "true";
+      process.env.MASTER_OTP_CODE = "999999";
+
+      const masterPhone = "+919988776655";
+
+      const verifyRes = await request(testApp)
+        .post("/api/v1/customers/auth/phone-number/verify")
+        .set("Origin", "http://localhost:3000")
+        .send({ phoneNumber: masterPhone, code: "999999" });
+
+      expect(verifyRes.status).toBeGreaterThanOrEqual(400);
+    } finally {
+      process.env.NODE_ENV = originalNodeEnv;
+    }
+  });
+});
+
+describe("Customer Auth - Atomic Failed OTP Attempts & Attempt Limits", () => {
+  it("enforces 3-attempt limit during concurrent invalid verification attempts and rejects valid code after lockout", async () => {
+    const testPhone = "+919876549999";
+
+    // Request OTP
+    const sendRes = await request(testApp)
+      .post("/api/v1/customers/auth/phone-number/send-otp")
+      .set("Origin", "http://localhost:3000")
+      .send({ phoneNumber: testPhone });
+
+    expect(sendRes.status).toBe(200);
+
+    const validCode = await getCapturedOTP(testPhone);
+    expect(validCode).toBeTruthy();
+
+    const invalidCode = validCode === "123456" ? "654321" : "123456";
+
+    // Fire 4 concurrent invalid OTP verification attempts simultaneously
+    const concurrentInvalidAttempts = await Promise.all([
+      request(testApp)
+        .post("/api/v1/customers/auth/phone-number/verify")
+        .set("Origin", "http://localhost:3000")
+        .send({ phoneNumber: testPhone, code: invalidCode }),
+      request(testApp)
+        .post("/api/v1/customers/auth/phone-number/verify")
+        .set("Origin", "http://localhost:3000")
+        .send({ phoneNumber: testPhone, code: invalidCode }),
+      request(testApp)
+        .post("/api/v1/customers/auth/phone-number/verify")
+        .set("Origin", "http://localhost:3000")
+        .send({ phoneNumber: testPhone, code: invalidCode }),
+      request(testApp)
+        .post("/api/v1/customers/auth/phone-number/verify")
+        .set("Origin", "http://localhost:3000")
+        .send({ phoneNumber: testPhone, code: invalidCode }),
+    ]);
+
+    // All invalid attempts should fail
+    concurrentInvalidAttempts.forEach((res) => {
+      expect(res.status).toBeGreaterThanOrEqual(400);
+    });
+
+    // Now send the valid code — should be rejected because 3-attempt limit was reached and verification record was deleted
+    const validVerifyRes = await request(testApp)
+      .post("/api/v1/customers/auth/phone-number/verify")
+      .set("Origin", "http://localhost:3000")
+      .send({ phoneNumber: testPhone, code: validCode });
+
+    expect(validVerifyRes.status).toBeGreaterThanOrEqual(400);
+
+    // Verify record is deleted in database
+    const db = mongoose.connection.db;
+    const doc = await db.collection("customerVerification").findOne({ identifier: testPhone });
+    expect(doc).toBeNull();
+  });
 });
 
 

@@ -6,6 +6,7 @@ import { toNodeHandler } from "better-auth/node";
 import { APIError } from "better-auth/api";
 import mongoose from "mongoose";
 
+import { config } from "./config.js";
 import { isMasterOtpMatch } from "../utils/masterOtp.js";
 import { setSessionCookie } from "better-auth/cookies";
 import { getSessionFromCtx } from "better-auth/api";
@@ -35,48 +36,17 @@ export async function createCustomerAuth() {
     throw err;
   }
 
-  let baseURL = process.env.BETTER_AUTH_URL;
-
-  if (process.env.NODE_ENV === "production") {
-    if (!baseURL) {
-      throw new Error("BETTER_AUTH_URL environment variable is required in production");
-    }
-
-    try {
-      const parsedUrl = new URL(baseURL);
-      const isLocalhost =
-        parsedUrl.hostname === "localhost" ||
-        parsedUrl.hostname === "127.0.0.1" ||
-        parsedUrl.hostname === "::1" ||
-        parsedUrl.hostname === "0.0.0.0";
-
-      if (parsedUrl.protocol !== "https:" || isLocalhost) {
-        throw new Error("BETTER_AUTH_URL must be a valid public HTTPS origin in production");
-      }
-    } catch (err) {
-      if (err.message.includes("BETTER_AUTH_URL")) throw err;
-      throw new Error(`Invalid BETTER_AUTH_URL in production: ${baseURL}`);
-    }
-  } else {
-    baseURL = baseURL || `http://localhost:${process.env.PORT || 5000}`;
-  }
-
-  const allowedOrigins = process.env.TRUSTED_ORIGINS
-    ? process.env.TRUSTED_ORIGINS.split(",").map((o) => o.trim())
-    : [
-        (process.env.FRONTEND_URL || "http://localhost:3000").replace(/\/$/, ""),
-        "http://localhost:3000",
-        "http://localhost:5173",
-      ];
+  const baseURL = config.betterAuth.url;
+  const allowedOrigins = config.betterAuth.trustedOrigins;
 
   customerAuthInstance = betterAuth({
     logger: {
-      level: process.env.NODE_ENV === "production" ? "error" : "debug",
+      level: config.isProduction ? "error" : "debug",
       disabled: false,
     },
     basePath: "/api/v1/customers/auth",
     baseURL,
-    secret: process.env.BETTER_AUTH_SECRET || process.env.JWT_SECRET,
+    secret: config.betterAuth.secret,
     database: mongodbAdapter(db, {
       client: client,
       // TODO(better-auth): re-enable transactions once upstream fixes nested
@@ -173,6 +143,17 @@ export async function createCustomerAuth() {
               createdAt: new Date(),
               updatedAt: new Date(),
             });
+          } else {
+            await db.collection("customerVerification").updateOne(
+              { identifier },
+              {
+                $set: {
+                  value: `${submittedCode}:0`,
+                  expiresAt: new Date(Date.now() + 5 * 60 * 1000),
+                  updatedAt: new Date(),
+                },
+              }
+            );
           }
         }
       },
@@ -185,26 +166,45 @@ export async function createCustomerAuth() {
           }
           const db = mongoose.connection.db;
           if (!db) return false;
-          const existing = await db.collection("customerVerification").findOne({ identifier: phoneNumber });
-          if (!existing || existing.expiresAt < new Date()) {
-            return false;
+          const allowedAttempts = 5;
+
+          while (true) {
+            const existing = await db.collection("customerVerification").findOne({ identifier: phoneNumber });
+            if (!existing || existing.expiresAt < new Date()) {
+              return false;
+            }
+            const [otpValue, rawAttempts] = (existing.value || "").split(":");
+            const attempts = parseInt(rawAttempts || "0", 10);
+            if (attempts >= allowedAttempts) {
+              await db.collection("customerVerification").deleteOne({ identifier: phoneNumber });
+              return false;
+            }
+            if (otpValue === code) {
+              await db.collection("customerVerification").deleteOne({ identifier: phoneNumber });
+              return true;
+            }
+
+            const newAttempts = attempts + 1;
+            if (newAttempts >= allowedAttempts) {
+              const delRes = await db.collection("customerVerification").deleteOne({
+                identifier: phoneNumber,
+                value: existing.value,
+              });
+              if (delRes.deletedCount > 0) {
+                return false;
+              }
+              continue;
+            }
+
+            const updateRes = await db.collection("customerVerification").updateOne(
+              { identifier: phoneNumber, value: existing.value },
+              { $set: { value: `${otpValue}:${newAttempts}`, updatedAt: new Date() } }
+            );
+
+            if (updateRes.matchedCount > 0) {
+              return false;
+            }
           }
-          const allowedAttempts = 3;
-          const [otpValue, rawAttempts] = (existing.value || "").split(":");
-          const attempts = parseInt(rawAttempts || "0", 10);
-          if (attempts >= allowedAttempts) {
-            await db.collection("customerVerification").deleteOne({ identifier: phoneNumber });
-            return false;
-          }
-          if (otpValue === code) {
-            await db.collection("customerVerification").deleteOne({ identifier: phoneNumber });
-            return true;
-          }
-          await db.collection("customerVerification").updateOne(
-            { identifier: phoneNumber },
-            { $set: { value: `${otpValue}:${attempts + 1}` } }
-          );
-          return false;
         },
         // DEVELOPMENT MODE: Logging phone OTP code to terminal during dev phase.
         // Later on, this will be replaced with an SMS gateway integration (e.g. MSG91 / Twilio).
@@ -212,7 +212,7 @@ export async function createCustomerAuth() {
           const targetPhone = data.phoneNumber || data.phone || data;
           const otpCode = data.code || data.otp;
 
-          if (process.env.NODE_ENV === "production") {
+          if (config.isProduction) {
             // TODO(MSG91): Implement MSG91 SMS gateway integration for production
             throw new Error("MSG91 SMS gateway not configured for production environment yet.");
           }
@@ -264,7 +264,7 @@ export async function createCustomerAuth() {
           const otpCode = data.otp || data.code;
           const otpType = data.type || "email-verification";
 
-          if (process.env.NODE_ENV === "production") {
+          if (config.isProduction) {
             // TODO(email-provider): same pattern as phone SMS — provider not chosen yet
             throw new Error("Email provider not configured for production environment yet.");
           }

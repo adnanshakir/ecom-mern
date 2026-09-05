@@ -7,6 +7,7 @@ import { toNodeHandler } from "better-auth/node";
 import { APIError } from "better-auth/api";
 import mongoose from "mongoose";
 
+import { config } from "./config.js";
 import { isMasterOtpMatch } from "../utils/masterOtp.js";
 import { setSessionCookie } from "better-auth/cookies";
 import { getSessionFromCtx } from "better-auth/api";
@@ -42,11 +43,8 @@ export async function createTestCustomerAuth() {
       disabled: false,
     },
     basePath: "/api/v1/customers/auth",
-    baseURL: process.env.BETTER_AUTH_URL || `http://localhost:${process.env.PORT || 5000}`,
-    secret:
-      process.env.BETTER_AUTH_SECRET ||
-      process.env.JWT_SECRET ||
-      "test-secret-key-min-32-chars-long!",
+    baseURL: config.betterAuth.url,
+    secret: config.betterAuth.secret || "test-secret-key-min-32-chars-long!",
     database: mongodbAdapter(db, {
       client: client,
       // TODO(better-auth): re-enable transactions once upstream fixes nested
@@ -137,6 +135,17 @@ export async function createTestCustomerAuth() {
               createdAt: new Date(),
               updatedAt: new Date(),
             });
+          } else {
+            await db.collection("customerVerification").updateOne(
+              { identifier },
+              {
+                $set: {
+                  value: `${submittedCode}:0`,
+                  expiresAt: new Date(Date.now() + 5 * 60 * 1000),
+                  updatedAt: new Date(),
+                },
+              }
+            );
           }
         }
       },
@@ -149,26 +158,45 @@ export async function createTestCustomerAuth() {
           }
           const db = mongoose.connection.db;
           if (!db) return false;
-          const existing = await db.collection("customerVerification").findOne({ identifier: phoneNumber });
-          if (!existing || existing.expiresAt < new Date()) {
-            return false;
-          }
           const allowedAttempts = 3;
-          const [otpValue, rawAttempts] = (existing.value || "").split(":");
-          const attempts = parseInt(rawAttempts || "0", 10);
-          if (attempts >= allowedAttempts) {
-            await db.collection("customerVerification").deleteOne({ identifier: phoneNumber });
-            return false;
+
+          while (true) {
+            const existing = await db.collection("customerVerification").findOne({ identifier: phoneNumber });
+            if (!existing || existing.expiresAt < new Date()) {
+              return false;
+            }
+            const [otpValue, rawAttempts] = (existing.value || "").split(":");
+            const attempts = parseInt(rawAttempts || "0", 10);
+            if (attempts >= allowedAttempts) {
+              await db.collection("customerVerification").deleteOne({ identifier: phoneNumber });
+              return false;
+            }
+            if (otpValue === code) {
+              await db.collection("customerVerification").deleteOne({ identifier: phoneNumber });
+              return true;
+            }
+
+            const newAttempts = attempts + 1;
+            if (newAttempts >= allowedAttempts) {
+              const delRes = await db.collection("customerVerification").deleteOne({
+                identifier: phoneNumber,
+                value: existing.value,
+              });
+              if (delRes.deletedCount > 0) {
+                return false;
+              }
+              continue;
+            }
+
+            const updateRes = await db.collection("customerVerification").updateOne(
+              { identifier: phoneNumber, value: existing.value },
+              { $set: { value: `${otpValue}:${newAttempts}`, updatedAt: new Date() } }
+            );
+
+            if (updateRes.matchedCount > 0) {
+              return false;
+            }
           }
-          if (otpValue === code) {
-            await db.collection("customerVerification").deleteOne({ identifier: phoneNumber });
-            return true;
-          }
-          await db.collection("customerVerification").updateOne(
-            { identifier: phoneNumber },
-            { $set: { value: `${otpValue}:${attempts + 1}` } }
-          );
-          return false;
         },
         sendOTP: ({ phoneNumber, code }) => {
           console.log(`[TEST OTP] Phone: ${phoneNumber} | Code: ${code}`);

@@ -1,27 +1,22 @@
 import request from "supertest";
+import mongoose from "mongoose";
 import app from "../app.js";
-import Customer from "../models/customer/customer.model.js";
 import Product from "../models/admin/product.model.js";
 import Category from "../models/admin/category.model.js";
 import Brand from "../models/admin/brand.model.js";
 import ProductVariant from "../models/admin/productVariant.model.js";
-import Cart from "../models/customer/cart.model.js";
 import { connectTestDB, closeTestDB, clearTestDB } from "./setup.js";
+import { createCustomerAuth } from "../config/customerAuth.js";
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
 
-const CUSTOMER = {
-  name: "Test Customer",
-  email: "customer@test.com",
-  password: "Test1234!",
-};
-
-let customerToken;
+let customerCookies;
 let variantId;
 let variantWithLowStockId;
 
 beforeAll(async () => {
   await connectTestDB();
+  await createCustomerAuth();
 });
 
 afterEach(async () => {
@@ -33,11 +28,22 @@ afterAll(async () => {
 });
 
 beforeEach(async () => {
-  // Register + login customer
-  const regRes = await request(app)
-    .post("/api/customers/auth/register")
-    .send(CUSTOMER);
-  customerToken = regRes.body.data.accessToken;
+  // Sign-up / Sign-in customer via phone OTP
+  await request(app)
+    .post("/api/v1/customers/auth/phone-number/send-otp")
+    .set("Origin", "http://localhost:3000")
+    .send({ phoneNumber: "+919876543210" });
+
+  const db = mongoose.connection.db;
+  const doc = await db.collection("customerVerification").findOne({ identifier: "+919876543210" });
+  const code = doc?.value?.split(":")[0];
+
+  const verifyRes = await request(app)
+    .post("/api/v1/customers/auth/phone-number/verify")
+    .set("Origin", "http://localhost:3000")
+    .send({ phoneNumber: "+919876543210", code });
+
+  customerCookies = verifyRes.headers["set-cookie"];
 
   // Create a product and two variants
   const category = await Category.create({ name: "Clothing", slug: "clothing" });
@@ -74,7 +80,7 @@ describe("GET /api/customers/cart", () => {
   it("creates and returns an empty cart if none exists", async () => {
     const res = await request(app)
       .get("/api/customers/cart")
-      .set("Authorization", `Bearer ${customerToken}`);
+      .set("Cookie", customerCookies);
 
     expect(res.status).toBe(200);
     expect(res.body.data.items).toHaveLength(0);
@@ -92,7 +98,7 @@ describe("POST /api/customers/cart/items", () => {
   it("adds a new item to the cart", async () => {
     const res = await request(app)
       .post("/api/customers/cart/items")
-      .set("Authorization", `Bearer ${customerToken}`)
+      .set("Cookie", customerCookies)
       .send({ variantId, quantity: 2 });
 
     expect(res.status).toBe(200);
@@ -104,13 +110,13 @@ describe("POST /api/customers/cart/items", () => {
     // Add once
     await request(app)
       .post("/api/customers/cart/items")
-      .set("Authorization", `Bearer ${customerToken}`)
+      .set("Cookie", customerCookies)
       .send({ variantId, quantity: 3 });
 
     // Add again
     const res = await request(app)
       .post("/api/customers/cart/items")
-      .set("Authorization", `Bearer ${customerToken}`)
+      .set("Cookie", customerCookies)
       .send({ variantId, quantity: 2 });
 
     expect(res.status).toBe(200);
@@ -121,7 +127,7 @@ describe("POST /api/customers/cart/items", () => {
     // variant has stock: 2, request asks for 10
     const res = await request(app)
       .post("/api/customers/cart/items")
-      .set("Authorization", `Bearer ${customerToken}`)
+      .set("Cookie", customerCookies)
       .send({ variantId: variantWithLowStockId, quantity: 10 });
 
     expect(res.status).toBe(200);
@@ -133,13 +139,13 @@ describe("POST /api/customers/cart/items", () => {
     // Add 1 first
     await request(app)
       .post("/api/customers/cart/items")
-      .set("Authorization", `Bearer ${customerToken}`)
+      .set("Cookie", customerCookies)
       .send({ variantId: variantWithLowStockId, quantity: 1 });
 
     // Try to add 5 more (total 6, stock is 2)
     const res = await request(app)
       .post("/api/customers/cart/items")
-      .set("Authorization", `Bearer ${customerToken}`)
+      .set("Cookie", customerCookies)
       .send({ variantId: variantWithLowStockId, quantity: 5 });
 
     expect(res.body.data.items[0].quantity).toBe(2); // clamped to stock
@@ -148,7 +154,7 @@ describe("POST /api/customers/cart/items", () => {
   it("rejects with 400 for an invalid variantId format", async () => {
     const res = await request(app)
       .post("/api/customers/cart/items")
-      .set("Authorization", `Bearer ${customerToken}`)
+      .set("Cookie", customerCookies)
       .send({ variantId: "not-an-id", quantity: 1 });
 
     expect(res.status).toBe(400);
@@ -162,14 +168,14 @@ describe("PUT /api/customers/cart/items/:variantId", () => {
     // Seed a cart item
     await request(app)
       .post("/api/customers/cart/items")
-      .set("Authorization", `Bearer ${customerToken}`)
+      .set("Cookie", customerCookies)
       .send({ variantId, quantity: 3 });
   });
 
   it("sets quantity directly", async () => {
     const res = await request(app)
       .put(`/api/customers/cart/items/${variantId}`)
-      .set("Authorization", `Bearer ${customerToken}`)
+      .set("Cookie", customerCookies)
       .send({ quantity: 7 });
 
     expect(res.status).toBe(200);
@@ -179,7 +185,7 @@ describe("PUT /api/customers/cart/items/:variantId", () => {
   it("removes the item when quantity is set to 0", async () => {
     const res = await request(app)
       .put(`/api/customers/cart/items/${variantId}`)
-      .set("Authorization", `Bearer ${customerToken}`)
+      .set("Cookie", customerCookies)
       .send({ quantity: 0 });
 
     expect(res.status).toBe(200);
@@ -190,12 +196,12 @@ describe("PUT /api/customers/cart/items/:variantId", () => {
     // variantWithLowStockId has stock: 2 — seed it in cart first
     await request(app)
       .post("/api/customers/cart/items")
-      .set("Authorization", `Bearer ${customerToken}`)
+      .set("Cookie", customerCookies)
       .send({ variantId: variantWithLowStockId, quantity: 1 });
 
     const res = await request(app)
       .put(`/api/customers/cart/items/${variantWithLowStockId}`)
-      .set("Authorization", `Bearer ${customerToken}`)
+      .set("Cookie", customerCookies)
       .send({ quantity: 100 });
 
     expect(res.body.data.items.find(i => i.variant._id.toString() === variantWithLowStockId)?.quantity).toBe(2);
@@ -208,12 +214,12 @@ describe("DELETE /api/customers/cart/items/:variantId", () => {
   it("removes one line item", async () => {
     await request(app)
       .post("/api/customers/cart/items")
-      .set("Authorization", `Bearer ${customerToken}`)
+      .set("Cookie", customerCookies)
       .send({ variantId, quantity: 2 });
 
     const res = await request(app)
       .delete(`/api/customers/cart/items/${variantId}`)
-      .set("Authorization", `Bearer ${customerToken}`);
+      .set("Cookie", customerCookies);
 
     expect(res.status).toBe(200);
     expect(res.body.data.items).toHaveLength(0);
@@ -227,17 +233,17 @@ describe("DELETE /api/customers/cart", () => {
     // Add two items
     await request(app)
       .post("/api/customers/cart/items")
-      .set("Authorization", `Bearer ${customerToken}`)
+      .set("Cookie", customerCookies)
       .send({ variantId, quantity: 2 });
 
     await request(app)
       .post("/api/customers/cart/items")
-      .set("Authorization", `Bearer ${customerToken}`)
+      .set("Cookie", customerCookies)
       .send({ variantId: variantWithLowStockId, quantity: 1 });
 
     const res = await request(app)
       .delete("/api/customers/cart")
-      .set("Authorization", `Bearer ${customerToken}`);
+      .set("Cookie", customerCookies);
 
     expect(res.status).toBe(200);
     expect(res.body.data.items).toHaveLength(0);
