@@ -46,7 +46,19 @@ export function ProfileInfoOverview({
 
         <div>
           <span className="text-[11px] font-medium text-muted-foreground block">Mobile Number</span>
-          <span className="text-sm font-semibold text-foreground">{phone || "—"}</span>
+          <span className="text-sm font-semibold text-foreground">
+            {phone ? (
+              phone
+            ) : (
+              <button
+                type="button"
+                onClick={() => onOpenDialog("phone")}
+                className="text-amber-600 dark:text-amber-400 text-xs font-medium flex items-center gap-1 hover:underline cursor-pointer"
+              >
+                <AlertCircle className="size-3" /> Not attached (Attach)
+              </button>
+            )}
+          </span>
         </div>
 
         <div>
