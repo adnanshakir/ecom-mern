@@ -1,3 +1,5 @@
+import { config } from "../config/config.js";
+
 export const notFound = (req, res, next) => {
   const error = new Error(`Route not found - ${req.originalUrl}`);
   error.statusCode = 404;
@@ -32,14 +34,14 @@ export const errorHandler = (err, req, res, next) => {
     message = `Duplicate value for ${field}. Please use another value.`;
   }
 
-  if (process.env.NODE_ENV !== 'production') {
+  if (!config.isProduction) {
     console.error(err);
   }
 
   res.status(statusCode).json({
     success: false,
     message,
-    ...(process.env.NODE_ENV !== 'production' && {
+    ...(!config.isProduction && {
       stack: err.stack,
     }),
   });

@@ -13,6 +13,7 @@ import { ProfileHeader } from "./ProfileHeader";
 import { ProfileCompletionCard } from "./ProfileCompletionCard";
 import { ProfileInfoOverview } from "./ProfileInfoOverview";
 import { EmailVerificationDialog } from "./EmailVerificationDialog";
+import { PhoneVerificationDialog } from "./PhoneVerificationDialog";
 import { NameEditDialog } from "./NameEditDialog";
 import { AddressEditDialog } from "./AddressEditDialog";
 
@@ -39,10 +40,11 @@ export function ProfileView() {
   const isAuthenticated = status === "authenticated" || !!user;
 
   // Active pop-up dialog
-  const [activeDialog, setActiveDialog] = useState(null); // "name" | "email" | "address" | null
+  const [activeDialog, setActiveDialog] = useState(null); // "name" | "email" | "phone" | "address" | null
   const [toastMessage, setToastMessage] = useState({ type: "", text: "" });
 
   const phone = user?.phoneNumber || user?.phone || "";
+  const hasPhone = Boolean(phone);
   const hasName = isRealName(user?.name, phone);
   const hasEmail = isRealEmail(user?.email);
   const userAddresses = user?.addresses || [];
@@ -50,10 +52,11 @@ export function ProfileView() {
   const hasAddress = Boolean(defaultAddr?.line1 && defaultAddr?.city);
 
   // Completion calculation
-  let completionPercentage = 10; // Base 10% for verified phone number
-  if (hasName) completionPercentage += 30;
-  if (hasEmail) completionPercentage += 30;
-  if (hasAddress) completionPercentage += 30;
+  let completionPercentage = 10; // Base 10% for verified session
+  if (hasPhone) completionPercentage += 25;
+  if (hasName) completionPercentage += 25;
+  if (hasEmail) completionPercentage += 20;
+  if (hasAddress) completionPercentage += 20;
 
   const displayName = hasName ? user.name : "Guest User";
   const displayEmail = hasEmail ? user.email : null;
@@ -103,6 +106,8 @@ export function ProfileView() {
         {/* Profile Completion Widget Card */}
         <ProfileCompletionCard
           completionPercentage={completionPercentage}
+          hasPhone={hasPhone}
+          phone={phone}
           hasName={hasName}
           displayName={displayName}
           hasEmail={hasEmail}
@@ -135,6 +140,12 @@ export function ProfileView() {
         <EmailVerificationDialog
           open={activeDialog === "email"}
           onOpenChange={(open) => setActiveDialog(open ? "email" : null)}
+          onSuccess={showSuccessNotification}
+        />
+
+        <PhoneVerificationDialog
+          open={activeDialog === "phone"}
+          onOpenChange={(open) => setActiveDialog(open ? "phone" : null)}
           onSuccess={showSuccessNotification}
         />
 

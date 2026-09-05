@@ -1,10 +1,12 @@
 "use client";
 
-import { Sparkles, User, Mail, MapPin, CheckCircle2, ArrowRight } from "lucide-react";
+import { Sparkles, Phone, User, Mail, MapPin, CheckCircle2, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export function ProfileCompletionCard({
   completionPercentage,
+  hasPhone,
+  phone,
   hasName,
   displayName,
   hasEmail,
@@ -40,8 +42,44 @@ export function ProfileCompletionCard({
       </div>
 
       {/* Tasks Checklist */}
-      <div className="grid gap-3 pt-2 sm:grid-cols-3">
-        {/* Task 1: Name */}
+      <div className="grid gap-3 pt-2 sm:grid-cols-2 lg:grid-cols-4">
+        {/* Task 1: Phone */}
+        <div
+          className={`rounded-xl border p-4 transition-all ${
+            hasPhone
+              ? "bg-emerald-500/5 border-emerald-500/20"
+              : "bg-card border-border hover:border-primary/40"
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Phone className={`size-4 ${hasPhone ? "text-emerald-600" : "text-muted-foreground"}`} />
+              <span className="text-xs font-bold text-foreground">Mobile Phone</span>
+            </div>
+            {hasPhone ? (
+              <CheckCircle2 className="size-4 text-emerald-600" />
+            ) : (
+              <span className="text-[10px] font-bold uppercase text-amber-600 bg-amber-500/10 px-2 py-0.5 rounded-full">
+                +25%
+              </span>
+            )}
+          </div>
+          <p className="mt-2 text-[11px] text-muted-foreground line-clamp-2">
+            {hasPhone ? phone : "Attach & verify phone number."}
+          </p>
+          {!hasPhone && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="mt-3 w-full text-xs font-semibold"
+              onClick={() => onOpenDialog("phone")}
+            >
+              Verify Phone <ArrowRight className="size-3 ml-1" />
+            </Button>
+          )}
+        </div>
+
+        {/* Task 2: Name */}
         <div
           className={`rounded-xl border p-4 transition-all ${
             hasName
@@ -58,7 +96,7 @@ export function ProfileCompletionCard({
               <CheckCircle2 className="size-4 text-emerald-600" />
             ) : (
               <span className="text-[10px] font-bold uppercase text-amber-600 bg-amber-500/10 px-2 py-0.5 rounded-full">
-                +30%
+                +25%
               </span>
             )}
           </div>
@@ -77,7 +115,7 @@ export function ProfileCompletionCard({
           )}
         </div>
 
-        {/* Task 2: Email OTP */}
+        {/* Task 3: Email OTP */}
         <div
           className={`rounded-xl border p-4 transition-all ${
             hasEmail
@@ -94,7 +132,7 @@ export function ProfileCompletionCard({
               <CheckCircle2 className="size-4 text-emerald-600" />
             ) : (
               <span className="text-[10px] font-bold uppercase text-amber-600 bg-amber-500/10 px-2 py-0.5 rounded-full">
-                +30%
+                +20%
               </span>
             )}
           </div>
@@ -113,7 +151,7 @@ export function ProfileCompletionCard({
           )}
         </div>
 
-        {/* Task 3: Address */}
+        {/* Task 4: Address */}
         <div
           className={`rounded-xl border p-4 transition-all ${
             hasAddress
@@ -130,7 +168,7 @@ export function ProfileCompletionCard({
               <CheckCircle2 className="size-4 text-emerald-600" />
             ) : (
               <span className="text-[10px] font-bold uppercase text-amber-600 bg-amber-500/10 px-2 py-0.5 rounded-full">
-                +30%
+                +20%
               </span>
             )}
           </div>

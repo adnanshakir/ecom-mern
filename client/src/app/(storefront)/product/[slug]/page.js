@@ -1,14 +1,11 @@
 import { generateProductMetadata, generateProductJsonLd } from "@/lib/seo";
 import { ProductPageClient } from "@/components/storefront/products/ProductPageClient";
+import { getApiBaseUrl } from "@/lib/apiBaseUrl";
 
 async function getProduct(slug) {
   if (!slug) return null;
   try {
-    const apiUrl =
-      process.env.NEXT_PUBLIC_API_URL &&
-      process.env.NEXT_PUBLIC_API_URL.startsWith("http")
-        ? process.env.NEXT_PUBLIC_API_URL.replace(/\/+$/, "")
-        : "https://ecom-mern-c5wz.onrender.com/api";
+    const apiUrl = getApiBaseUrl();
 
     const res = await fetch(
       `${apiUrl}/public/products/${encodeURIComponent(slug)}`,

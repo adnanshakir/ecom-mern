@@ -7,6 +7,13 @@ import { toNodeHandler } from "better-auth/node";
 import { APIError } from "better-auth/api";
 import mongoose from "mongoose";
 
+import { config } from "./config.js";
+import { ALLOWED_ATTEMPTS } from "./customerAuth.js";
+import { handleEmailMasterOtp, verifyOTP } from "./otpHelper.js";
+import { isMasterOtpMatch } from "../utils/masterOtp.js";
+import { setSessionCookie } from "better-auth/cookies";
+import { getSessionFromCtx } from "better-auth/api";
+
 let testCustomerAuthInstance = null;
 let testCustomerAuthHandler = null;
 
@@ -38,11 +45,8 @@ export async function createTestCustomerAuth() {
       disabled: false,
     },
     basePath: "/api/v1/customers/auth",
-    baseURL: process.env.BETTER_AUTH_URL || `http://localhost:${process.env.PORT || 5000}`,
-    secret:
-      process.env.BETTER_AUTH_SECRET ||
-      process.env.JWT_SECRET ||
-      "test-secret-key-min-32-chars-long!",
+    baseURL: config.betterAuth.url,
+    secret: config.betterAuth.secret,
     database: mongodbAdapter(db, {
       client: client,
       // TODO(better-auth): re-enable transactions once upstream fixes nested
@@ -91,8 +95,16 @@ export async function createTestCustomerAuth() {
     verification: {
       modelName: "customerVerification",
     },
+    hooks: {
+      before: async (ctx) => {
+        await handleEmailMasterOtp(ctx);
+      },
+    },
     plugins: [
       phoneNumber({
+        verifyOTP: async ({ phoneNumber, code }, ctx) => {
+          return verifyOTP({ phoneNumber, code }, ALLOWED_ATTEMPTS);
+        },
         sendOTP: ({ phoneNumber, code }) => {
           console.log(`[TEST OTP] Phone: ${phoneNumber} | Code: ${code}`);
         },
@@ -131,6 +143,9 @@ export async function createTestCustomerAuth() {
       }),
       emailOTP({
         disableSignUp: true,
+        changeEmail: {
+          enabled: true,
+        },
         sendVerificationOTP: ({ email, otp, type }) => {
           console.log(`[TEST EMAIL OTP] Email: ${email} | Type: ${type} | Code: ${otp}`);
         },

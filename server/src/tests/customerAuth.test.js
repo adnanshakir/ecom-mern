@@ -364,3 +364,240 @@ describe("Customer Auth - baseURL validation in production", () => {
     expect(instance.options.baseURL).toBe("https://auth.example.com");
   });
 });
+
+// ---------------------------------------------------------------------------
+// Attach & verify phone number flow (updatePhoneNumber: true)
+// ---------------------------------------------------------------------------
+
+describe("Customer Auth - Attach phone number to authenticated session", () => {
+  it("attaches and verifies phone number when updatePhoneNumber: true is passed with a session", async () => {
+    const { verifyRes: firstVerifyRes } = await phoneSignUp(testApp, "+919876543210");
+    expect(firstVerifyRes.status).toBe(200);
+    const cookies = firstVerifyRes.headers["set-cookie"];
+    expect(cookies).toBeDefined();
+
+    const newPhone = "+919123456789";
+    const sendRes = await request(testApp)
+      .post("/api/v1/customers/auth/phone-number/send-otp")
+      .set("Origin", "http://localhost:3000")
+      .send({ phoneNumber: newPhone });
+    expect(sendRes.status).toBe(200);
+
+    const code = await getCapturedOTP(newPhone);
+    expect(code).toBeTruthy();
+
+    const updateRes = await request(testApp)
+      .post("/api/v1/customers/auth/phone-number/verify")
+      .set("Origin", "http://localhost:3000")
+      .set("Cookie", cookies)
+      .send({ phoneNumber: newPhone, code, updatePhoneNumber: true });
+
+    expect(updateRes.status).toBe(200);
+    expect(updateRes.body.user).toBeDefined();
+    expect(updateRes.body.user.id).toBe(firstVerifyRes.body.user.id);
+    expect(updateRes.body.user.phoneNumber).toBe(newPhone);
+    expect(updateRes.body.user.phoneNumberVerified).toBe(true);
+
+    const db = mongoose.connection.db;
+    const userDoc = await db.collection("customerUser").findOne({ phoneNumber: newPhone });
+    expect(userDoc).toBeDefined();
+    expect(userDoc.phoneNumber).toBe(newPhone);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Master OTP testing bypass
+// ---------------------------------------------------------------------------
+
+describe("Customer Auth - Master OTP Feature", () => {
+  const origAllow = process.env.ALLOW_MASTER_OTP;
+  const origCode = process.env.MASTER_OTP_CODE;
+
+  afterEach(() => {
+    if (origAllow !== undefined) process.env.ALLOW_MASTER_OTP = origAllow;
+    else delete process.env.ALLOW_MASTER_OTP;
+    if (origCode !== undefined) process.env.MASTER_OTP_CODE = origCode;
+    else delete process.env.MASTER_OTP_CODE;
+  });
+
+  it("completes phone verification with master OTP code when ALLOW_MASTER_OTP=true", async () => {
+    process.env.ALLOW_MASTER_OTP = "true";
+    process.env.MASTER_OTP_CODE = "999999";
+
+    const masterPhone = "+919988776655";
+
+    const verifyRes = await request(testApp)
+      .post("/api/v1/customers/auth/phone-number/verify")
+      .set("Origin", "http://localhost:3000")
+      .send({ phoneNumber: masterPhone, code: "999999" });
+
+    expect(verifyRes.status).toBe(200);
+    expect(verifyRes.body.user).toBeDefined();
+    expect(verifyRes.body.user.phoneNumber).toBe(masterPhone);
+  });
+
+  it("rejects master OTP code when ALLOW_MASTER_OTP is not set or false", async () => {
+    process.env.ALLOW_MASTER_OTP = "false";
+    process.env.MASTER_OTP_CODE = "999999";
+
+    const masterPhone = "+919988776655";
+
+    const verifyRes = await request(testApp)
+      .post("/api/v1/customers/auth/phone-number/verify")
+      .set("Origin", "http://localhost:3000")
+      .send({ phoneNumber: masterPhone, code: "999999" });
+
+    expect(verifyRes.status).toBeGreaterThanOrEqual(400);
+  });
+
+  it("completes email OTP sign-in for existing user with master OTP code when ALLOW_MASTER_OTP=true", async () => {
+    process.env.ALLOW_MASTER_OTP = "true";
+    process.env.MASTER_OTP_CODE = "999999";
+
+    const { verifyRes: phoneRes } = await phoneSignUp(testApp, "+919988771122");
+    expect(phoneRes.status).toBe(200);
+    const userId = phoneRes.body.user.id;
+
+    const db = mongoose.connection.db;
+    const ObjectId = mongoose.Types.ObjectId;
+    const filter = ObjectId.isValid(userId) ? { _id: new ObjectId(userId) } : { _id: userId };
+    await db.collection("customerUser").updateOne(filter, { $set: { email: "master@example.com" } });
+
+    const signInRes = await request(testApp)
+      .post("/api/v1/customers/auth/sign-in/email-otp")
+      .set("Origin", "http://localhost:3000")
+      .send({ email: "master@example.com", otp: "999999" });
+
+    expect(signInRes.status).toBe(200);
+    expect(signInRes.body.user).toBeDefined();
+    expect(signInRes.body.user.email).toBe("master@example.com");
+  });
+
+  it("completes email verification with master OTP code when ALLOW_MASTER_OTP=true", async () => {
+    process.env.ALLOW_MASTER_OTP = "true";
+    process.env.MASTER_OTP_CODE = "999999";
+
+    const { verifyRes: phoneRes } = await phoneSignUp(testApp, "+919988771133");
+    expect(phoneRes.status).toBe(200);
+    const userId = phoneRes.body.user.id;
+
+    const db = mongoose.connection.db;
+    const ObjectId = mongoose.Types.ObjectId;
+    const filter = ObjectId.isValid(userId) ? { _id: new ObjectId(userId) } : { _id: userId };
+    await db.collection("customerUser").updateOne(filter, { $set: { email: "verify@example.com" } });
+
+    const verifyEmailRes = await request(testApp)
+      .post("/api/v1/customers/auth/email-otp/verify-email")
+      .set("Origin", "http://localhost:3000")
+      .send({ email: "verify@example.com", otp: "999999" });
+
+    expect(verifyEmailRes.status).toBe(200);
+    const updatedUser = await db.collection("customerUser").findOne(filter);
+    expect(updatedUser.emailVerified).toBe(true);
+  });
+
+  it("completes change email with master OTP code when ALLOW_MASTER_OTP=true", async () => {
+    process.env.ALLOW_MASTER_OTP = "true";
+    process.env.MASTER_OTP_CODE = "999999";
+
+    const { verifyRes: phoneRes } = await phoneSignUp(testApp, "+919988771144");
+    expect(phoneRes.status).toBe(200);
+    const cookies = phoneRes.headers["set-cookie"];
+    expect(cookies).toBeDefined();
+
+    const changeEmailRes = await request(testApp)
+      .post("/api/v1/customers/auth/email-otp/change-email")
+      .set("Origin", "http://localhost:3000")
+      .set("Cookie", cookies)
+      .send({ newEmail: "newmaster@example.com", otp: "999999" });
+
+    expect(changeEmailRes.status).toBe(200);
+    const db = mongoose.connection.db;
+    const updatedUser = await db.collection("customerUser").findOne({ email: "newmaster@example.com" });
+    expect(updatedUser).toBeDefined();
+    expect(updatedUser.email).toBe("newmaster@example.com");
+  });
+
+  it("rejects master OTP code when NODE_ENV is production even if ALLOW_MASTER_OTP=true", async () => {
+    const originalNodeEnv = process.env.NODE_ENV;
+    try {
+      process.env.NODE_ENV = "production";
+      process.env.ALLOW_MASTER_OTP = "true";
+      process.env.MASTER_OTP_CODE = "999999";
+
+      const masterPhone = "+919988776655";
+
+      const verifyRes = await request(testApp)
+        .post("/api/v1/customers/auth/phone-number/verify")
+        .set("Origin", "http://localhost:3000")
+        .send({ phoneNumber: masterPhone, code: "999999" });
+
+      expect(verifyRes.status).toBeGreaterThanOrEqual(400);
+    } finally {
+      process.env.NODE_ENV = originalNodeEnv;
+    }
+  });
+});
+
+describe("Customer Auth - Atomic Failed OTP Attempts & Attempt Limits", () => {
+  it("enforces 5-attempt limit during concurrent invalid verification attempts and rejects valid code after lockout", async () => {
+    const testPhone = "+919876549999";
+
+    // Request OTP
+    const sendRes = await request(testApp)
+      .post("/api/v1/customers/auth/phone-number/send-otp")
+      .set("Origin", "http://localhost:3000")
+      .send({ phoneNumber: testPhone });
+
+    expect(sendRes.status).toBe(200);
+
+    const validCode = await getCapturedOTP(testPhone);
+    expect(validCode).toBeTruthy();
+
+    const invalidCode = validCode === "123456" ? "654321" : "123456";
+
+    // Fire 5 concurrent invalid OTP verification attempts simultaneously
+    const concurrentInvalidAttempts = await Promise.all([
+      request(testApp)
+        .post("/api/v1/customers/auth/phone-number/verify")
+        .set("Origin", "http://localhost:3000")
+        .send({ phoneNumber: testPhone, code: invalidCode }),
+      request(testApp)
+        .post("/api/v1/customers/auth/phone-number/verify")
+        .set("Origin", "http://localhost:3000")
+        .send({ phoneNumber: testPhone, code: invalidCode }),
+      request(testApp)
+        .post("/api/v1/customers/auth/phone-number/verify")
+        .set("Origin", "http://localhost:3000")
+        .send({ phoneNumber: testPhone, code: invalidCode }),
+      request(testApp)
+        .post("/api/v1/customers/auth/phone-number/verify")
+        .set("Origin", "http://localhost:3000")
+        .send({ phoneNumber: testPhone, code: invalidCode }),
+      request(testApp)
+        .post("/api/v1/customers/auth/phone-number/verify")
+        .set("Origin", "http://localhost:3000")
+        .send({ phoneNumber: testPhone, code: invalidCode }),
+    ]);
+
+    // All invalid attempts should fail
+    concurrentInvalidAttempts.forEach((res) => {
+      expect(res.status).toBeGreaterThanOrEqual(400);
+    });
+
+    // Now send the valid code — should be rejected because 5-attempt limit was reached and verification record was deleted
+    const validVerifyRes = await request(testApp)
+      .post("/api/v1/customers/auth/phone-number/verify")
+      .set("Origin", "http://localhost:3000")
+      .send({ phoneNumber: testPhone, code: validCode });
+
+    expect(validVerifyRes.status).toBeGreaterThanOrEqual(400);
+
+    // Verify record is deleted in database
+    const db = mongoose.connection.db;
+    const doc = await db.collection("customerVerification").findOne({ identifier: testPhone });
+    expect(doc).toBeNull();
+  });
+});
+
+

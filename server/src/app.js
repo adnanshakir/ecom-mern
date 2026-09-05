@@ -4,6 +4,7 @@ import helmet from "helmet";
 import morgan from "morgan";
 import cookieParser from "cookie-parser";
 import rateLimit from "express-rate-limit";
+import { config } from "./config/config.js";
 import { getCustomerAuthHandler } from "./config/customerAuth.js";
 
 // Admin routes
@@ -31,11 +32,7 @@ app.use(
     origin: (origin, callback) => {
       if (!origin) return callback(null, true);
 
-      const allowedFrontendUrls = (process.env.FRONTEND_URL || "")
-        .split(",")
-        .map((url) => url.trim().replace(/\/$/, ""))
-        .filter(Boolean);
-
+      const allowedFrontendUrls = config.frontendUrls;
       const normalizedOrigin = origin.replace(/\/$/, "");
 
       const isAllowed = allowedFrontendUrls.includes(normalizedOrigin);
@@ -55,7 +52,7 @@ app.use(
   })
 );
 
-app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
+app.use(morgan(config.isProduction ? "combined" : "dev"));
 
 // Rate limiter for customer auth endpoints — 10 attempts per 15-minute window
 const customerAuthLimiter = rateLimit({
@@ -63,7 +60,7 @@ const customerAuthLimiter = rateLimit({
   max: 10,
   standardHeaders: true,
   legacyHeaders: false,
-  skip: () => process.env.NODE_ENV === "test",
+  skip: () => config.isTest,
   message: { success: false, message: "Too many authentication attempts, please try again later" },
 });
 
