@@ -121,6 +121,12 @@ export async function createCustomerAuth() {
     verification: {
       modelName: "customerVerification",
     },
+    advanced: {
+      defaultCookieAttributes: {
+        sameSite: "none",
+        secure: true,
+      },
+    },
     plugins: [
       phoneNumber({
         // DEVELOPMENT MODE: Logging phone OTP code to terminal during dev phase.
