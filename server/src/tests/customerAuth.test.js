@@ -394,6 +394,7 @@ describe("Customer Auth - Attach phone number to authenticated session", () => {
 
     expect(updateRes.status).toBe(200);
     expect(updateRes.body.user).toBeDefined();
+    expect(updateRes.body.user.id).toBe(firstVerifyRes.body.user.id);
     expect(updateRes.body.user.phoneNumber).toBe(newPhone);
     expect(updateRes.body.user.phoneNumberVerified).toBe(true);
 

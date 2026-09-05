@@ -33,7 +33,11 @@ export const loadConfig = (envSource = process.env) => {
   const currentNodeEnv = () => getEnv("NODE_ENV", "development");
   const isProd = () => currentNodeEnv() === "production";
   const isTestEnv = () => currentNodeEnv() === "test";
-  const port = Number(getEnv("PORT", "5000")) || 5000;
+  const rawPort = getEnv("PORT", "5000");
+  const port = Number(rawPort);
+  if (!/^\d+$/.test(rawPort) || !Number.isInteger(port) || port < 1 || port > 65535) {
+    throw new Error(`Invalid PORT environment variable: "${rawPort}". Must be an integer between 1 and 65535.`);
+  }
 
   const validateProductionBetterAuthUrl = (url) => {
     if (!url) {
