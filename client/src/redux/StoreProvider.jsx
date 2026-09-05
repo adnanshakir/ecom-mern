@@ -6,7 +6,7 @@ import { makeStore } from "@/redux/store";
 import { injectStore } from "@/services/admin/axios";
 import { injectCustomerStore } from "@/services/storefront/customerAxios";
 import { refreshAccessToken } from "@/redux/slices/authSlice";
-import { restoreCustomerSession } from "@/redux/slices/customerAuthSlice";
+import { refreshCustomerToken } from "@/redux/slices/customerAuthSlice";
 import { fetchCart } from "@/redux/slices/cartSlice";
 import { fetchWishlist } from "@/redux/slices/wishlistSlice";
 
@@ -25,9 +25,10 @@ export default function StoreProvider({ children }) {
     // Restore admin session
     store.dispatch(refreshAccessToken());
 
-    // Restore customer session via Better Auth cookie — then hydrate cart + wishlist if authenticated.
-    store.dispatch(restoreCustomerSession()).then((result) => {
-      if (restoreCustomerSession.fulfilled.match(result) && result.payload) {
+    // Restore customer session — then hydrate cart + wishlist if authenticated.
+    // refreshCustomerToken resolves before we check auth status, so chain off it.
+    store.dispatch(refreshCustomerToken()).then((result) => {
+      if (refreshCustomerToken.fulfilled.match(result)) {
         store.dispatch(fetchCart());
         store.dispatch(fetchWishlist());
       }

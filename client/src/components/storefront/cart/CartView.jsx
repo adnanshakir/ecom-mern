@@ -20,7 +20,7 @@ export function CartView() {
 
   useEffect(() => {
     if (authReady && authStatus !== "authenticated") {
-      router.replace("/sign-in");
+      router.replace("/login");
     }
   }, [authReady, authStatus, router]);
 

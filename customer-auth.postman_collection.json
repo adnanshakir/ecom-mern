@@ -2,13 +2,13 @@
   "info": {
     "_postman_id": "customer-auth-collection",
     "name": "Customer Auth",
-    "description": "# Customer Auth Postman Collection\n\nThis collection covers all customer authentication endpoints after the OTP-only redesign.\n\n## Auth Model\n- **Sign-up**: phone number + OTP only (the only path to creating an account).\n- **Sign-in**: phone + OTP *or* email + OTP (email OTP requires the email to already be attached to an existing account — no auto-registration).\n- **Passwords**: completely removed. `/sign-up/email` and `/sign-in/email` both return 400.\n\n## How to use this collection\n1. Select the **Customer Auth (Local)** environment.\n2. Run folders **top-to-bottom in order** — session cookies are managed automatically by Postman's cookie jar.\n3. **OTP codes** only appear in the **server console log** (`[CUSTOMER AUTH OTP]` / `[CUSTOMER AUTH EMAIL OTP]`). After hitting any Send OTP request, copy the code from the console, paste it into the `otpCode` environment variable, then run the matching Verify request.\n4. Re-running Sign-Up with the same phone number is expected to sign in (not create a duplicate).\n\n## Folders\n1. Sign-Up (Phone OTP) — create a brand-new account\n2. Sign-In (Phone OTP) — sign in with an existing phone number\n3. Sign-In (Email OTP) — sign in with an email already linked to an account\n4. Session & Sign-Out — verify session, then end it\n5. Negative / Regression Tests — confirm disabled flows fail correctly\n6. Cart — requires an active session\n7. Wishlist — requires an active session",
+    "description": "# Customer Auth Postman Collection\n\nThis collection contains all customer authentication endpoints implemented via Better Auth.\n\n## Important Notes & Guidelines\n\n### 1. Cookie-Based Sessions & Execution Order\nThis application uses HTTP-only cookie-based sessions (`better-auth.session_token`). Postman's built-in cookie jar automatically manages cookies between requests.\n- **Run requests in order**: Execute requests sequentially (e.g. Sign Up / Sign In → Get Session → Sign Out).\n- Do not run requests in isolation, as session endpoints depend on the session cookie established in previous steps.\n\n### 2. Avoid Collision on Repeat Runs\nSince `customerEmail` and `customerPhone` are fixed environment variables, re-running **Sign Up** after a successful registration will fail with a \"User already exists\" error (HTTP 400/422). This is expected behavior.\n- To re-run the full sequence from Sign Up, update `customerEmail` and `customerPhone` in your environment.\n- Alternatively, skip straight to the **Sign In** requests to test an existing account.\n\n### 3. Pre-Request Script (Origin Header)\nAn `Origin` header setting (`{{customerOrigin}}`) is automatically applied to all requests via a folder pre-request script to ensure CORS and trusted origin verification pass consistently.\n\n### 4. Manual Step for OTP Verification\n`Send Phone OTP` logs the generated OTP code to the server's console. Copy the OTP code from the backend server console log and paste it into the `otpCode` environment variable before executing **Verify Phone OTP**.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
     {
-      "name": "Sign-Up (Phone OTP)",
-      "description": "Creates a brand-new customer account via phone number + OTP. This is the **only** path to account creation — there is no email/password sign-up.\n\n**Run order:** Send OTP → copy code from server console → paste into `otpCode` env var → Verify OTP.",
+      "name": "Customer Auth",
+      "description": "Endpoints for Customer Authentication using Better Auth.",
       "event": [
         {
           "listen": "prerequest",
@@ -23,7 +23,7 @@
       ],
       "item": [
         {
-          "name": "1. Send Phone OTP",
+          "name": "1. Sign Up",
           "event": [
             {
               "listen": "test",
@@ -33,64 +33,11 @@
                   "    pm.response.to.have.status(200);",
                   "});",
                   "",
-                  "pm.test('Response confirms code sent', function () {",
+                  "pm.test('Response contains user ID', function () {",
                   "    const jsonData = pm.response.json();",
-                  "    pm.expect(jsonData).to.have.property('message');",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"phoneNumber\": \"{{customerPhone}}\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/customers/auth/phone-number/send-otp",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "customers", "auth", "phone-number", "send-otp"]
-            },
-            "description": "Sends an OTP to the given phone number.\n\n**After running:** Look for `[CUSTOMER AUTH OTP] Phone: ... | Code: XXXXXX` in the **server console**. Copy the 6-digit code into the `otpCode` environment variable, then run **Verify OTP (creates account)**."
-          }
-        },
-        {
-          "name": "2. Verify OTP (creates account)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status code is 200', function () {",
-                  "    pm.response.to.have.status(200);",
-                  "});",
-                  "",
-                  "pm.test('Response contains user with phoneNumber', function () {",
-                  "    const jsonData = pm.response.json();",
-                  "    pm.expect(jsonData).to.have.property('user');",
-                  "    pm.expect(jsonData.user).to.have.property('phoneNumber');",
-                  "    const userId = jsonData.user.id || jsonData.user._id;",
-                  "    pm.expect(userId).to.be.a('string').that.is.not.empty;",
+                  "    const userId = jsonData.user ? (jsonData.user.id || jsonData.user._id) : (jsonData.id || jsonData._id);",
+                  "    pm.expect(userId, 'User ID should be present in response').to.be.a('string').that.is.not.empty;",
                   "    pm.environment.set('lastUserId', userId);",
-                  "});",
-                  "",
-                  "pm.test('Phone number is verified', function () {",
-                  "    const jsonData = pm.response.json();",
-                  "    const verified = jsonData.user?.phoneNumberVerified === true || jsonData.phoneNumberVerified === true;",
-                  "    pm.expect(verified, 'phoneNumberVerified should be true after OTP verification').to.be.true;",
                   "});"
                 ],
                 "type": "text/javascript"
@@ -107,7 +54,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"phoneNumber\": \"{{customerPhone}}\",\n  \"code\": \"{{otpCode}}\"\n}",
+              "raw": "{\n  \"name\": \"{{customerName}}\",\n  \"email\": \"{{customerEmail}}\",\n  \"password\": \"{{customerPassword}}\",\n  \"phoneNumber\": \"{{customerPhone}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -115,33 +62,24 @@
               }
             },
             "url": {
-              "raw": "{{baseUrl}}/api/v1/customers/auth/phone-number/verify",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "customers", "auth", "phone-number", "verify"]
+              "raw": "{{baseUrl}}/api/v1/customers/auth/sign-up/email",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers",
+                "auth",
+                "sign-up",
+                "email"
+              ]
             },
-            "description": "Verifies the phone OTP. On first call for a new number this **creates the account**. On subsequent calls it signs in to the existing account.\n\n**Prerequisite:** Copy the OTP from the server console after running Send Phone OTP and paste it into the `otpCode` env var."
+            "description": "Registers a new customer account using name, email, password, and phone number.\n\n**Response:** Returns session token and user object. Session cookie is saved in Postman cookie jar automatically."
           }
-        }
-      ]
-    },
-    {
-      "name": "Sign-In (Phone OTP)",
-      "description": "Signs in to an **already-existing** account using phone + OTP. Uses the identical endpoint pair as sign-up — better-auth detects the account exists and signs in rather than creating a new one.\n\n**Run order:** Send OTP → copy code from server console → paste into `otpCode` env var → Verify OTP (sign-in).",
-      "event": [
+        },
         {
-          "listen": "prerequest",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "const origin = pm.environment.get('customerOrigin') || 'http://localhost:3000';",
-              "pm.request.headers.upsert({ key: 'Origin', value: origin });"
-            ]
-          }
-        }
-      ],
-      "item": [
-        {
-          "name": "1. Send Phone OTP",
+          "name": "2. Send Phone OTP",
           "event": [
             {
               "listen": "test",
@@ -174,14 +112,23 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/customers/auth/phone-number/send-otp",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "customers", "auth", "phone-number", "send-otp"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers",
+                "auth",
+                "phone-number",
+                "send-otp"
+              ]
             },
-            "description": "Sends an OTP to the registered phone number. Copy the code from the server console into `otpCode` before running step 2."
+            "description": "Triggers sending a phone verification OTP code.\n\n**Note:** In development mode, the OTP code is output in the server console logs and not returned in the API response. Copy the code from the server logs and paste it into the `otpCode` environment variable before running step 3."
           }
         },
         {
-          "name": "2. Verify OTP (sign-in)",
+          "name": "3. Verify Phone OTP",
           "event": [
             {
               "listen": "test",
@@ -191,17 +138,11 @@
                   "    pm.response.to.have.status(200);",
                   "});",
                   "",
-                  "pm.test('Response contains user with matching ID', function () {",
+                  "pm.test('Phone verification successful', function () {",
                   "    const jsonData = pm.response.json();",
-                  "    pm.expect(jsonData).to.have.property('user');",
-                  "    const userId = jsonData.user.id || jsonData.user._id;",
-                  "    pm.expect(userId).to.be.a('string').that.is.not.empty;",
-                  "    const lastUserId = pm.environment.get('lastUserId');",
-                  "    if (lastUserId) {",
-                  "        pm.expect(userId, 'Sign-in should resolve to the same user as sign-up').to.equal(lastUserId);",
-                  "    } else {",
-                  "        pm.environment.set('lastUserId', userId);",
-                  "    }",
+                  "    const isStatusTrue = jsonData.status === true;",
+                  "    const isPhoneVerified = jsonData.phoneNumberVerified === true || (jsonData.user && jsonData.user.phoneNumberVerified === true);",
+                  "    pm.expect(isStatusTrue || isPhoneVerified, 'Expected response to reflect phone verification success').to.be.true;",
                   "});"
                 ],
                 "type": "text/javascript"
@@ -227,77 +168,23 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/customers/auth/phone-number/verify",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "customers", "auth", "phone-number", "verify"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers",
+                "auth",
+                "phone-number",
+                "verify"
+              ]
             },
-            "description": "Verifies the OTP and signs in. The test asserts the returned user ID matches `lastUserId` set during sign-up, confirming the same account is returned (not a new duplicate)."
-          }
-        }
-      ]
-    },
-    {
-      "name": "Sign-In (Email OTP)",
-      "description": "Signs in using an email address that is **already linked to an existing account**. `disableSignUp: true` is set on the emailOTP plugin — it will reject any email that has no matching user rather than creating a new account.\n\n⚠️ **Phase 2 dependency:** There is currently no API endpoint to attach an email to an account (that's profile work). To test the success path manually, add the email directly in MongoDB Compass first (`customerUser` collection → set the `email` field). The rejection path (unregistered email) can be tested right now and is covered in the Negative Tests folder.\n\n**Run order:** Send Email OTP → copy code from server console → paste into `otpCode` env var → Sign In with Email OTP.",
-      "event": [
-        {
-          "listen": "prerequest",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "const origin = pm.environment.get('customerOrigin') || 'http://localhost:3000';",
-              "pm.request.headers.upsert({ key: 'Origin', value: origin });"
-            ]
-          }
-        }
-      ],
-      "item": [
-        {
-          "name": "1. Send Email OTP",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status code is 200', function () {",
-                  "    pm.response.to.have.status(200);",
-                  "});",
-                  "",
-                  "pm.test('Response confirms OTP sent', function () {",
-                  "    const jsonData = pm.response.json();",
-                  "    pm.expect(jsonData).to.have.property('message');",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"{{customerEmail}}\",\n  \"type\": \"sign-in\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/customers/auth/email-otp/send-verification-otp",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "customers", "auth", "email-otp", "send-verification-otp"]
-            },
-            "description": "Sends a sign-in OTP to the given email address. This always returns 200 regardless of whether the email is registered (prevents email-enumeration timing attacks). The actual rejection happens at the Sign In step.\n\n**After running:** Look for `[CUSTOMER AUTH EMAIL OTP] Email: ... | Type: sign-in | Code: XXXXXX` in the server console. Copy the 6-digit code into `otpCode`."
+            "description": "Verifies the phone number using the OTP code.\n\n**Note:** `otpCode` has no automated source (it is console-logged on the server). Set the `otpCode` variable in your environment manually after running step 2."
           }
         },
         {
-          "name": "2. Sign In with Email OTP",
+          "name": "4. Get Session (whoami)",
           "event": [
             {
               "listen": "test",
@@ -307,81 +194,10 @@
                   "    pm.response.to.have.status(200);",
                   "});",
                   "",
-                  "pm.test('Response contains user with matching ID', function () {",
+                  "pm.test('Response contains valid customer session and user profile', function () {",
                   "    const jsonData = pm.response.json();",
-                  "    pm.expect(jsonData).to.have.property('user');",
-                  "    const userId = jsonData.user.id || jsonData.user._id;",
-                  "    pm.expect(userId).to.be.a('string').that.is.not.empty;",
-                  "    const lastUserId = pm.environment.get('lastUserId');",
-                  "    if (lastUserId) {",
-                  "        pm.expect(userId, 'Email OTP sign-in should resolve to the same user').to.equal(lastUserId);",
-                  "    } else {",
-                  "        pm.environment.set('lastUserId', userId);",
-                  "    }",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"{{customerEmail}}\",\n  \"otp\": \"{{otpCode}}\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/customers/auth/sign-in/email-otp",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "customers", "auth", "sign-in", "email-otp"]
-            },
-            "description": "Verifies the email OTP and signs in. Requires `customerEmail` to already be attached to an existing user in the database (set via Compass until the profile API is built).\n\n**disableSignUp is active:** If the email has no matching user this will return a 4xx error — it will NOT create a new account."
-          }
-        }
-      ]
-    },
-    {
-      "name": "Session & Sign-Out",
-      "description": "Verify the active session then end it. Run after any successful sign-in.",
-      "event": [
-        {
-          "listen": "prerequest",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "const origin = pm.environment.get('customerOrigin') || 'http://localhost:3000';",
-              "pm.request.headers.upsert({ key: 'Origin', value: origin });"
-            ]
-          }
-        }
-      ],
-      "item": [
-        {
-          "name": "1. Get Session (whoami)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status code is 200', function () {",
-                  "    pm.response.to.have.status(200);",
-                  "});",
-                  "",
-                  "pm.test('Response contains valid session and user', function () {",
-                  "    const jsonData = pm.response.json();",
-                  "    pm.expect(jsonData).to.have.property('user');",
-                  "    pm.expect(jsonData).to.have.property('session');",
+                  "    pm.expect(jsonData, 'Response should contain user object').to.have.property('user');",
+                  "    pm.expect(jsonData, 'Response should contain session object').to.have.property('session');",
                   "});"
                 ],
                 "type": "text/javascript"
@@ -393,14 +209,22 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/customers/auth/get-session",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "customers", "auth", "get-session"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers",
+                "auth",
+                "get-session"
+              ]
             },
-            "description": "Returns the currently authenticated user and session. Requires a valid session cookie."
+            "description": "Fetches active session details and current authenticated customer user profile.\n\n**Requires:** Valid session cookie sent via browser cookie jar."
           }
         },
         {
-          "name": "2. Sign Out",
+          "name": "5. Sign Out",
           "event": [
             {
               "listen": "test",
@@ -440,181 +264,42 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/customers/auth/sign-out",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "customers", "auth", "sign-out"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers",
+                "auth",
+                "sign-out"
+              ]
             },
-            "description": "Invalidates the current session and clears the session cookie."
+            "description": "Logs out the customer and invalidates the session cookie."
           }
-        }
-      ]
-    },
-    {
-      "name": "Negative / Regression Tests",
-      "description": "Confirms that disabled, removed, or constrained flows return the expected rejection rather than behaving as they previously did.\n\nNone of these requests should succeed (200). All are expected to return a 4xx.",
-      "event": [
+        },
         {
-          "listen": "prerequest",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "const origin = pm.environment.get('customerOrigin') || 'http://localhost:3000';",
-              "pm.request.headers.upsert({ key: 'Origin', value: origin });"
-            ]
-          }
-        }
-      ],
-      "item": [
-        {
-          "name": "REG-1: Email OTP sign-in — unregistered email (must reject, not create)",
+          "name": "6. Sign In (Email + Password)",
           "event": [
             {
               "listen": "test",
               "script": {
                 "exec": [
-                  "// Step 1 of 2 — send the OTP to a ghost email.",
-                  "// The send step always returns 200 (prevents email enumeration).",
-                  "// The actual rejection happens in REG-2 when we try to verify.",
-                  "pm.test('Send OTP returns 200 (send step does not reveal existence)', function () {",
+                  "pm.test('Status code is 200', function () {",
                   "    pm.response.to.have.status(200);",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"ghost-unregistered@example.com\",\n  \"type\": \"sign-in\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/customers/auth/email-otp/send-verification-otp",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "customers", "auth", "email-otp", "send-verification-otp"]
-            },
-            "description": "Sends a sign-in OTP for an email that has **no matching user** in the database.\n\nExpected: **200** — the send step deliberately does not reveal whether the email is registered (email-enumeration protection).\n\n**Confirmed behavior (`disableSignUp: true`):** When the email has no matching user, better-auth returns 200 but **silently discards the OTP** — it never calls `sendVerificationOTP` and never writes a verification record. Nothing will appear in the server console log. This is by design.\n\nProceed directly to REG-2 — no code to paste, any dummy code will be rejected."
-          }
-        },
-        {
-          "name": "REG-2: Email OTP sign-in — verify with unregistered email (must 4xx, no account created)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status is 4xx — unregistered email rejected at sign-in verify step', function () {",
-                  "    pm.expect(pm.response.code).to.be.within(400, 499);",
                   "});",
                   "",
-                  "pm.test('Response body is captured for review', function () {",
-                  "    // Log the full response so you can inspect what error better-auth returns.",
-                  "    console.log('REG-2 response body:', JSON.stringify(pm.response.json(), null, 2));",
-                  "    pm.expect(true).to.be.true; // always passes — manual review of console log",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"ghost-unregistered@example.com\",\n  \"otp\": \"000000\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/customers/auth/sign-in/email-otp",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "customers", "auth", "sign-in", "email-otp"]
-            },
-            "description": "Attempts to complete the email OTP sign-in for an address with no existing user.\n\nExpected: **4xx** — because `disableSignUp: true` caused the send step to silently discard the OTP (no record was stored), any code submitted here will be rejected as not found / invalid.\n\nThe OTP body is hardcoded to `000000` — there is no valid code to paste because none was ever issued.\n\n**After running:** Check the Postman console for the logged response body (the test script logs it automatically). Also confirm in MongoDB Compass that `customerUser` has **zero** documents with `email: ghost-unregistered@example.com`."
-          }
-        },
-        {
-          "name": "REG-3: POST /sign-up/email — must return 400 (not enabled)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status is 400 — emailAndPassword sign-up is disabled', function () {",
-                  "    pm.response.to.have.status(400);",
-                  "});",
-                  "",
-                  "pm.test('No user created by disabled endpoint', function () {",
+                  "pm.test('Response contains user ID matching lastUserId', function () {",
                   "    const jsonData = pm.response.json();",
-                  "    console.log('REG-3 response body:', JSON.stringify(jsonData, null, 2));",
-                  "    // The response should not contain a user object",
-                  "    pm.expect(jsonData).to.not.have.property('user');",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Ghost User\",\n  \"email\": \"ghost@example.com\",\n  \"password\": \"Password123!\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/customers/auth/sign-up/email",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "customers", "auth", "sign-up", "email"]
-            },
-            "description": "Hits the old email+password sign-up endpoint directly.\n\nExpected: **400** with a message indicating email/password auth is not enabled. This endpoint must **not** create an account."
-          }
-        },
-        {
-          "name": "REG-4: POST /sign-in/email — must return 400 (not enabled)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status is 400 — emailAndPassword sign-in is disabled', function () {",
-                  "    pm.response.to.have.status(400);",
-                  "});",
+                  "    const userId = jsonData.user ? (jsonData.user.id || jsonData.user._id) : (jsonData.id || jsonData._id);",
+                  "    pm.expect(userId, 'User ID should be present in response').to.be.a('string').that.is.not.empty;",
                   "",
-                  "pm.test('Response body captured for review', function () {",
-                  "    const jsonData = pm.response.json();",
-                  "    console.log('REG-4 response body:', JSON.stringify(jsonData, null, 2));",
-                  "    pm.expect(true).to.be.true;",
+                  "    const lastUserId = pm.environment.get('lastUserId');",
+                  "    if (lastUserId) {",
+                  "        pm.expect(userId, 'User ID should match lastUserId from previous auth step').to.equal(lastUserId);",
+                  "    } else {",
+                  "        pm.environment.set('lastUserId', userId);",
+                  "    }",
                   "});"
                 ],
                 "type": "text/javascript"
@@ -631,7 +316,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"ghost@example.com\",\n  \"password\": \"Password123!\"\n}",
+              "raw": "{\n  \"email\": \"{{customerEmail}}\",\n  \"password\": \"{{customerPassword}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -640,28 +325,91 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/customers/auth/sign-in/email",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "customers", "auth", "sign-in", "email"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers",
+                "auth",
+                "sign-in",
+                "email"
+              ]
             },
-            "description": "Hits the old email+password sign-in endpoint directly.\n\nExpected: **400** with a message indicating email/password auth is not enabled."
+            "description": "Signs in an existing customer using email and password."
           }
         },
         {
-          "name": "REG-5: Duplicate phone number — second sign-up must fail",
+          "name": "7. Sign In (Phone + Password)",
           "event": [
             {
               "listen": "test",
               "script": {
                 "exec": [
-                  "// Send an OTP to the phone number already registered from the Sign-Up folder.",
-                  "// The send step itself will succeed (200) — the uniqueness gate fires at verify.",
-                  "// To test the duplicate-rejection specifically:",
-                  "//   1. Use a DIFFERENT phone number here (not the one already signed up).",
-                  "//   2. Complete verify once to create the account.",
-                  "//   3. Manually edit the verify body to use the same phone a second time.",
-                  "//   4. The second verify should return a user object (sign-in) — NOT a new account.",
-                  "// This request just confirms send-otp always succeeds.",
-                  "pm.test('Send OTP returns 200', function () {",
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response contains user ID matching lastUserId', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    const userId = jsonData.user ? (jsonData.user.id || jsonData.user._id) : (jsonData.id || jsonData._id);",
+                  "    pm.expect(userId, 'User ID should be present in response').to.be.a('string').that.is.not.empty;",
+                  "",
+                  "    const lastUserId = pm.environment.get('lastUserId');",
+                  "    if (lastUserId) {",
+                  "        pm.expect(userId, 'User ID should match lastUserId from previous auth step').to.equal(lastUserId);",
+                  "    } else {",
+                  "        pm.environment.set('lastUserId', userId);",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phoneNumber\": \"{{customerPhone}}\",\n  \"password\": \"{{customerPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/customers/auth/sign-in/phone-number",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers",
+                "auth",
+                "sign-in",
+                "phone-number"
+              ]
+            },
+            "description": "Signs in an existing customer using phone number and password."
+          }
+        },
+        {
+          "name": "8. Trigger Email Verification",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
                   "    pm.response.to.have.status(200);",
                   "});"
                 ],
@@ -679,7 +427,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"phoneNumber\": \"{{customerPhone}}\"\n}",
+              "raw": "{\n  \"email\": \"{{customerEmail}}\",\n  \"callbackURL\": \"{{frontendCallbackUrl}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -687,18 +435,26 @@
               }
             },
             "url": {
-              "raw": "{{baseUrl}}/api/v1/customers/auth/phone-number/send-otp",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "customers", "auth", "phone-number", "send-otp"]
+              "raw": "{{baseUrl}}/api/v1/customers/auth/send-verification-email",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers",
+                "auth",
+                "send-verification-email"
+              ]
             },
-            "description": "Regression: confirms the phone-number uniqueness constraint still holds. Sending an OTP to a number that is already registered should succeed (200) — the existing user simply receives a new code and signing in returns that same user, not a duplicate.\n\nTo confirm no duplicate is created: after verifying, check MongoDB Compass that `customerUser` has exactly one document with this phone number."
+            "description": "Triggers sending a verification email to the customer with a callback URL."
           }
         }
       ]
     },
     {
       "name": "Cart",
-      "description": "Endpoints for Customer Cart management.\n\n**Requires an active session** — run a Sign-In folder first.",
+      "description": "Endpoints for Customer Cart management.",
       "event": [
         {
           "listen": "prerequest",
@@ -738,8 +494,14 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/customers/cart",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "customers", "cart"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "cart"
+              ]
             },
             "description": "Gets (or creates) the authenticated customer's cart.\n\n**Note:** Depends on an active session cookie established by running a Sign In request first."
           }
@@ -784,8 +546,15 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/customers/cart/items",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "customers", "cart", "items"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "cart",
+                "items"
+              ]
             },
             "description": "Adds a product variant to the customer's cart.\n\n**Note:** Depends on an active session cookie established by running a Sign In request first."
           }
@@ -794,7 +563,7 @@
     },
     {
       "name": "Wishlist",
-      "description": "Endpoints for Customer Wishlist management.\n\n**Requires an active session** — run a Sign-In folder first.",
+      "description": "Endpoints for Customer Wishlist management.",
       "event": [
         {
           "listen": "prerequest",
@@ -834,8 +603,14 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/customers/wishlist",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "customers", "wishlist"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "wishlist"
+              ]
             },
             "description": "Gets (or creates) the authenticated customer's wishlist.\n\n**Note:** Depends on an active session cookie established by running a Sign In request first."
           }
@@ -880,8 +655,15 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/customers/wishlist/items",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "customers", "wishlist", "items"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "wishlist",
+                "items"
+              ]
             },
             "description": "Adds a product to the customer's wishlist.\n\n**Note:** Depends on an active session cookie established by running a Sign In request first."
           }

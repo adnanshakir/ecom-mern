@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useDispatch, useSelector } from "react-redux";
 import { Search, Heart, ShoppingCart, User, Truck, FolderTree, Package, Loader2, ArrowRight, X } from "lucide-react";
 
-import { customerSignOut } from "@/redux/slices/customerAuthSlice";
+import { customerLogout } from "@/redux/slices/customerAuthSlice";
 import { resetCart } from "@/redux/slices/cartSlice";
 import { resetWishlist } from "@/redux/slices/wishlistSlice";
 import { selectCartCount } from "@/redux/slices/cartSlice";
@@ -24,7 +24,7 @@ export function Navbar() {
   const cartCount = useSelector(selectCartCount);
 
   const handleLogout = async () => {
-    await dispatch(customerSignOut());
+    await dispatch(customerLogout());
     dispatch(resetCart());
     dispatch(resetWishlist());
     router.push("/");
@@ -55,14 +55,14 @@ export function Navbar() {
             </Button>
 
             <Button variant="ghost" size="icon" asChild title="Wishlist">
-              <Link href={isAuthenticated ? "/wishlist" : "/sign-in?from=/wishlist"}>
+              <Link href={isAuthenticated ? "/wishlist" : "/login?from=/wishlist"}>
                 <Heart className="size-5" />
               </Link>
             </Button>
 
             {/* Cart icon with count badge */}
             <Button variant="ghost" size="icon" className="relative" asChild title="Cart">
-              <Link href={isAuthenticated ? "/cart" : "/sign-in?from=/cart"}>
+              <Link href={isAuthenticated ? "/cart" : "/login?from=/cart"}>
                 <ShoppingCart className="size-5" />
                 {cartCount > 0 && (
                   <span className="absolute -right-0.5 -top-0.5 flex min-w-4.5 items-center justify-center rounded-full bg-primary px-1 py-px text-[10px] font-semibold leading-none text-primary-foreground">
@@ -248,8 +248,6 @@ function UserMenu({ user, isAuthenticated, onLogout }) {
   const timeoutRef = useRef(null);
   const isLoggedIn = isAuthenticated || !!user;
 
-  const displayName = user?.name || user?.phoneNumber || "Account";
-
   const handleMouseEnter = () => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
     setOpen(true);
@@ -268,43 +266,55 @@ function UserMenu({ user, isAuthenticated, onLogout }) {
     };
   }, []);
 
-  if (!isLoggedIn) {
-    return (
-      <div className="flex items-center gap-1.5 ml-1">
-        <Button size="sm" asChild>
-          <Link href="/sign-up">Sign Up</Link>
-        </Button>
-      </div>
-    );
-  }
-
   return (
     <div className="relative" onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
-      {/* Trigger icon for logged-in user */}
-      <button
-        className="inline-flex size-9 items-center justify-center rounded-md text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
-        title={displayName}
-        onClick={() => setOpen((prev) => !prev)}
-      >
-        <User className="size-5" />
-      </button>
+      {/* Trigger icon */}
+      {isLoggedIn ? (
+        <button
+          className="inline-flex size-9 items-center justify-center rounded-md text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+          title={user?.name || "Account"}
+          onClick={() => setOpen((prev) => !prev)}
+        >
+          <User className="size-5" />
+        </button>
+      ) : (
+        <Link
+          href="/login"
+          className="inline-flex size-9 items-center justify-center rounded-md text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+          title="Login"
+        >
+          <User className="size-5" />
+        </Link>
+      )}
 
       {/* Dropdown panel with Hover Bridge */}
       {open && (
         <div className="absolute right-0 top-full z-50 pt-1 w-44">
           <div className="overflow-hidden rounded-md border bg-popover py-1 shadow-md">
-            <div className="px-3 py-1.5 text-xs font-medium text-muted-foreground truncate">{displayName}</div>
-            <div className="my-1 h-px bg-border" />
-            <MenuItem href="/account/profile">Profile</MenuItem>
-            <MenuItem href="/account/orders">Your orders</MenuItem>
-            <MenuItem href="/contact-us">Contact us</MenuItem>
-            <div className="my-1 h-px bg-border" />
-            <button
-              onClick={onLogout}
-              className="w-full px-3 py-1.5 text-left text-sm text-destructive transition-colors hover:bg-accent"
-            >
-              Logout
-            </button>
+            {isLoggedIn ? (
+              <>
+                <div className="px-3 py-1.5 text-xs font-medium text-muted-foreground truncate">{user?.name || "Account"}</div>
+                <div className="my-1 h-px bg-border" />
+                <MenuItem href="/account/profile">Profile</MenuItem>
+                <MenuItem href="/account/orders">Your orders</MenuItem>
+                <MenuItem href="/contact-us">Contact us</MenuItem>
+                <div className="my-1 h-px bg-border" />
+                <button
+                  onClick={onLogout}
+                  className="w-full px-3 py-1.5 text-left text-sm text-destructive transition-colors hover:bg-accent"
+                >
+                  Logout
+                </button>
+              </>
+            ) : (
+              <>
+                <MenuItem href="/contact-us">Contact us</MenuItem>
+                <div className="my-1 h-px bg-border" />
+                <MenuItem href="/login" highlight>
+                  Login
+                </MenuItem>
+              </>
+            )}
           </div>
         </div>
       )}

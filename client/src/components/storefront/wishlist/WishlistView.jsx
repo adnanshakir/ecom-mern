@@ -28,7 +28,7 @@ export function WishlistView() {
 
   useEffect(() => {
     if (authReady && authStatus !== "authenticated") {
-      router.replace("/sign-in");
+      router.replace("/login");
     }
   }, [authReady, authStatus, router]);
 

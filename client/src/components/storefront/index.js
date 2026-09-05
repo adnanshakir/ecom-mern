@@ -34,5 +34,4 @@ export * from "./cart/CartView";
 export * from "./wishlist/WishlistView";
 
 // Auth
-export * from "./auth/SignInView";
-export * from "./auth/SignUpView";
+export * from "./auth/AuthFormTabs";

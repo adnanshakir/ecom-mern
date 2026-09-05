@@ -70,10 +70,9 @@ const customerAuthLimiter = rateLimit({
 // Apply rate limiting to critical customer auth entrypoints
 app.use("/api/v1/customers/auth/phone-number/send-otp", customerAuthLimiter);
 app.use("/api/v1/customers/auth/phone-number/verify", customerAuthLimiter);
-app.use("/api/v1/customers/auth/email-otp/send-verification-otp", customerAuthLimiter);
-app.use("/api/v1/customers/auth/sign-in/email-otp", customerAuthLimiter);
-app.use("/api/v1/customers/auth/email-otp/request-email-change", customerAuthLimiter);
-app.use("/api/v1/customers/auth/email-otp/change-email", customerAuthLimiter);
+app.use("/api/v1/customers/auth/sign-up/email", customerAuthLimiter);
+app.use("/api/v1/customers/auth/sign-in/email", customerAuthLimiter);
+app.use("/api/v1/customers/auth/sign-in/phone-number", customerAuthLimiter);
 
 // Mount Better Auth customer auth handler lazily per-request (BEFORE express.json for raw request stream processing)
 app.all("/api/v1/customers/auth/*splat", (req, res, next) => {

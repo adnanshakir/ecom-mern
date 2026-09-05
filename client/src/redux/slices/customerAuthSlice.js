@@ -1,45 +1,78 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import { authClient } from "@/lib/authClient";
+import {
+  registerCustomerRequest,
+  loginCustomerRequest,
+  refreshCustomerRequest,
+  logoutCustomerRequest,
+  updateCustomerProfileRequest,
+} from "@/services/storefront/customerAuth";
 
 const initialState = {
   user: null,
+  accessToken: null,
   status: "idle", // idle | loading | authenticated | unauthenticated
   error: null,
   authReady: false,
 };
 
-/**
- * Restores session on application load or post-auth verification.
- * Queries Better Auth session cookie.
- */
-export const restoreCustomerSession = createAsyncThunk(
-  "customerAuth/restoreSession",
-  async (_, { rejectWithValue }) => {
+export const registerCustomer = createAsyncThunk(
+  "customerAuth/register",
+  async (payload, { rejectWithValue }) => {
     try {
-      const { data, error } = await authClient.getSession();
-      if (error || !data?.session || !data?.user) {
-        return null;
-      }
-      return data.user;
+      const { data } = await registerCustomerRequest(payload);
+      return data.data; // {accessToken, user} — register logs the customer in immediately
     } catch (err) {
-      return rejectWithValue(err.message || "Failed to restore session");
+      return rejectWithValue(err.response?.data?.message || "Unable to register");
     }
   }
 );
 
-/**
- * Customer Sign-Out thunk.
- * Always clears client-side state even if remote request fails.
- */
-export const customerSignOut = createAsyncThunk(
-  "customerAuth/signOut",
+export const loginCustomer = createAsyncThunk(
+  "customerAuth/login",
+  async (payload, { rejectWithValue }) => {
+    try {
+      const { data } = await loginCustomerRequest(payload);
+      return data.data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || "Unable to log in");
+    }
+  }
+);
+
+export const refreshCustomerToken = createAsyncThunk(
+  "customerAuth/refresh",
   async (_, { rejectWithValue }) => {
     try {
-      await authClient.signOut();
-      return true;
+      const { data } = await refreshCustomerRequest();
+      return data.data; // {accessToken}
     } catch (err) {
-      // Return rejectWithValue so thunk completes, but extraReducer will still clear state
-      return rejectWithValue(err.message || "Sign out failed");
+      return rejectWithValue({
+        message: err.response?.data?.message || "Session expired",
+        status: err.response?.status,
+      });
+    }
+  }
+);
+
+export const customerLogout = createAsyncThunk(
+  "customerAuth/logout",
+  async (_, { rejectWithValue }) => {
+    try {
+      await logoutCustomerRequest();
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || "Logout failed");
+    }
+  }
+);
+
+export const updateCustomerProfile = createAsyncThunk(
+  "customerAuth/updateProfile",
+  async (payload, { rejectWithValue }) => {
+    try {
+      const { data } = await updateCustomerProfileRequest(payload);
+      return data.data.user;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || "Failed to update profile");
     }
   }
 );
@@ -47,58 +80,65 @@ export const customerSignOut = createAsyncThunk(
 const customerAuthSlice = createSlice({
   name: "customerAuth",
   initialState,
-  reducers: {
-    clearCustomerAuth: (state) => {
-      state.user = null;
-      state.status = "unauthenticated";
-      state.authReady = true;
-      state.error = null;
-    },
-    setCustomerAuthSession: (state, action) => {
-      state.user = action.payload;
-      state.status = action.payload ? "authenticated" : "unauthenticated";
-      state.authReady = true;
-      state.error = null;
-    },
-  },
+  reducers: {},
   extraReducers: (builder) => {
     builder
-      // restoreCustomerSession
-      .addCase(restoreCustomerSession.pending, (state) => {
+      .addCase(registerCustomer.pending, (state) => {
         state.status = "loading";
+        state.error = null;
       })
-      .addCase(restoreCustomerSession.fulfilled, (state, action) => {
-        if (action.payload) {
-          state.user = action.payload;
-          state.status = "authenticated";
-        } else {
-          state.user = null;
+      .addCase(registerCustomer.fulfilled, (state, action) => {
+        state.status = "authenticated";
+        state.accessToken = action.payload.accessToken;
+        state.user = action.payload.user;
+        state.authReady = true;
+      })
+      .addCase(registerCustomer.rejected, (state, action) => {
+        state.status = "unauthenticated";
+        state.error = action.payload;
+      })
+      .addCase(loginCustomer.pending, (state) => {
+        state.status = "loading";
+        state.error = null;
+      })
+      .addCase(loginCustomer.fulfilled, (state, action) => {
+        state.status = "authenticated";
+        state.accessToken = action.payload.accessToken;
+        state.user = action.payload.user;
+        state.authReady = true;
+      })
+      .addCase(loginCustomer.rejected, (state, action) => {
+        state.status = "unauthenticated";
+        state.error = action.payload;
+      })
+      .addCase(refreshCustomerToken.fulfilled, (state, action) => {
+        state.status = "authenticated";
+        state.accessToken = action.payload.accessToken;
+        state.user = action.payload.user;
+        state.authReady = true;
+      })
+      .addCase(refreshCustomerToken.rejected, (state, action) => {
+        const status = action.payload?.status;
+        if (!status || status === 401) {
           state.status = "unauthenticated";
+          state.accessToken = null;
+          state.user = null;
         }
         state.authReady = true;
       })
-      .addCase(restoreCustomerSession.rejected, (state) => {
-        state.user = null;
+      .addCase(customerLogout.fulfilled, (state) => {
         state.status = "unauthenticated";
-        state.authReady = true;
+        state.accessToken = null;
+        state.user = null;
       })
-      // customerSignOut — ALWAYS clear local state on both fulfilled and rejected
-      .addCase(customerSignOut.fulfilled, (state) => {
-        state.user = null;
-        state.status = "unauthenticated";
-        state.authReady = true;
-      })
-      .addCase(customerSignOut.rejected, (state) => {
-        state.user = null;
-        state.status = "unauthenticated";
-        state.authReady = true;
+      .addCase(updateCustomerProfile.fulfilled, (state, action) => {
+        if (state.user) {
+          state.user = { ...state.user, ...action.payload };
+        } else {
+          state.user = action.payload;
+        }
       });
   },
 });
 
-export const { clearCustomerAuth, setCustomerAuthSession } = customerAuthSlice.actions;
-
-// Aliases for backwards compatibility during migration if needed
-export const customerLogout = customerSignOut;
-
-export default customerAuthSlice.reducer;
+export default customerAuthSlice.reducer;
