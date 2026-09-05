@@ -123,12 +123,21 @@ export async function createCustomerAuth() {
     },
     plugins: [
       phoneNumber({
-        sendOTP: ({ phoneNumber, code }, _request) => {
+        // DEVELOPMENT MODE: Logging phone OTP code to terminal during dev phase.
+        // Later on, this will be replaced with an SMS gateway integration (e.g. MSG91 / Twilio).
+        sendOTP: async (data, _request) => {
+          const targetPhone = data.phoneNumber || data.phone || data;
+          const otpCode = data.code || data.otp;
+
           if (process.env.NODE_ENV === "production") {
             // TODO(MSG91): Implement MSG91 SMS gateway integration for production
             throw new Error("MSG91 SMS gateway not configured for production environment yet.");
           }
-          console.log(`[CUSTOMER AUTH OTP] Phone: ${phoneNumber} | Code: ${code}`);
+          console.log("\n========================================================");
+          console.log("[DEV OTP LOG - PHONE SMS]");
+          console.log(`Target Phone : ${targetPhone}`);
+          console.log(`OTP Code     : ${otpCode}`);
+          console.log("========================================================\n");
         },
         // Indian phone validation: accept supported 10- or 12-digit inputs with optional + prefix
         // (local digits matching ^[6-9]\d{9}$) and normalize to canonical E.164 (+91XXXXXXXXXX).
@@ -150,9 +159,7 @@ export async function createCustomerAuth() {
             const digits = phoneNumber.replace(/\D/g, "");
             const localDigits =
               digits.length === 12 && digits.startsWith("91") ? digits.slice(2) : digits;
-            const canonical = /^[6-9]\d{9}$/.test(localDigits)
-              ? `+91${localDigits}`
-              : phoneNumber;
+            const canonical = /^[6-9]\d{9}$/.test(localDigits) ? `+91${localDigits}` : phoneNumber;
             return `${canonical.replace(/[^0-9]/g, "")}@customer.local`;
           },
           getTempName: (phoneNumber) => {
@@ -164,16 +171,27 @@ export async function createCustomerAuth() {
         },
       }),
       emailOTP({
-        // disableSignUp prevents emailOTP from creating brand-new accounts.
-        // Email OTP is a second sign-in method only — added via /profile after
-        // the user already has an account (created via phoneNumber sign-up).
-        disableSignUp: true,
-        sendVerificationOTP: ({ email, otp, type }, _request) => {
+        changeEmail: {
+          enabled: true,
+        },
+        // DEVELOPMENT MODE: Logging email OTP code to terminal during dev phase.
+        // Later on, this will be replaced with an email provider integration (e.g. Resend / SendGrid).
+        sendVerificationOTP: async (data, _request) => {
+          const targetEmail = data.email;
+          const otpCode = data.otp || data.code;
+          const otpType = data.type || "email-verification";
+
           if (process.env.NODE_ENV === "production") {
             // TODO(email-provider): same pattern as phone SMS — provider not chosen yet
             throw new Error("Email provider not configured for production environment yet.");
           }
-          console.log(`[CUSTOMER AUTH EMAIL OTP] Email: ${email} | Type: ${type} | Code: ${otp}`);
+
+          console.log("\n========================================================");
+          console.log("[DEV OTP LOG - EMAIL]");
+          console.log(`Target Email : ${targetEmail}`);
+          console.log(`OTP Code     : ${otpCode}`);
+          console.log(`OTP Type     : ${otpType}`);
+          console.log("========================================================\n");
         },
       }),
     ],
