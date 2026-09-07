@@ -7,6 +7,7 @@ import {
   createTestCustomerAuth,
   getTestCustomerAuthHandler,
 } from "../config/customerAuth.test.config.js";
+import { normalizePhoneNumber } from "../utils/phoneUtils.js";
 
 let testApp;
 
@@ -36,7 +37,11 @@ afterAll(async () => {
 // ---------------------------------------------------------------------------
 async function getCapturedOTP(identifier) {
   const db = mongoose.connection.db;
-  const doc = await db.collection("customerVerification").findOne({ identifier });
+  const targetId = typeof identifier === "string" && !identifier.includes("@") ? normalizePhoneNumber(identifier) : identifier;
+  let doc = await db.collection("customerVerification").findOne({ identifier: targetId });
+  if (!doc && targetId !== identifier) {
+    doc = await db.collection("customerVerification").findOne({ identifier });
+  }
   if (!doc?.value) return null;
   return doc.value.split(":")[0];
 }
@@ -83,6 +88,24 @@ describe("Customer Auth - Phone OTP sign-up", () => {
 
     // Second verify = sign-in (no new user created)
     const { verifyRes } = await phoneSignUp(testApp, "+919876543210");
+
+    expect(verifyRes.status).toBe(200);
+    expect(verifyRes.body.user).toBeDefined();
+    expect(verifyRes.body.user.phoneNumber).toBe("+919876543210");
+
+    const db = mongoose.connection.db;
+    const userCount = await db
+      .collection("customerUser")
+      .countDocuments({ phoneNumber: "+919876543210" });
+    expect(userCount).toBe(1);
+  });
+
+  it("signs in an existing account using bare 10-digit number format without throwing user already exists error", async () => {
+    // First verify = sign-up using bare 10-digit number
+    await phoneSignUp(testApp, "9876543210");
+
+    // Second verify = sign-in using bare 10-digit number
+    const { verifyRes } = await phoneSignUp(testApp, "9876543210");
 
     expect(verifyRes.status).toBe(200);
     expect(verifyRes.body.user).toBeDefined();
