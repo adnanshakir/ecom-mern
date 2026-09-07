@@ -41,6 +41,7 @@ app.use(
         return callback(null, true);
       }
 
+      console.error(`[CORS Error] Blocked origin: "${origin}". Allowed origins:`, allowedOrigins);
       return callback(new Error("Not allowed by CORS"), false);
     },
     credentials: true,
