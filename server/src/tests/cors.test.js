@@ -3,12 +3,22 @@ import app from "../app.js";
 
 describe("CORS Origin Predicate", () => {
   const originalFrontendUrl = process.env.FRONTEND_URL;
+  const originalTrustedOrigins = process.env.TRUSTED_ORIGINS;
+
+  beforeEach(() => {
+    delete process.env.TRUSTED_ORIGINS;
+  });
 
   afterEach(() => {
     if (originalFrontendUrl !== undefined) {
       process.env.FRONTEND_URL = originalFrontendUrl;
     } else {
       delete process.env.FRONTEND_URL;
+    }
+    if (originalTrustedOrigins !== undefined) {
+      process.env.TRUSTED_ORIGINS = originalTrustedOrigins;
+    } else {
+      delete process.env.TRUSTED_ORIGINS;
     }
   });
 
@@ -85,5 +95,15 @@ describe("CORS Origin Predicate", () => {
       .get("/health")
       .set("Origin", "https://app.example.com");
     expect(res2.headers["access-control-allow-origin"]).toBe("https://app.example.com");
+  });
+
+  test("allows origins specified in TRUSTED_ORIGINS", async () => {
+    process.env.FRONTEND_URL = "http://localhost:3000";
+    process.env.TRUSTED_ORIGINS = "https://admin.example.com";
+
+    const res = await request(app)
+      .get("/health")
+      .set("Origin", "https://admin.example.com");
+    expect(res.headers["access-control-allow-origin"]).toBe("https://admin.example.com");
   });
 });

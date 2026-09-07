@@ -8,7 +8,13 @@ dotenv.config();
  */
 export const loadConfig = (envSource = process.env) => {
   const getEnv = (key, defaultValue = "") => {
-    const val = envSource[key];
+    let val = envSource[key];
+    if ((val === undefined || val === null || val === "") && key === "FRONTEND_URL") {
+      val = envSource["FRONTEND"] || envSource["frontend"];
+    }
+    if ((val === undefined || val === null || val === "") && key === "TRUSTED_ORIGINS") {
+      val = envSource["TRUSTED"] || envSource["trusted"] || envSource["TRUSTED_ORIGIN"] || envSource["trusted_origin"];
+    }
     if (val === undefined || val === null) return defaultValue;
     return String(val).trim();
   };
@@ -104,6 +110,11 @@ export const loadConfig = (envSource = process.env) => {
     get frontendUrls() {
       return parseOrigins(getEnv("FRONTEND_URL"));
     },
+    get allowedOrigins() {
+      const frontendOrigins = parseOrigins(getEnv("FRONTEND_URL"));
+      const trustedOrigins = parseOrigins(getEnv("TRUSTED_ORIGINS"));
+      return Array.from(new Set([...frontendOrigins, ...trustedOrigins]));
+    },
 
     betterAuth: {
       get url() {
@@ -118,13 +129,13 @@ export const loadConfig = (envSource = process.env) => {
         return getEnv("BETTER_AUTH_SECRET");
       },
       get trustedOrigins() {
-        const currentTrusted = getEnv("TRUSTED_ORIGINS");
-        if (currentTrusted) return parseOrigins(currentTrusted);
         const frontendOrigins = parseOrigins(getEnv("FRONTEND_URL"));
-        if (isProd()) {
-          return frontendOrigins;
+        const trustedOrigins = parseOrigins(getEnv("TRUSTED_ORIGINS"));
+        const combined = Array.from(new Set([...frontendOrigins, ...trustedOrigins]));
+        if (isProd() || isTestEnv()) {
+          return combined;
         }
-        return Array.from(new Set([...frontendOrigins, ...initialTrustedOrigins]));
+        return Array.from(new Set([...combined, ...initialTrustedOrigins]));
       },
     },
 
