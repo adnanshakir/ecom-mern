@@ -32,10 +32,10 @@ app.use(
     origin: (origin, callback) => {
       if (!origin) return callback(null, true);
 
-      const allowedFrontendUrls = config.frontendUrls;
+      const allowedOrigins = config.allowedOrigins;
       const normalizedOrigin = origin.replace(/\/$/, "");
 
-      const isAllowed = allowedFrontendUrls.includes(normalizedOrigin);
+      const isAllowed = allowedOrigins.includes(normalizedOrigin);
 
       if (isAllowed) {
         return callback(null, true);
