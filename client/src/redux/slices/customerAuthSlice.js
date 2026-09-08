@@ -1,6 +1,21 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import { authClient } from "@/lib/authClient";
 
+/**
+ * Converts any Date instances in a user object to ISO strings
+ * so that the entire object is serializable for Redux.
+ */
+const serializeUser = (user) => {
+  if (!user) return user;
+  const serialized = { ...user };
+  for (const key of Object.keys(serialized)) {
+    if (serialized[key] instanceof Date) {
+      serialized[key] = serialized[key].toISOString();
+    }
+  }
+  return serialized;
+};
+
 const initialState = {
   user: null,
   status: "idle", // idle | loading | authenticated | unauthenticated
@@ -23,7 +38,7 @@ export const restoreCustomerSession = createAsyncThunk(
       if (!data?.session || !data?.user) {
         return null;
       }
-      return data.user;
+      return serializeUser(data.user);
     } catch (err) {
       return rejectWithValue(err.message || "Failed to restore session");
     }
@@ -58,7 +73,7 @@ const customerAuthSlice = createSlice({
       state.error = null;
     },
     setCustomerAuthSession: (state, action) => {
-      state.user = action.payload;
+      state.user = serializeUser(action.payload);
       state.status = action.payload ? "authenticated" : "unauthenticated";
       state.authReady = true;
       state.error = null;

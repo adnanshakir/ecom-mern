@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Loader2, Plus, Upload, Link as LinkIcon, X, CheckCircle2, AlertCircle } from "lucide-react";
-import { uploadImages } from "@/services/admin/images";
+import { uploadImages as adminUploadImages } from "@/services/admin/images";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -17,6 +17,8 @@ export function ImageUploader({
   singleImage = false,
   label = "Images",
   clean = false,
+  uploadOnly = false,
+  uploadService,
 }) {
   const [mode, setMode] = useState("file"); // "file" or "url"
   const [uploading, setUploading] = useState(false);
@@ -84,7 +86,7 @@ export function ImageUploader({
 
       const uploaded = [];
       for (const batch of batches) {
-        const { data } = await uploadImages(batch);
+        const { data } = await (uploadService || adminUploadImages)(batch);
         uploaded.push(...data.data.map((img) => ({ url: img.url, fileId: img.fileId })));
       }
 
@@ -127,7 +129,7 @@ export function ImageUploader({
           {label} ({currentImages.length}/{effectiveMax})
         </label>
 
-        {canAddMore && (
+        {canAddMore && !uploadOnly && (
           <div className="flex items-center gap-1 bg-background border rounded-md p-0.5 text-xs">
             <button
               type="button"
@@ -211,7 +213,7 @@ export function ImageUploader({
       {/* Input Area (Upload or URL) */}
       {canAddMore && (
         <div className="pt-1">
-          {mode === "file" ? (
+          {mode === "file" || uploadOnly ? (
             <div className="flex flex-col items-center justify-center rounded-md border border-dashed p-4 text-center bg-background">
               {uploading ? (
                 <div className="flex items-center gap-2 py-2 text-xs text-muted-foreground">

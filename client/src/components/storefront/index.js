@@ -26,6 +26,7 @@ export * from "./products/VariantSelector";
 export * from "./products/QuantitySelector";
 export * from "./products/RelatedProducts";
 export * from "./products/ExploreProducts";
+export * from "./products/ProductReviewSection";
 
 // Cart
 export * from "./cart/CartView";
