@@ -2,7 +2,13 @@ import { z } from "zod";
 import { objectId } from "../shared.js";
 
 const imageSchema = z.object({
-  url: z.string().url("Image URL must be a valid URL"),
+  url: z
+    .string()
+    .url("Image URL must be a valid URL")
+    .refine(
+      (url) => url.startsWith("https://ik.imagekit.io/"),
+      "Image URL must originate from the configured image host"
+    ),
   fileId: z.string().nullable().optional().default(null),
 });
 

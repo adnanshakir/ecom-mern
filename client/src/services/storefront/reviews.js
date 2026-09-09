@@ -30,7 +30,5 @@ export const deleteReview = (reviewId) =>
 export const uploadReviewImages = (files) => {
   const formData = new FormData();
   Array.from(files).forEach((file) => formData.append("image", file));
-  return customerApi.post("/customers/images/upload", formData, {
-    headers: { "Content-Type": "multipart/form-data" },
-  });
+  return customerApi.post("/customers/images/upload", formData);
 };

@@ -24,9 +24,10 @@ import { cn } from "@/lib/utils";
 function StarRating({ rating, size = "sm", className = "" }) {
   const sizes = { xs: "size-3", sm: "size-3.5", md: "size-4", lg: "size-5" };
   const starSize = sizes[size] || sizes.sm;
-  const fullStars = Math.floor(rating);
-  const hasHalf = rating - fullStars >= 0.25 && rating - fullStars < 0.75;
-  const emptyStart = 5 - fullStars - (hasHalf ? 1 : 0);
+  const fraction = rating - Math.floor(rating);
+  const fullStars = Math.floor(rating) + (fraction >= 0.75 ? 1 : 0);
+  const hasHalf = fraction >= 0.25 && fraction < 0.75;
+  const emptyStars = 5 - fullStars - (hasHalf ? 1 : 0);
 
   return (
     <div className={cn("flex items-center gap-px", className)}>
@@ -41,7 +42,7 @@ function StarRating({ rating, size = "sm", className = "" }) {
           </div>
         </div>
       )}
-      {Array.from({ length: emptyStart }).map((_, i) => (
+      {Array.from({ length: emptyStars }).map((_, i) => (
         <Star key={`empty-${i}`} className={cn(starSize, "fill-none text-slate-300 dark:text-slate-600")} />
       ))}
     </div>
@@ -297,11 +298,6 @@ export function ProductReviewSection({ productId }) {
                       {review.isEdited && (
                         <span className="text-[10px] font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
                           edited
-                        </span>
-                      )}
-                      {review.isVerifiedPurchase && (
-                        <span className="text-[10px] font-semibold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 dark:text-emerald-400 px-1.5 py-0.5 rounded">
-                          Verified Purchase
                         </span>
                       )}
                     </div>

@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import Review from "../../models/customer/review.model.js";
 import Product from "../../models/admin/product.model.js";
 import ApiError from "../../utils/apiError.js";
+import imagekit from "../../utils/imagekit.js";
 
 // ─────────────────────── PUBLIC ───────────────────────
 
@@ -36,7 +37,7 @@ export const getProductReviews = async (req, res, next) => {
         .sort(sortOption)
         .skip(skip)
         .limit(safeLimit)
-        .select("customerName rating title body images isVerifiedPurchase isEdited createdAt")
+        .select("customerName rating title body images isEdited createdAt")
         .lean(),
       Review.countDocuments(filter),
     ]);
@@ -235,12 +236,74 @@ export const updateReview = async (req, res, next) => {
 
     const { rating, title, body, images } = req.body;
 
-    if (rating !== undefined) review.rating = rating;
-    if (title !== undefined) review.title = title;
-    if (body !== undefined) review.body = body;
-    if (images !== undefined) review.images = images;
-    review.isEdited = true;
+    // Reject empty update payload
+    if (rating === undefined && title === undefined && body === undefined && images === undefined) {
+      throw new ApiError(400, "No update fields provided");
+    }
 
+    // Track whether anything actually changed
+    let hasChanges = false;
+
+    if (rating !== undefined && rating !== review.rating) {
+      review.rating = rating;
+      hasChanges = true;
+    }
+    if (title !== undefined && title !== review.title) {
+      review.title = title;
+      hasChanges = true;
+    }
+    if (body !== undefined && body !== review.body) {
+      review.body = body;
+      hasChanges = true;
+    }
+
+    // Handle image updates + cleanup orphaned files from ImageKit
+    if (images !== undefined) {
+      const oldFileIds = new Set(
+        (review.images || []).map((img) => img.fileId).filter(Boolean)
+      );
+      const newFileIds = new Set(
+        images.map((img) => img.fileId).filter(Boolean)
+      );
+
+      // Find fileIds that were removed
+      const orphanedFileIds = [...oldFileIds].filter((id) => !newFileIds.has(id));
+
+      // Check if images actually changed (compare URLs)
+      const oldUrls = (review.images || []).map((img) => img.url).sort().join(",");
+      const newUrls = images.map((img) => img.url).sort().join(",");
+
+      if (oldUrls !== newUrls) {
+        review.images = images;
+        hasChanges = true;
+
+        // Best-effort cleanup of orphaned ImageKit files
+        if (orphanedFileIds.length > 0) {
+          Promise.allSettled(
+            orphanedFileIds.map((fileId) => imagekit.deleteFile(fileId))
+          ).catch(() => {});
+        }
+      }
+    }
+
+    if (!hasChanges) {
+      // Nothing actually changed — return current state without saving
+      return res.status(200).json({
+        success: true,
+        data: {
+          _id: review._id,
+          rating: review.rating,
+          title: review.title,
+          body: review.body,
+          images: review.images,
+          customerName: review.customerName,
+          isEdited: review.isEdited,
+          createdAt: review.createdAt,
+        },
+      });
+    }
+
+    review.isEdited = true;
     await review.save();
 
     res.status(200).json({
@@ -284,7 +347,19 @@ export const deleteReview = async (req, res, next) => {
       throw new ApiError(403, "You can only delete your own reviews");
     }
 
+    // Best-effort cleanup of image files from ImageKit
+    const fileIdsToDelete = (review.images || [])
+      .map((img) => img.fileId)
+      .filter(Boolean);
+
     await review.deleteOne();
+
+    // Fire-and-forget — don't block the response for ImageKit cleanup
+    if (fileIdsToDelete.length > 0) {
+      Promise.allSettled(
+        fileIdsToDelete.map((fileId) => imagekit.deleteFile(fileId))
+      ).catch(() => {});
+    }
 
     res.status(200).json({ success: true, message: "Review deleted successfully" });
   } catch (err) {

@@ -32,9 +32,6 @@ export function useReviews(productId, isAuthenticated = false) {
   const [pagination, setPagination] = useState({ total: 0, page: 1, pages: 0 });
   const [submitting, setSubmitting] = useState(false);
 
-  // Track if initial mount fetch has been done to avoid duplicate calls
-  const hasFetched = useRef(false);
-
   const limit = 10;
 
   // ─── Fetch reviews list ─────────────────────────────────────────────
@@ -50,6 +47,7 @@ export function useReviews(productId, isAuthenticated = false) {
         });
         setReviews(data.data);
         setPagination(data.pagination);
+        setError(null);
       } catch (err) {
         setError(err.response?.data?.message || "Failed to load reviews");
       }
@@ -84,19 +82,30 @@ export function useReviews(productId, isAuthenticated = false) {
     }
   }, [productId, isAuthenticated]);
 
-  // ─── Initial data load ──────────────────────────────────────────────
+  // ─── Refetch when productId or isAuthenticated changes ──────────────
+
+  const fetchKey = `${productId}_${isAuthenticated}`;
+  const lastFetchKey = useRef(null);
 
   useEffect(() => {
-    if (!productId || hasFetched.current) return;
-    hasFetched.current = true;
+    if (!productId || fetchKey === lastFetchKey.current) return;
+    lastFetchKey.current = fetchKey;
+
+    let cancelled = false;
 
     const loadAll = async () => {
       setLoading(true);
-      await Promise.all([fetchReviews(1), fetchSummary(), fetchMyReview()]);
-      setLoading(false);
+      setPage(1);
+      setSort("most_recent");
+      await Promise.all([fetchReviews(1, "most_recent"), fetchSummary(), fetchMyReview()]);
+      if (!cancelled) setLoading(false);
     };
     loadAll();
-  }, [productId, fetchReviews, fetchSummary, fetchMyReview]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [fetchKey, productId, fetchReviews, fetchSummary, fetchMyReview]);
 
   // ─── Refetch when page or sort changes (user-driven) ────────────────
 
