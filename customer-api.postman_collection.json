@@ -1,8 +1,8 @@
 {
   "info": {
-    "_postman_id": "customer-auth-collection",
-    "name": "Customer Auth",
-    "description": "# Customer Auth Postman Collection\n\nThis collection covers all customer authentication, session management, cart, wishlist, and public storefront endpoints.\n\n## Auth Model & Features\n- **Sign-up**: Phone number + OTP only (creates account on verification if phone doesn't exist).\n- **Sign-in**: Phone + OTP *or* Email + OTP.\n- **Email OTP**: Supports Sign-In (`type: sign-in`), Email Verification (`type: email-verification`), and Change Email (`type: change-email`).\n- **Passwords**: Completely removed/disabled.\n- **Cart Management**: GET, POST items, PUT item quantity, DELETE single item, DELETE clear cart.\n- **Wishlist Management**: GET, POST items, DELETE item.\n- **Public Endpoints**: Search suggestions, Products, Product by Slug, Categories, Banners.\n\n## How to use this collection\n1. Select the **Customer Auth (Local)** environment.\n2. Run folders in order — session cookies are managed automatically by Postman's cookie jar.\n3. **OTP codes** appear in server console log (`[DEV OTP LOG - PHONE SMS]` / `[DEV OTP LOG - EMAIL]`). Copy the 6-digit code into `otpCode` env var before running verify steps.",
+    "_postman_id": "customer-api-collection",
+    "name": "Customer API",
+    "description": "# Customer API Postman Collection\n\nUnified collection covering **all** customer-facing endpoints:\n\n## Auth\n- **Sign-up**: Phone number + OTP only (creates account on verification if phone doesn't exist).\n- **Sign-in**: Phone + OTP *or* Email + OTP.\n- **Email OTP**: Supports Sign-In (`type: sign-in`), Email Verification (`type: email-verification`), and Change Email (`type: change-email`).\n- **Passwords**: Completely removed/disabled.\n\n## Protected (requires session)\n- **Cart**: GET, POST items, PUT item quantity, DELETE single item, DELETE clear cart.\n- **Wishlist**: GET, POST items, DELETE item.\n- **Reviews**: GET my review, POST create, PUT update, DELETE remove.\n- **Customer Images**: POST upload (max 4 files).\n\n## Public (no auth)\n- Search suggestions, Products, Product by Slug, Categories, Banners.\n- Product reviews list & summary.\n\n## How to use this collection\n1. Select the **Customer API (Local)** environment.\n2. Run folders in order — session cookies are managed automatically by Postman's cookie jar.\n3. **OTP codes** appear in server console log (`[DEV OTP LOG - PHONE SMS]` / `[DEV OTP LOG - EMAIL]`). Copy the 6-digit code into `otpCode` env var before running verify steps.\n4. For Cart/Wishlist/Review tests, fill in `variantId` and `productId` from the admin product list.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -1102,6 +1102,275 @@
       ]
     },
     {
+      "name": "Reviews",
+      "description": "Endpoints for Customer Review management (CRUD on own reviews).\n\n**Requires an active session**. Set `productId` in the environment before running.",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const origin = pm.environment.get('customerOrigin') || 'http://localhost:3000';",
+              "pm.request.headers.upsert({ key: 'Origin', value: origin });"
+            ]
+          }
+        }
+      ],
+      "item": [
+        {
+          "name": "1. Get My Review",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response returns success', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.be.true;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/reviews/mine/{{productId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "reviews",
+                "mine",
+                "{{productId}}"
+              ]
+            },
+            "description": "Gets the authenticated customer's review for a product (returns null data if no review exists)."
+          }
+        },
+        {
+          "name": "2. Create Review",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Review created successfully', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.be.true;",
+                  "    pm.expect(jsonData.data).to.have.property('_id');",
+                  "    pm.environment.set('reviewId', jsonData.data._id);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rating\": 4,\n  \"title\": \"Great product!\",\n  \"comment\": \"Really enjoyed using this product. Excellent quality and fast delivery.\",\n  \"images\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/reviews/{{productId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "reviews",
+                "{{productId}}"
+              ]
+            },
+            "description": "Creates a review for a product (one per customer per product). Auto-sets `reviewId` env var."
+          }
+        },
+        {
+          "name": "3. Update Review",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Review updated successfully', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.be.true;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rating\": 5,\n  \"title\": \"Updated: Amazing product!\",\n  \"comment\": \"Updated my review — even better than I initially thought.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/reviews/{{reviewId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "reviews",
+                "{{reviewId}}"
+              ]
+            },
+            "description": "Updates the authenticated customer's own review. Uses `reviewId` set by Create Review."
+          }
+        },
+        {
+          "name": "4. Delete Review",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Review deleted successfully', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.be.true;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/reviews/{{reviewId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "reviews",
+                "{{reviewId}}"
+              ]
+            },
+            "description": "Deletes the authenticated customer's own review."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Customer Images",
+      "description": "Endpoints for uploading customer images (used in reviews, etc.).\n\n**Requires an active session**.",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const origin = pm.environment.get('customerOrigin') || 'http://localhost:3000';",
+              "pm.request.headers.upsert({ key: 'Origin', value: origin });"
+            ]
+          }
+        }
+      ],
+      "item": [
+        {
+          "name": "1. Upload Images",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Upload returns image URLs', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.be.true;",
+                  "    pm.expect(jsonData.data).to.be.an('array').that.is.not.empty;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "image",
+                  "type": "file",
+                  "src": "",
+                  "description": "Select up to 4 image files to upload."
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/images/upload",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "images",
+                "upload"
+              ]
+            },
+            "description": "Uploads images for customer use (reviews, etc.) — max 4 files. Use form-data with key `image`."
+          }
+        }
+      ]
+    },
+    {
       "name": "Public Storefront",
       "description": "Public endpoints for store browsing (no authentication required).",
       "event": [
@@ -1313,6 +1582,86 @@
               ]
             },
             "description": "Gets published promotional banners for the storefront homepage."
+          }
+        },
+        {
+          "name": "6. Get Product Reviews (Public)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response returns reviews', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.be.true;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/public/products/{{productId}}/reviews",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "public",
+                "products",
+                "{{productId}}",
+                "reviews"
+              ]
+            },
+            "description": "Gets paginated list of reviews for a product. No authentication required."
+          }
+        },
+        {
+          "name": "7. Get Review Summary (Public)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response returns review summary', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.be.true;",
+                  "    pm.expect(jsonData.data).to.have.property('averageRating');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/public/products/{{productId}}/reviews/summary",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "public",
+                "products",
+                "{{productId}}",
+                "reviews",
+                "summary"
+              ]
+            },
+            "description": "Gets aggregate review stats (average rating, rating distribution, total count) for a product."
           }
         }
       ]

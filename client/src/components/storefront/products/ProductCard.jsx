@@ -202,7 +202,7 @@ export function ProductCard({ product, showCartOnHover = false }) {
         disabled={isWishlistPending}
         className={cn(
           "absolute right-2 top-2 flex size-7 items-center justify-center bg-background/90 shadow-sm transition-opacity",
-          isWishlisted ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+          isWishlisted ? "opacity-100" : "opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
         )}
         onClick={handleWishlist}
       >
