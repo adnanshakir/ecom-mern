@@ -11,6 +11,7 @@ import { RelatedProducts } from "@/components/storefront/products/RelatedProduct
 import { ExploreProducts } from "@/components/storefront/products/ExploreProducts";
 import { RecentlyViewedProducts } from "@/components/storefront/products/RecentlyViewedProducts";
 import { Breadcrumbs } from "@/components/storefront/layout/Breadcrumbs";
+import { ProductReviewSection } from "@/components/storefront/products/ProductReviewSection";
 
 export function ProductPageClient({ slug, initialProduct }) {
   const { product, loading, error } = usePublicProduct(slug, initialProduct);
@@ -67,6 +68,9 @@ export function ProductPageClient({ slug, initialProduct }) {
           />
         </div>
       </div>
+
+      {/* Product Reviews Section */}
+      <ProductReviewSection productId={product._id} />
 
       {/* Section 1: You May Also Like */}
       <RelatedProducts categoryId={product.category?._id} excludeProductId={product._id} />
