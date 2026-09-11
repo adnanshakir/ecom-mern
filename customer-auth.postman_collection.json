@@ -1,8 +1,14 @@
 {
   "info": {
+<<<<<<< Updated upstream:customer-auth.postman_collection.json
     "_postman_id": "customer-auth-collection",
     "name": "Customer Auth",
     "description": "# Customer Auth Postman Collection\n\nThis collection covers all customer authentication, session management, cart, wishlist, and public storefront endpoints.\n\n## Auth Model & Features\n- **Sign-up**: Phone number + OTP only (creates account on verification if phone doesn't exist).\n- **Sign-in**: Phone + OTP *or* Email + OTP.\n- **Email OTP**: Supports Sign-In (`type: sign-in`), Email Verification (`type: email-verification`), and Change Email (`type: change-email`).\n- **Passwords**: Completely removed/disabled.\n- **Cart Management**: GET, POST items, PUT item quantity, DELETE single item, DELETE clear cart.\n- **Wishlist Management**: GET, POST items, DELETE item.\n- **Public Endpoints**: Search suggestions, Products, Product by Slug, Categories, Banners.\n\n## How to use this collection\n1. Select the **Customer Auth (Local)** environment.\n2. Run folders in order — session cookies are managed automatically by Postman's cookie jar.\n3. **OTP codes** appear in server console log (`[DEV OTP LOG - PHONE SMS]` / `[DEV OTP LOG - EMAIL]`). Copy the 6-digit code into `otpCode` env var before running verify steps.",
+=======
+    "_postman_id": "customer-api-collection",
+    "name": "Customer API",
+    "description": "# Customer API Postman Collection\n\nUnified collection covering **all** customer-facing endpoints:\n\n## Auth & Profile\n- **Sign-up**: Phone number + OTP only (creates account on verification if phone doesn't exist).\n- **Sign-in**: Phone + OTP *or* Email + OTP.\n- **Customer Profile & Account**:\n  - GET Customer Profile & Session (`/get-session`)\n  - UPDATE Customer Profile Details (`/update-user`)\n  - Send Email Verification & Change Email OTPs (`/email-otp/...`)\n  - Sign Out (`/sign-out`)\n\n## Protected (requires session)\n- **Cart**: GET, POST items, PUT item quantity, DELETE single item, DELETE clear cart.\n- **Wishlist**: GET, POST items, DELETE item.\n- **Reviews**: GET my review, POST create, PUT update, DELETE remove.\n- **Customer Images**: POST upload (max 4 files).\n\n## Public (no auth)\n- Search suggestions, Products, Product by Slug, Categories, Banners.\n- Product reviews list & summary.\n\n## How to use this collection\n1. Select the **Customer API (Local)** environment.\n2. Run folders in order — session cookies are managed automatically by Postman's cookie jar.\n3. **OTP codes** appear in server console log (`[DEV OTP LOG - PHONE SMS]` / `[DEV OTP LOG - EMAIL]`). Copy the 6-digit code into `otpCode` env var before running verify steps.\n4. For Cart/Wishlist/Review tests, fill in `variantId` and `productId` from the admin product list.",
+>>>>>>> Stashed changes:customer-api.postman_collection.json
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -392,8 +398,8 @@
       ]
     },
     {
-      "name": "Email OTP - Verification & Change Email",
-      "description": "Endpoints for email verification and changing email address via email OTP.",
+      "name": "Customer Profile & Account Management",
+      "description": "Endpoints for retrieving customer profile details, updating profile info (e.g. name), email verification, changing email, and signing out.\n\n**Requires an active session**.",
       "event": [
         {
           "listen": "prerequest",
@@ -408,7 +414,7 @@
       ],
       "item": [
         {
-          "name": "1. Send Email Verification OTP",
+          "name": "1. Get Customer Profile & Session",
           "event": [
             {
               "listen": "test",
@@ -416,6 +422,110 @@
                 "exec": [
                   "pm.test('Status code is 200', function () {",
                   "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response contains valid session and user profile', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('user');",
+                  "    pm.expect(jsonData).to.have.property('session');",
+                  "    pm.expect(jsonData.user).to.have.property('id');",
+                  "    if (jsonData.user.name) {",
+                  "        pm.expect(jsonData.user.name).to.be.a('string');",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/customers/auth/get-session",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers",
+                "auth",
+                "get-session"
+              ]
+            },
+            "description": "Fetches currently authenticated customer's session and complete profile details (id, name, email, phone number, etc.). Requires active session."
+          }
+        },
+        {
+          "name": "2. Update Customer Profile Details",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Profile updated successfully', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.be.an('object');",
+                  "    const userObj = jsonData.user || jsonData;",
+                  "    pm.expect(userObj).to.have.property('name', 'Updated Customer Name');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Customer Name\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/customers/auth/update-user",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers",
+                "auth",
+                "update-user"
+              ]
+            },
+            "description": "Updates customer profile information such as full name or avatar image. Requires active session."
+          }
+        },
+        {
+          "name": "3. Send Email Verification OTP",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Verification OTP sent', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('message');",
                   "});"
                 ],
                 "type": "text/javascript"
@@ -453,11 +563,11 @@
                 "send-verification-otp"
               ]
             },
-            "description": "Sends an OTP to verify email address."
+            "description": "Sends an OTP code to verify customer's email address. Check server logs `[DEV OTP LOG - EMAIL]`."
           }
         },
         {
-          "name": "2. Verify Email",
+          "name": "4. Send Change Email OTP",
           "event": [
             {
               "listen": "test",
@@ -465,55 +575,11 @@
                 "exec": [
                   "pm.test('Status code is 200', function () {",
                   "    pm.response.to.have.status(200);",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"{{customerEmail}}\",\n  \"otp\": \"{{otpCode}}\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/customers/auth/email-otp/verify-email",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "customers",
-                "auth",
-                "email-otp",
-                "verify-email"
-              ]
-            },
-            "description": "Verifies the email address using the OTP code."
-          }
-        },
-        {
-          "name": "3. Send Change Email OTP",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status code is 200', function () {",
-                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Change email OTP sent', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('message');",
                   "});"
                 ],
                 "type": "text/javascript"
@@ -551,11 +617,11 @@
                 "send-verification-otp"
               ]
             },
-            "description": "Sends an OTP to the new email address to initiate an email change."
+            "description": "Sends an OTP code to the new email address to initiate an email change."
           }
         },
         {
-          "name": "4. Verify & Change Email",
+          "name": "5. Verify & Change Email",
           "event": [
             {
               "listen": "test",
@@ -563,6 +629,11 @@
                 "exec": [
                   "pm.test('Status code is 200', function () {",
                   "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Email changed successfully', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('status', true);",
                   "});"
                 ],
                 "type": "text/javascript"
@@ -600,69 +671,11 @@
                 "change-email"
               ]
             },
-            "description": "Verifies the OTP and changes the customer user email to newEmail. Requires active session."
-          }
-        }
-      ]
-    },
-    {
-      "name": "Session & Sign-Out",
-      "description": "Verify active session then end it.",
-      "event": [
-        {
-          "listen": "prerequest",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "const origin = pm.environment.get('customerOrigin') || 'http://localhost:3000';",
-              "pm.request.headers.upsert({ key: 'Origin', value: origin });"
-            ]
-          }
-        }
-      ],
-      "item": [
-        {
-          "name": "1. Get Session (whoami)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status code is 200', function () {",
-                  "    pm.response.to.have.status(200);",
-                  "});",
-                  "",
-                  "pm.test('Response contains valid session and user', function () {",
-                  "    const jsonData = pm.response.json();",
-                  "    pm.expect(jsonData).to.have.property('user');",
-                  "    pm.expect(jsonData).to.have.property('session');",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/customers/auth/get-session",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "customers",
-                "auth",
-                "get-session"
-              ]
-            },
-            "description": "Returns currently authenticated user and session."
+            "description": "Verifies OTP code and updates the customer email address. Requires active session."
           }
         },
         {
-          "name": "2. Sign Out",
+          "name": "6. Sign Out",
           "event": [
             {
               "listen": "test",
@@ -706,7 +719,7 @@
                 "sign-out"
               ]
             },
-            "description": "Invalidates the current session."
+            "description": "Invalidates the customer's active authentication session."
           }
         }
       ]

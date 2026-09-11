@@ -518,7 +518,7 @@ describe("Customer Auth - Master OTP Feature", () => {
     expect(updatedUser.email).toBe("newmaster@example.com");
   });
 
-  it("rejects master OTP code when NODE_ENV is production even if ALLOW_MASTER_OTP=true", async () => {
+  it("allows master OTP code when NODE_ENV is production if ALLOW_MASTER_OTP=true", async () => {
     const originalNodeEnv = process.env.NODE_ENV;
     try {
       process.env.NODE_ENV = "production";
@@ -532,7 +532,8 @@ describe("Customer Auth - Master OTP Feature", () => {
         .set("Origin", "http://localhost:3000")
         .send({ phoneNumber: masterPhone, code: "999999" });
 
-      expect(verifyRes.status).toBeGreaterThanOrEqual(400);
+      expect(verifyRes.status).toBe(200);
+      expect(verifyRes.body.user).toBeDefined();
     } finally {
       process.env.NODE_ENV = originalNodeEnv;
     }

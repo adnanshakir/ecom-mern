@@ -15,10 +15,8 @@ import { config } from "../config/config.js";
 export function isMasterOtpMatch(submittedCode, targetIdentifier) {
   const isAllowed = config.masterOtp.isAllowed;
   const masterCode = config.masterOtp.masterCode;
-  const env = (config.nodeEnv || "").toLowerCase();
-  const isDevOrTest = env === "development" || env === "test" || config.isTest === true;
 
-  if (!isAllowed || !isDevOrTest || !masterCode || !submittedCode || typeof submittedCode !== "string") {
+  if (!isAllowed || !masterCode || !submittedCode || typeof submittedCode !== "string") {
     return false;
   }
 

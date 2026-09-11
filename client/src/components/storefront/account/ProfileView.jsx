@@ -10,12 +10,8 @@ import { resetCart } from "@/redux/slices/cartSlice";
 import { resetWishlist } from "@/redux/slices/wishlistSlice";
 
 import { ProfileHeader } from "./ProfileHeader";
-import { ProfileCompletionCard } from "./ProfileCompletionCard";
 import { ProfileInfoOverview } from "./ProfileInfoOverview";
-import { EmailVerificationDialog } from "./EmailVerificationDialog";
-import { PhoneVerificationDialog } from "./PhoneVerificationDialog";
-import { NameEditDialog } from "./NameEditDialog";
-import { AddressEditDialog } from "./AddressEditDialog";
+import { EditProfileDialog } from "./EditProfileDialog";
 
 // Helper functions to filter out temp generated data
 function isRealEmail(email) {
@@ -39,24 +35,16 @@ export function ProfileView() {
   const { user, status } = useSelector((state) => state.customerAuth);
   const isAuthenticated = status === "authenticated" || !!user;
 
-  // Active pop-up dialog
-  const [activeDialog, setActiveDialog] = useState(null); // "name" | "email" | "phone" | "address" | null
+  // Single edit profile modal state
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState({ type: "", text: "" });
 
   const phone = user?.phoneNumber || user?.phone || "";
-  const hasPhone = Boolean(phone);
   const hasName = isRealName(user?.name, phone);
   const hasEmail = isRealEmail(user?.email);
   const userAddresses = user?.addresses || [];
   const defaultAddr = userAddresses.length > 0 ? userAddresses[0] : null;
   const hasAddress = Boolean(defaultAddr?.line1 && defaultAddr?.city);
-
-  // Completion calculation
-  let completionPercentage = 10; // Base 10% for verified session
-  if (hasPhone) completionPercentage += 25;
-  if (hasName) completionPercentage += 25;
-  if (hasEmail) completionPercentage += 20;
-  if (hasAddress) completionPercentage += 20;
 
   const displayName = hasName ? user.name : "Guest User";
   const displayEmail = hasEmail ? user.email : null;
@@ -103,21 +91,7 @@ export function ProfileView() {
           </div>
         )}
 
-        {/* Profile Completion Widget Card */}
-        <ProfileCompletionCard
-          completionPercentage={completionPercentage}
-          hasPhone={hasPhone}
-          phone={phone}
-          hasName={hasName}
-          displayName={displayName}
-          hasEmail={hasEmail}
-          displayEmail={displayEmail}
-          hasAddress={hasAddress}
-          defaultAddr={defaultAddr}
-          onOpenDialog={(dialogName) => setActiveDialog(dialogName)}
-        />
-
-        {/* Profile Info Overview Grid */}
+        {/* Profile Info Overview Grid with Single Edit Profile Button */}
         <ProfileInfoOverview
           hasName={hasName}
           displayName={displayName}
@@ -126,33 +100,14 @@ export function ProfileView() {
           displayEmail={displayEmail}
           hasAddress={hasAddress}
           defaultAddr={defaultAddr}
-          onOpenDialog={(dialogName) => setActiveDialog(dialogName)}
+          onEditProfile={() => setEditDialogOpen(true)}
         />
 
-        {/* POP-UP DIALOGS */}
-        <NameEditDialog
-          open={activeDialog === "name"}
-          onOpenChange={(open) => setActiveDialog(open ? "name" : null)}
-          currentName={hasName ? user?.name : ""}
-          onSuccess={showSuccessNotification}
-        />
-
-        <EmailVerificationDialog
-          open={activeDialog === "email"}
-          onOpenChange={(open) => setActiveDialog(open ? "email" : null)}
-          onSuccess={showSuccessNotification}
-        />
-
-        <PhoneVerificationDialog
-          open={activeDialog === "phone"}
-          onOpenChange={(open) => setActiveDialog(open ? "phone" : null)}
-          onSuccess={showSuccessNotification}
-        />
-
-        <AddressEditDialog
-          open={activeDialog === "address"}
-          onOpenChange={(open) => setActiveDialog(open ? "address" : null)}
-          currentAddress={defaultAddr}
+        {/* Single Edit Profile Dialog */}
+        <EditProfileDialog
+          open={editDialogOpen}
+          onOpenChange={setEditDialogOpen}
+          user={user}
           onSuccess={showSuccessNotification}
         />
       </div>
