@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "customer-auth-collection",
     "name": "Customer Auth",
-    "description": "# Customer Auth Postman Collection\n\nThis collection covers all customer authentication, session management, customer profile, cart, wishlist, and public storefront endpoints.\n\n## Auth Model & Features\n- **Sign-up**: Phone number + OTP only (creates account on verification if phone doesn't exist).\n- **Sign-in**: Phone + OTP *or* Email + OTP.\n- **Customer Profile**: Single-route endpoints GET and PUT `/api/customers/profile` for profile details & addresses.\n- **Email OTP**: Supports Sign-In (`type: sign-in`), Email Verification (`type: email-verification`), and Change Email (`type: change-email`).\n- **Cart Management**: GET, POST items, PUT item quantity, DELETE single item, DELETE clear cart.\n- **Wishlist Management**: GET, POST items, DELETE item.\n- **Public Endpoints**: Search suggestions, Products, Product by Slug, Categories, Banners.\n\n## How to use this collection\n1. Select the **Customer Auth (Local)** environment.\n2. Run folders in order — session cookies are managed automatically by Postman's cookie jar.\n3. **OTP codes** appear in server console log (`[DEV OTP LOG - PHONE SMS]` / `[DEV OTP LOG - EMAIL]`). Copy the 6-digit code into `otpCode` env var before running verify steps.",
+    "description": "# Customer Auth Postman Collection\n\nThis collection covers all customer authentication, session management, customer profile, cart, wishlist, and public storefront endpoints.\n\n## Auth Model & Features\n- **Sign-up**: Phone number + OTP only (creates account on verification if phone doesn't exist).\n- **Sign-in**: Phone + OTP *or* Email + OTP.\n- **Customer Profile**: Single-route endpoints GET and PUT `/api/customers/profile` for profile details & addresses.\n- **Email OTP**: Supports Sign-In (`type: sign-in`) and Change Email (`type: change-email`). Email updates can also be done directly via the profile PUT endpoint.\n- **Cart Management**: GET, POST items, PUT item quantity, DELETE single item, DELETE clear cart.\n- **Wishlist Management**: GET, POST items, DELETE item.\n- **Public Endpoints**: Search suggestions, Products, Product by Slug, Categories, Banners, Reviews.\n\n## How to use this collection\n1. Select the **Customer Auth (Local)** environment.\n2. Run folders in order — session cookies are managed automatically by Postman's cookie jar.\n3. **OTP codes** appear in server console log (`[DEV OTP LOG - PHONE SMS]` / `[DEV OTP LOG - EMAIL]`). Copy the 6-digit code into `otpCode` env var before running verify steps.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -540,115 +540,6 @@
               ]
             },
             "description": "Fetches currently authenticated customer's session and complete profile details (id, name, email, phone number, etc.). Requires active session."
-          }
-        },
-        {
-          "name": "2. Update Customer Profile Details",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status code is 200', function () {",
-                  "    pm.response.to.have.status(200);",
-                  "});",
-                  "",
-                  "pm.test('Profile updated successfully', function () {",
-                  "    const jsonData = pm.response.json();",
-                  "    pm.expect(jsonData).to.be.an('object');",
-                  "    const userObj = jsonData.user || jsonData;",
-                  "    pm.expect(userObj).to.have.property('name', 'Updated Customer Name');",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Updated Customer Name\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/customers/auth/update-user",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "customers",
-                "auth",
-                "update-user"
-              ]
-            },
-            "description": "Updates customer profile information such as full name or avatar image. Requires active session."
-          }
-        },
-        {
-          "name": "3. Send Email Verification OTP",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status code is 200', function () {",
-                  "    pm.response.to.have.status(200);",
-                  "});",
-                  "",
-                  "pm.test('Verification OTP sent', function () {",
-                  "    const jsonData = pm.response.json();",
-                  "    pm.expect(jsonData).to.have.property('message');",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"{{customerEmail}}\",\n  \"type\": \"email-verification\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/customers/auth/email-otp/send-verification-otp",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "customers",
-                "auth",
-                "email-otp",
-                "send-verification-otp"
-              ]
-            },
-            "description": "Sends an OTP code to verify customer's email address. Check server logs `[DEV OTP LOG - EMAIL]`."
           }
         },
         {

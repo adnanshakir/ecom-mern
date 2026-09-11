@@ -1,4 +1,4 @@
-git add ."use client";
+"use client";
 
 import {
   HelpCircle,

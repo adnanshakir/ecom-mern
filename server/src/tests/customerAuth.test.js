@@ -496,29 +496,6 @@ describe("Customer Auth - Master OTP Feature", () => {
     expect(signInRes.body.user.email).toBe("master@example.com");
   });
 
-  it("completes email verification with master OTP code when ALLOW_MASTER_OTP=true", async () => {
-    process.env.ALLOW_MASTER_OTP = "true";
-    process.env.MASTER_OTP_CODE = "999999";
-
-    const { verifyRes: phoneRes } = await phoneSignUp(testApp, "+919988771133");
-    expect(phoneRes.status).toBe(200);
-    const userId = phoneRes.body.user.id;
-
-    const db = mongoose.connection.db;
-    const ObjectId = mongoose.Types.ObjectId;
-    const filter = ObjectId.isValid(userId) ? { _id: new ObjectId(userId) } : { _id: userId };
-    await db.collection("customerUser").updateOne(filter, { $set: { email: "verify@example.com" } });
-
-    const verifyEmailRes = await request(testApp)
-      .post("/api/v1/customers/auth/email-otp/verify-email")
-      .set("Origin", "http://localhost:3000")
-      .send({ email: "verify@example.com", otp: "999999" });
-
-    expect(verifyEmailRes.status).toBe(200);
-    const updatedUser = await db.collection("customerUser").findOne(filter);
-    expect(updatedUser.emailVerified).toBe(true);
-  });
-
   it("completes change email with master OTP code when ALLOW_MASTER_OTP=true", async () => {
     process.env.ALLOW_MASTER_OTP = "true";
     process.env.MASTER_OTP_CODE = "999999";

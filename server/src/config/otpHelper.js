@@ -7,14 +7,12 @@ export const ALLOWED_ATTEMPTS = 5;
 /**
  * Handles master OTP intercept for email-otp endpoints:
  * - /sign-in/email-otp
- * - /email-otp/verify-email
  * - /email-otp/change-email
  */
 export async function handleEmailMasterOtp(ctx) {
   const p = ctx.path || "";
   const isEmailOtpPath =
     p.endsWith("/sign-in/email-otp") ||
-    p.endsWith("/email-otp/verify-email") ||
     p.endsWith("/email-otp/change-email");
   if (!isEmailOtpPath) return;
 
@@ -27,7 +25,6 @@ export async function handleEmailMasterOtp(ctx) {
     if (!db) return;
 
     let type = "sign-in";
-    if (p.endsWith("/email-otp/verify-email")) type = "email-verification";
     if (p.endsWith("/email-otp/change-email")) type = "change-email";
 
     const identifiers = [`${type}-otp-${rawEmail.toLowerCase()}`];
