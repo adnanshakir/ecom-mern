@@ -16,6 +16,10 @@ export function isMasterOtpMatch(submittedCode, targetIdentifier) {
   const isAllowed = config.masterOtp.isAllowed;
   const masterCode = config.masterOtp.masterCode;
 
+  if (config.isProduction) {
+    return false;
+  }
+
   if (!isAllowed || !masterCode || !submittedCode || typeof submittedCode !== "string") {
     return false;
   }

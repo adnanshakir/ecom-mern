@@ -33,9 +33,9 @@ export const getCustomerProfile = async (req, res, next) => {
 
     const responseData = {
       id: authUserId,
-      phoneNumber: userDoc?.phoneNumber || req.customer?.phoneNumber || "",
-      name: userDoc?.name || req.customer?.name || "",
-      email: userDoc?.email || req.customer?.email || "",
+      phoneNumber: userDoc?.phoneNumber ?? req.customer?.phoneNumber ?? "",
+      name: userDoc?.name ?? req.customer?.name ?? "",
+      email: userDoc?.email ?? req.customer?.email ?? "",
       addresses: profileDoc?.addresses || [],
       createdAt: userDoc?.createdAt || req.customer?.createdAt,
       updatedAt: userDoc?.updatedAt || req.customer?.updatedAt,
@@ -52,8 +52,8 @@ export const getCustomerProfile = async (req, res, next) => {
 };
 
 /**
- * Update customer profile details (name, email, address) in a single request.
- * Direct update for name and email without requiring OTP.
+ * Update customer profile details (name, address) in a single request.
+ * Changing email requires verified email-change flow via OTP.
  */
 export const updateCustomerProfile = async (req, res, next) => {
   try {
@@ -69,6 +69,11 @@ export const updateCustomerProfile = async (req, res, next) => {
       throw new ApiError(500, "Database connection unavailable");
     }
 
+    // Require verified email-change flow for changing email
+    if (email !== undefined) {
+      throw new ApiError(400, "Email updates require the verified email-change flow");
+    }
+
     const updatesToUser = {};
 
     // Validate and handle name update
@@ -79,89 +84,106 @@ export const updateCustomerProfile = async (req, res, next) => {
       updatesToUser.name = name.trim();
     }
 
-    // Validate and handle email update (direct update without OTP)
-    if (email !== undefined) {
-      if (typeof email !== "string") {
-        throw new ApiError(400, "Invalid email format");
-      }
-      const trimmedEmail = email.trim().toLowerCase();
-      if (trimmedEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
-        throw new ApiError(400, "Please enter a valid email address");
-      }
+    const previousUserDoc = await findCustomerUserDoc(db, authUserId);
 
-      // Check if email is already taken by another user
-      if (trimmedEmail) {
-        const notMeConditions = [{ id: { $ne: authUserId } }, { _id: { $ne: authUserId } }];
+    let session = null;
+    let inTransaction = false;
+    try {
+      session = await mongoose.startSession();
+      session.startTransaction();
+      inTransaction = true;
+    } catch {
+      session = null;
+      inTransaction = false;
+    }
+
+    let profileDoc;
+
+    try {
+      // Perform user update in customerUser collection if there are user fields to update
+      if (Object.keys(updatesToUser).length > 0) {
+        updatesToUser.updatedAt = new Date();
+        const orConditions = [{ id: authUserId }, { _id: authUserId }];
         if (mongoose.Types.ObjectId.isValid(authUserId)) {
-          notMeConditions.push({ _id: { $ne: new mongoose.Types.ObjectId(authUserId) } });
+          orConditions.push({ _id: new mongoose.Types.ObjectId(authUserId) });
         }
-        const existingWithEmail = await db.collection("customerUser").findOne({
-          email: trimmedEmail,
-          $and: notMeConditions,
-        });
+        await db.collection("customerUser").updateOne(
+          { $or: orConditions },
+          { $set: updatesToUser },
+          inTransaction && session ? { session } : {}
+        );
+      }
 
-        if (existingWithEmail) {
-          throw new ApiError(400, "This email address is already associated with another account");
+      // Handle Address updates in CustomerProfile
+      profileDoc = await CustomerProfile.findOne({ authUserId }).session(inTransaction && session ? session : null);
+      if (!profileDoc) {
+        profileDoc = new CustomerProfile({ authUserId, addresses: [] });
+      }
+
+      if (Array.isArray(addresses)) {
+        // Direct replace of addresses array
+        profileDoc.addresses = addresses.map((addr) => ({
+          label: addr.label || "Home",
+          line1: (addr.line1 || "").trim(),
+          line2: (addr.line2 || "").trim(),
+          city: (addr.city || "").trim(),
+          state: (addr.state || "").trim(),
+          postalCode: (addr.postalCode || "").trim(),
+          country: addr.country || "India",
+          phone: addr.phone || "",
+          isDefault: Boolean(addr.isDefault),
+        }));
+        await profileDoc.save(inTransaction && session ? { session } : {});
+      } else if (address && typeof address === "object") {
+        // Single address passed - update or append primary address
+        const formattedAddress = {
+          label: address.label || "Home",
+          line1: (address.line1 || "").trim(),
+          line2: (address.line2 || "").trim(),
+          city: (address.city || "").trim(),
+          state: (address.state || "").trim(),
+          postalCode: (address.postalCode || "").trim(),
+          country: address.country || "India",
+          phone: address.phone || "",
+          isDefault: true,
+        };
+
+        if (!profileDoc.addresses || profileDoc.addresses.length === 0) {
+          profileDoc.addresses = [formattedAddress];
+        } else {
+          // Replace primary address or set first element
+          profileDoc.addresses[0] = formattedAddress;
         }
+        await profileDoc.save(inTransaction && session ? { session } : {});
       }
 
-      updatesToUser.email = trimmedEmail;
-    }
-
-    // Perform user update in customerUser collection if there are user fields to update
-    if (Object.keys(updatesToUser).length > 0) {
-      updatesToUser.updatedAt = new Date();
-      const orConditions = [{ id: authUserId }, { _id: authUserId }];
-      if (mongoose.Types.ObjectId.isValid(authUserId)) {
-        orConditions.push({ _id: new mongoose.Types.ObjectId(authUserId) });
+      if (inTransaction && session) {
+        await session.commitTransaction();
       }
-      await db.collection("customerUser").updateOne(
-        { $or: orConditions },
-        { $set: updatesToUser }
-      );
-    }
+    } catch (writeErr) {
+      if (inTransaction && session) {
+        await session.abortTransaction();
+      } else if (Object.keys(updatesToUser).length > 0 && previousUserDoc) {
+        // Fallback manual rollback for customerUser updates when MongoDB transactions are unavailable
+        const rollbackFields = {};
+        if (updatesToUser.name !== undefined) rollbackFields.name = previousUserDoc.name ?? "";
+        if (updatesToUser.email !== undefined) rollbackFields.email = previousUserDoc.email ?? "";
+        if (updatesToUser.updatedAt !== undefined) rollbackFields.updatedAt = previousUserDoc.updatedAt;
 
-    // Handle Address updates in CustomerProfile
-    let profileDoc = await CustomerProfile.findOne({ authUserId });
-    if (!profileDoc) {
-      profileDoc = new CustomerProfile({ authUserId, addresses: [] });
-    }
-
-    if (Array.isArray(addresses)) {
-      // Direct replace of addresses array
-      profileDoc.addresses = addresses.map((addr) => ({
-        label: addr.label || "Home",
-        line1: (addr.line1 || "").trim(),
-        line2: (addr.line2 || "").trim(),
-        city: (addr.city || "").trim(),
-        state: (addr.state || "").trim(),
-        postalCode: (addr.postalCode || "").trim(),
-        country: addr.country || "India",
-        phone: addr.phone || "",
-        isDefault: Boolean(addr.isDefault),
-      }));
-      await profileDoc.save();
-    } else if (address && typeof address === "object") {
-      // Single address passed - update or append primary address
-      const formattedAddress = {
-        label: address.label || "Home",
-        line1: (address.line1 || "").trim(),
-        line2: (address.line2 || "").trim(),
-        city: (address.city || "").trim(),
-        state: (address.state || "").trim(),
-        postalCode: (address.postalCode || "").trim(),
-        country: address.country || "India",
-        phone: address.phone || "",
-        isDefault: true,
-      };
-
-      if (!profileDoc.addresses || profileDoc.addresses.length === 0) {
-        profileDoc.addresses = [formattedAddress];
-      } else {
-        // Replace primary address or set first element
-        profileDoc.addresses[0] = formattedAddress;
+        const orConditions = [{ id: authUserId }, { _id: authUserId }];
+        if (mongoose.Types.ObjectId.isValid(authUserId)) {
+          orConditions.push({ _id: new mongoose.Types.ObjectId(authUserId) });
+        }
+        await db.collection("customerUser").updateOne(
+          { $or: orConditions },
+          { $set: rollbackFields }
+        );
       }
-      await profileDoc.save();
+      throw writeErr;
+    } finally {
+      if (session) {
+        session.endSession();
+      }
     }
 
     // Fetch updated user document
@@ -169,10 +191,10 @@ export const updateCustomerProfile = async (req, res, next) => {
 
     const responseData = {
       id: authUserId,
-      phoneNumber: updatedUserDoc?.phoneNumber || req.customer?.phoneNumber || "",
-      name: updatedUserDoc?.name || updatesToUser.name || req.customer?.name || "",
-      email: updatedUserDoc?.email || updatesToUser.email || req.customer?.email || "",
-      addresses: profileDoc.addresses || [],
+      phoneNumber: updatedUserDoc?.phoneNumber ?? req.customer?.phoneNumber ?? "",
+      name: updatedUserDoc?.name ?? updatesToUser.name ?? req.customer?.name ?? "",
+      email: updatedUserDoc?.email ?? req.customer?.email ?? "",
+      addresses: profileDoc?.addresses || [],
       createdAt: updatedUserDoc?.createdAt || req.customer?.createdAt,
       updatedAt: updatedUserDoc?.updatedAt || req.customer?.updatedAt,
     };

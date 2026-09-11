@@ -5,7 +5,7 @@ import { useDispatch } from "react-redux";
 import { User, Mail, Phone, MapPin, Lock, Loader2 } from "lucide-react";
 
 import { updateCustomerProfileRequest } from "@/services/storefront/customerAuth";
-import { restoreCustomerSession } from "@/redux/slices/customerAuthSlice";
+import { restoreCustomerSession, setCustomerAuthSession } from "@/redux/slices/customerAuthSlice";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -68,7 +68,7 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }) {
         payload.name = name.trim();
       }
 
-      if (email.trim()) {
+      if (email.trim() && email.trim().toLowerCase() !== (user?.email || "").toLowerCase()) {
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim().toLowerCase())) {
           setError("Please enter a valid email address.");
           setLoading(false);
@@ -96,7 +96,11 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }) {
       const res = await updateCustomerProfileRequest(payload);
 
       if (res.data?.success) {
-        await dispatch(restoreCustomerSession());
+        if (res.data?.data) {
+          dispatch(setCustomerAuthSession({ ...(user || {}), ...res.data.data }));
+        } else {
+          await dispatch(restoreCustomerSession());
+        }
         if (onSuccess) onSuccess("Profile details updated successfully!");
         onOpenChange(false);
       } else {

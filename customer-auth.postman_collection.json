@@ -1,14 +1,8 @@
 {
   "info": {
-<<<<<<< Updated upstream:customer-auth.postman_collection.json
     "_postman_id": "customer-auth-collection",
     "name": "Customer Auth",
-    "description": "# Customer Auth Postman Collection\n\nThis collection covers all customer authentication, session management, cart, wishlist, and public storefront endpoints.\n\n## Auth Model & Features\n- **Sign-up**: Phone number + OTP only (creates account on verification if phone doesn't exist).\n- **Sign-in**: Phone + OTP *or* Email + OTP.\n- **Email OTP**: Supports Sign-In (`type: sign-in`), Email Verification (`type: email-verification`), and Change Email (`type: change-email`).\n- **Passwords**: Completely removed/disabled.\n- **Cart Management**: GET, POST items, PUT item quantity, DELETE single item, DELETE clear cart.\n- **Wishlist Management**: GET, POST items, DELETE item.\n- **Public Endpoints**: Search suggestions, Products, Product by Slug, Categories, Banners.\n\n## How to use this collection\n1. Select the **Customer Auth (Local)** environment.\n2. Run folders in order — session cookies are managed automatically by Postman's cookie jar.\n3. **OTP codes** appear in server console log (`[DEV OTP LOG - PHONE SMS]` / `[DEV OTP LOG - EMAIL]`). Copy the 6-digit code into `otpCode` env var before running verify steps.",
-=======
-    "_postman_id": "customer-api-collection",
-    "name": "Customer API",
-    "description": "# Customer API Postman Collection\n\nUnified collection covering **all** customer-facing endpoints:\n\n## Auth & Profile\n- **Sign-up**: Phone number + OTP only (creates account on verification if phone doesn't exist).\n- **Sign-in**: Phone + OTP *or* Email + OTP.\n- **Customer Profile & Account**:\n  - GET Customer Profile & Session (`/get-session`)\n  - UPDATE Customer Profile Details (`/update-user`)\n  - Send Email Verification & Change Email OTPs (`/email-otp/...`)\n  - Sign Out (`/sign-out`)\n\n## Protected (requires session)\n- **Cart**: GET, POST items, PUT item quantity, DELETE single item, DELETE clear cart.\n- **Wishlist**: GET, POST items, DELETE item.\n- **Reviews**: GET my review, POST create, PUT update, DELETE remove.\n- **Customer Images**: POST upload (max 4 files).\n\n## Public (no auth)\n- Search suggestions, Products, Product by Slug, Categories, Banners.\n- Product reviews list & summary.\n\n## How to use this collection\n1. Select the **Customer API (Local)** environment.\n2. Run folders in order — session cookies are managed automatically by Postman's cookie jar.\n3. **OTP codes** appear in server console log (`[DEV OTP LOG - PHONE SMS]` / `[DEV OTP LOG - EMAIL]`). Copy the 6-digit code into `otpCode` env var before running verify steps.\n4. For Cart/Wishlist/Review tests, fill in `variantId` and `productId` from the admin product list.",
->>>>>>> Stashed changes:customer-api.postman_collection.json
+    "description": "# Customer Auth Postman Collection\n\nThis collection covers all customer authentication, session management, customer profile, cart, wishlist, and public storefront endpoints.\n\n## Auth Model & Features\n- **Sign-up**: Phone number + OTP only (creates account on verification if phone doesn't exist).\n- **Sign-in**: Phone + OTP *or* Email + OTP.\n- **Customer Profile**: Single-route endpoints GET and PUT `/api/customers/profile` for profile details & addresses.\n- **Email OTP**: Supports Sign-In (`type: sign-in`), Email Verification (`type: email-verification`), and Change Email (`type: change-email`).\n- **Cart Management**: GET, POST items, PUT item quantity, DELETE single item, DELETE clear cart.\n- **Wishlist Management**: GET, POST items, DELETE item.\n- **Public Endpoints**: Search suggestions, Products, Product by Slug, Categories, Banners.\n\n## How to use this collection\n1. Select the **Customer Auth (Local)** environment.\n2. Run folders in order — session cookies are managed automatically by Postman's cookie jar.\n3. **OTP codes** appear in server console log (`[DEV OTP LOG - PHONE SMS]` / `[DEV OTP LOG - EMAIL]`). Copy the 6-digit code into `otpCode` env var before running verify steps.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -414,7 +408,98 @@
       ],
       "item": [
         {
-          "name": "1. Get Customer Profile & Session",
+          "name": "1. Get Single Customer Profile",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response contains customer profile data', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.be.true;",
+                  "    pm.expect(jsonData.data).to.have.property('phoneNumber');",
+                  "    pm.expect(jsonData.data).to.have.property('addresses');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "profile"
+              ]
+            },
+            "description": "Fetches current customer profile and address details."
+          }
+        },
+        {
+          "name": "2. Update Customer Profile & Addresses",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Profile updated successfully', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.be.true;",
+                  "    pm.expect(jsonData.data).to.have.property('name', 'Updated Customer Name');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Customer Name\",\n  \"address\": {\n    \"line1\": \"123 Main St\",\n    \"city\": \"Bengaluru\",\n    \"state\": \"Karnataka\",\n    \"postalCode\": \"560001\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "profile"
+              ]
+            },
+            "description": "Updates customer profile name and delivery address. Direct email updates require email-change OTP flow."
+          }
+        },
+        {
+          "name": "3. Get Customer Session (Better Auth)",
           "event": [
             {
               "listen": "test",

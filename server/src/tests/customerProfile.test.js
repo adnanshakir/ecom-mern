@@ -4,8 +4,6 @@ import mongoose from "mongoose";
 import app from "../app.js";
 import { connectTestDB, closeTestDB, clearTestDB } from "./setup.js";
 import { createCustomerAuth } from "../config/customerAuth.js";
-import { normalizePhoneNumber } from "../utils/phoneUtils.js";
-
 beforeAll(async () => {
   await connectTestDB();
   await createCustomerAuth();
@@ -21,11 +19,7 @@ afterAll(async () => {
 
 async function getCapturedOTP(identifier) {
   const db = mongoose.connection.db;
-  const targetId = typeof identifier === "string" && !identifier.includes("@") ? normalizePhoneNumber(identifier) : identifier;
-  let doc = await db.collection("customerVerification").findOne({ identifier: targetId });
-  if (!doc && targetId !== identifier) {
-    doc = await db.collection("customerVerification").findOne({ identifier });
-  }
+  let doc = await db.collection("customerVerification").findOne({ identifier });
   if (!doc?.value) return null;
   return doc.value.split(":")[0];
 }
@@ -65,12 +59,11 @@ describe("Customer Profile Single-Route API (/api/customers/profile)", () => {
     expect(Array.isArray(res.body.data.addresses)).toBe(true);
   });
 
-  it("PUT /api/customers/profile updates name, email, and address in a single request without requiring OTP", async () => {
+  it("PUT /api/customers/profile updates name and address in a single request", async () => {
     const { cookies } = await loginWithPhone("+919876543210");
 
     const updatePayload = {
       name: "Adnan Shakir",
-      email: "adnan@example.com",
       address: {
         line1: "123 Tech Park",
         city: "Bengaluru",
@@ -88,7 +81,6 @@ describe("Customer Profile Single-Route API (/api/customers/profile)", () => {
     expect(updateRes.status).toBe(200);
     expect(updateRes.body.success).toBe(true);
     expect(updateRes.body.data.name).toBe("Adnan Shakir");
-    expect(updateRes.body.data.email).toBe("adnan@example.com");
     expect(updateRes.body.data.addresses.length).toBe(1);
     expect(updateRes.body.data.addresses[0].line1).toBe("123 Tech Park");
     expect(updateRes.body.data.addresses[0].city).toBe("Bengaluru");
@@ -100,7 +92,19 @@ describe("Customer Profile Single-Route API (/api/customers/profile)", () => {
 
     expect(getRes.status).toBe(200);
     expect(getRes.body.data.name).toBe("Adnan Shakir");
-    expect(getRes.body.data.email).toBe("adnan@example.com");
     expect(getRes.body.data.addresses[0].line1).toBe("123 Tech Park");
+  });
+
+  it("PUT /api/customers/profile rejects direct unverified email updates", async () => {
+    const { cookies } = await loginWithPhone("+919876543210");
+
+    const updateRes = await request(app)
+      .put("/api/customers/profile")
+      .set("Cookie", cookies)
+      .send({ email: "adnan@example.com" });
+
+    expect(updateRes.status).toBe(400);
+    expect(updateRes.body.success).toBe(false);
+    expect(updateRes.body.message).toContain("Email updates require the verified email-change flow");
   });
 });
