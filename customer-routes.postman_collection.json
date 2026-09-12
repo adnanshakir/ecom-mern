@@ -1,14 +1,14 @@
 {
   "info": {
-    "_postman_id": "customer-auth-collection",
-    "name": "Customer Auth",
-    "description": "# Customer Auth Postman Collection\n\nThis collection covers all customer authentication, session management, customer profile, cart, wishlist, and public storefront endpoints.\n\n## Auth Model & Features\n- **Sign-up**: Phone number + OTP only (creates account on verification if phone doesn't exist).\n- **Sign-in**: Phone + OTP *or* Email + OTP.\n- **Customer Profile**: Single-route endpoints GET and PUT `/api/customers/profile` for profile details & addresses.\n- **Email OTP**: Supports Sign-In (`type: sign-in`) and Change Email (`type: change-email`). Email updates can also be done directly via the profile PUT endpoint.\n- **Cart Management**: GET, POST items, PUT item quantity, DELETE single item, DELETE clear cart.\n- **Wishlist Management**: GET, POST items, DELETE item.\n- **Public Endpoints**: Search suggestions, Products, Product by Slug, Categories, Banners, Reviews.\n\n## How to use this collection\n1. Select the **Customer Auth (Local)** environment.\n2. Run folders in order — session cookies are managed automatically by Postman's cookie jar.\n3. **OTP codes** appear in server console log (`[DEV OTP LOG - PHONE SMS]` / `[DEV OTP LOG - EMAIL]`). Copy the 6-digit code into `otpCode` env var before running verify steps.",
+    "_postman_id": "customer-routes-collection",
+    "name": "customer-routes",
+    "description": "# customer-routes Postman Collection\n\nComprehensive Postman collection containing customer routes across:\n- `customerAuth.js` (Better Auth phone OTP authentication & session management)\n- `profile.routes.js` (Customer profile updates: name, email, address, addresses)\n- `cart.routes.js` (Customer cart operations)\n- `wishlist.routes.js` (Customer wishlist operations)\n- `review.routes.js` (Authenticated customer product reviews)\n- `customerImage.routes.js` (Customer image uploads)\n- `public.routes.js` (Public storefront browsing & public reviews)\n\n## Authentication & Headers\nRequests automatically include `Origin: {{customerOrigin}}` (default `http://localhost:3000`) in pre-request scripts to satisfy backend CORS policy. Authentication uses HttpOnly cookies managed automatically by Postman's Cookie Jar.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
     {
-      "name": "Sign-Up (Phone OTP)",
-      "description": "Creates a brand-new customer account via phone number + OTP.\n\n**Run order:** Send OTP → copy code from server console → paste into `otpCode` env var → Verify OTP.",
+      "name": "Customer Auth (customerAuth.js)",
+      "description": "Endpoints powered by Better Auth for customer phone OTP authentication, session management, and sign-out.",
       "event": [
         {
           "listen": "prerequest",
@@ -77,7 +77,7 @@
           }
         },
         {
-          "name": "2. Verify OTP (creates account)",
+          "name": "2. Verify Phone OTP (sign-up / sign-in)",
           "event": [
             {
               "listen": "test",
@@ -131,375 +131,11 @@
                 "verify"
               ]
             },
-            "description": "Verifies phone OTP and creates customer account."
-          }
-        }
-      ]
-    },
-    {
-      "name": "Sign-In (Phone OTP)",
-      "description": "Signs in to an existing account using phone + OTP.",
-      "event": [
-        {
-          "listen": "prerequest",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "const origin = pm.environment.get('customerOrigin') || 'http://localhost:3000';",
-              "pm.request.headers.upsert({ key: 'Origin', value: origin });"
-            ]
-          }
-        }
-      ],
-      "item": [
-        {
-          "name": "1. Send Phone OTP",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status code is 200', function () {",
-                  "    pm.response.to.have.status(200);",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"phoneNumber\": \"{{customerPhone}}\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/customers/auth/phone-number/send-otp",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "customers",
-                "auth",
-                "phone-number",
-                "send-otp"
-              ]
-            },
-            "description": "Sends an OTP to the registered phone number."
+            "description": "Verifies phone OTP and creates customer account (if new) or signs in (if existing)."
           }
         },
         {
-          "name": "2. Verify OTP (sign-in)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status code is 200', function () {",
-                  "    pm.response.to.have.status(200);",
-                  "});",
-                  "",
-                  "pm.test('Response contains user with matching ID', function () {",
-                  "    const jsonData = pm.response.json();",
-                  "    pm.expect(jsonData).to.have.property('user');",
-                  "    const userId = jsonData.user.id || jsonData.user._id;",
-                  "    pm.expect(userId).to.be.a('string').that.is.not.empty;",
-                  "    const lastUserId = pm.environment.get('lastUserId');",
-                  "    if (lastUserId) {",
-                  "        pm.expect(userId).to.equal(lastUserId);",
-                  "    } else {",
-                  "        pm.environment.set('lastUserId', userId);",
-                  "    }",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"phoneNumber\": \"{{customerPhone}}\",\n  \"code\": \"{{otpCode}}\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/customers/auth/phone-number/verify",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "customers",
-                "auth",
-                "phone-number",
-                "verify"
-              ]
-            },
-            "description": "Verifies the OTP and signs in."
-          }
-        }
-      ]
-    },
-    {
-      "name": "Sign-In (Email OTP)",
-      "description": "Signs in using an email address associated with an account.",
-      "event": [
-        {
-          "listen": "prerequest",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "const origin = pm.environment.get('customerOrigin') || 'http://localhost:3000';",
-              "pm.request.headers.upsert({ key: 'Origin', value: origin });"
-            ]
-          }
-        }
-      ],
-      "item": [
-        {
-          "name": "1. Send Email OTP (sign-in)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status code is 200', function () {",
-                  "    pm.response.to.have.status(200);",
-                  "});",
-                  "",
-                  "pm.test('Response confirms OTP sent', function () {",
-                  "    const jsonData = pm.response.json();",
-                  "    pm.expect(jsonData).to.have.property('message');",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"{{customerEmail}}\",\n  \"type\": \"sign-in\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/customers/auth/email-otp/send-verification-otp",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "customers",
-                "auth",
-                "email-otp",
-                "send-verification-otp"
-              ]
-            },
-            "description": "Sends a sign-in OTP to the given email address. Check `[DEV OTP LOG - EMAIL]` in server logs."
-          }
-        },
-        {
-          "name": "2. Sign In with Email OTP",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status code is 200', function () {",
-                  "    pm.response.to.have.status(200);",
-                  "});",
-                  "",
-                  "pm.test('Response contains user', function () {",
-                  "    const jsonData = pm.response.json();",
-                  "    pm.expect(jsonData).to.have.property('user');",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"{{customerEmail}}\",\n  \"otp\": \"{{otpCode}}\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/customers/auth/sign-in/email-otp",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "customers",
-                "auth",
-                "sign-in",
-                "email-otp"
-              ]
-            },
-            "description": "Verifies the email OTP and signs in."
-          }
-        }
-      ]
-    },
-    {
-      "name": "Customer Profile & Account Management",
-      "description": "Endpoints for retrieving customer profile details, updating profile info (e.g. name), email verification, changing email, and signing out.\n\n**Requires an active session**.",
-      "event": [
-        {
-          "listen": "prerequest",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "const origin = pm.environment.get('customerOrigin') || 'http://localhost:3000';",
-              "pm.request.headers.upsert({ key: 'Origin', value: origin });"
-            ]
-          }
-        }
-      ],
-      "item": [
-        {
-          "name": "1. Get Single Customer Profile",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status code is 200', function () {",
-                  "    pm.response.to.have.status(200);",
-                  "});",
-                  "",
-                  "pm.test('Response contains customer profile data', function () {",
-                  "    const jsonData = pm.response.json();",
-                  "    pm.expect(jsonData.success).to.be.true;",
-                  "    pm.expect(jsonData.data).to.have.property('phoneNumber');",
-                  "    pm.expect(jsonData.data).to.have.property('addresses');",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/customers/profile",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "customers",
-                "profile"
-              ]
-            },
-            "description": "Fetches current customer profile and address details."
-          }
-        },
-        {
-          "name": "2. Update Customer Profile & Addresses",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status code is 200', function () {",
-                  "    pm.response.to.have.status(200);",
-                  "});",
-                  "",
-                  "pm.test('Profile updated successfully', function () {",
-                  "    const jsonData = pm.response.json();",
-                  "    pm.expect(jsonData.success).to.be.true;",
-                  "    pm.expect(jsonData.data).to.have.property('name', 'Updated Customer Name');",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Updated Customer Name\",\n  \"address\": {\n    \"line1\": \"123 Main St\",\n    \"city\": \"Bengaluru\",\n    \"state\": \"Karnataka\",\n    \"postalCode\": \"560001\"\n  }\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/customers/profile",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "customers",
-                "profile"
-              ]
-            },
-            "description": "Updates customer profile name and delivery address. Direct email updates require email-change OTP flow."
-          }
-        },
-        {
-          "name": "3. Get Customer Session (Better Auth)",
+          "name": "3. Get Customer Session",
           "event": [
             {
               "listen": "test",
@@ -514,9 +150,6 @@
                   "    pm.expect(jsonData).to.have.property('user');",
                   "    pm.expect(jsonData).to.have.property('session');",
                   "    pm.expect(jsonData.user).to.have.property('id');",
-                  "    if (jsonData.user.name) {",
-                  "        pm.expect(jsonData.user.name).to.be.a('string');",
-                  "    }",
                   "});"
                 ],
                 "type": "text/javascript"
@@ -539,119 +172,11 @@
                 "get-session"
               ]
             },
-            "description": "Fetches currently authenticated customer's session and complete profile details (id, name, email, phone number, etc.). Requires active session."
+            "description": "Fetches currently authenticated customer's session and user details. Requires active session cookie."
           }
         },
         {
-          "name": "4. Send Change Email OTP",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status code is 200', function () {",
-                  "    pm.response.to.have.status(200);",
-                  "});",
-                  "",
-                  "pm.test('Change email OTP sent', function () {",
-                  "    const jsonData = pm.response.json();",
-                  "    pm.expect(jsonData).to.have.property('message');",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"{{newCustomerEmail}}\",\n  \"type\": \"change-email\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/customers/auth/email-otp/send-verification-otp",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "customers",
-                "auth",
-                "email-otp",
-                "send-verification-otp"
-              ]
-            },
-            "description": "Sends an OTP code to the new email address to initiate an email change."
-          }
-        },
-        {
-          "name": "5. Verify & Change Email",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status code is 200', function () {",
-                  "    pm.response.to.have.status(200);",
-                  "});",
-                  "",
-                  "pm.test('Email changed successfully', function () {",
-                  "    const jsonData = pm.response.json();",
-                  "    pm.expect(jsonData).to.have.property('status', true);",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"newEmail\": \"{{newCustomerEmail}}\",\n  \"otp\": \"{{otpCode}}\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/customers/auth/email-otp/change-email",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "customers",
-                "auth",
-                "email-otp",
-                "change-email"
-              ]
-            },
-            "description": "Verifies OTP code and updates the customer email address. Requires active session."
-          }
-        },
-        {
-          "name": "6. Sign Out",
+          "name": "4. Sign Out",
           "event": [
             {
               "listen": "test",
@@ -695,14 +220,124 @@
                 "sign-out"
               ]
             },
-            "description": "Invalidates the customer's active authentication session."
+            "description": "Invalidates customer's active session cookie."
           }
         }
       ]
     },
     {
-      "name": "Cart",
-      "description": "Endpoints for Customer Cart management.\n\n**Requires an active session**.",
+      "name": "Customer Profile (profile.routes.js)",
+      "description": "Single-route endpoints GET and PUT /api/customers/profile for fetching and updating customer profile details (name, email, address, addresses).",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const origin = pm.environment.get('customerOrigin') || 'http://localhost:3000';",
+              "pm.request.headers.upsert({ key: 'Origin', value: origin });"
+            ]
+          }
+        }
+      ],
+      "item": [
+        {
+          "name": "1. Get Customer Profile",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response contains customer profile data', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.be.true;",
+                  "    pm.expect(jsonData.data).to.have.property('phoneNumber');",
+                  "    pm.expect(jsonData.data).to.have.property('addresses');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "profile"
+              ]
+            },
+            "description": "Fetches current customer profile and address details."
+          }
+        },
+        {
+          "name": "2. Update Customer Profile (name, email, address)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Profile updated successfully', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.be.true;",
+                  "    pm.expect(jsonData.data).to.have.property('name', 'Updated Customer Name');",
+                  "    pm.expect(jsonData.data).to.have.property('email', 'updated-customer@example.com');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Customer Name\",\n  \"email\": \"updated-customer@example.com\",\n  \"address\": {\n    \"line1\": \"123 Main St\",\n    \"city\": \"Bengaluru\",\n    \"state\": \"Karnataka\",\n    \"postalCode\": \"560001\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "profile"
+              ]
+            },
+            "description": "Updates customer profile details: name, email, address, or addresses array in a single request."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Cart (cart.routes.js)",
+      "description": "Endpoints for authenticated customer cart management (GET, add item, update quantity, remove item, clear cart).",
       "event": [
         {
           "listen": "prerequest",
@@ -942,8 +577,8 @@
       ]
     },
     {
-      "name": "Wishlist",
-      "description": "Endpoints for Customer Wishlist management.\n\n**Requires an active session**.",
+      "name": "Wishlist (wishlist.routes.js)",
+      "description": "Endpoints for authenticated customer wishlist management (GET, add product, remove product).",
       "event": [
         {
           "listen": "prerequest",
@@ -1091,8 +726,8 @@
       ]
     },
     {
-      "name": "Reviews",
-      "description": "Endpoints for Customer Review management (CRUD on own reviews).\n\n**Requires an active session**. Set `productId` in the environment before running.",
+      "name": "Reviews (review.routes.js)",
+      "description": "Endpoints for authenticated customer review operations (GET my review, create review, update review, delete review).",
       "event": [
         {
           "listen": "prerequest",
@@ -1177,7 +812,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"rating\": 4,\n  \"title\": \"Great product!\",\n  \"comment\": \"Really enjoyed using this product. Excellent quality and fast delivery.\",\n  \"images\": []\n}",
+              "raw": "{\n  \"rating\": 5,\n  \"title\": \"Great product!\",\n  \"body\": \"Really enjoyed using this product. Excellent quality and fast delivery.\",\n  \"images\": []\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1229,7 +864,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"rating\": 5,\n  \"title\": \"Updated: Amazing product!\",\n  \"comment\": \"Updated my review — even better than I initially thought.\"\n}",
+              "raw": "{\n  \"rating\": 5,\n  \"title\": \"Updated: Amazing product!\",\n  \"body\": \"Updated my review — even better than I initially thought.\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1292,8 +927,8 @@
       ]
     },
     {
-      "name": "Customer Images",
-      "description": "Endpoints for uploading customer images (used in reviews, etc.).\n\n**Requires an active session**.",
+      "name": "Customer Images (customerImage.routes.js)",
+      "description": "Endpoints for uploading customer images (used in reviews, profile avatar, etc.).",
       "event": [
         {
           "listen": "prerequest",
@@ -1360,8 +995,8 @@
       ]
     },
     {
-      "name": "Public Storefront",
-      "description": "Public endpoints for store browsing (no authentication required).",
+      "name": "Public Storefront (public.routes.js)",
+      "description": "Public endpoints for store browsing and public product reviews (no authentication required).",
       "event": [
         {
           "listen": "prerequest",
@@ -1386,10 +1021,11 @@
                   "    pm.response.to.have.status(200);",
                   "});",
                   "",
-                  "pm.test('Response returns success and data array', function () {",
+                  "pm.test('Response returns success and data object', function () {",
                   "    const jsonData = pm.response.json();",
                   "    pm.expect(jsonData.success).to.be.true;",
-                  "    pm.expect(jsonData.data).to.be.an('array');",
+                  "    pm.expect(jsonData.data).to.have.property('products');",
+                  "    pm.expect(jsonData.data).to.have.property('categories');",
                   "});"
                 ],
                 "type": "text/javascript"
@@ -1656,8 +1292,8 @@
       ]
     },
     {
-      "name": "Negative / Regression Tests",
-      "description": "Confirms that disabled, removed, or constrained flows return the expected rejection.",
+      "name": "Negative & Regression Tests",
+      "description": "Confirms that disabled, removed, or constrained flows return expected rejections.",
       "event": [
         {
           "listen": "prerequest",
@@ -1672,105 +1308,7 @@
       ],
       "item": [
         {
-          "name": "REG-1: Email OTP sign-in — unregistered email (must send 200)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Send OTP returns 200 (prevents email enumeration)', function () {",
-                  "    pm.response.to.have.status(200);",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"ghost-unregistered@example.com\",\n  \"type\": \"sign-in\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/customers/auth/email-otp/send-verification-otp",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "customers",
-                "auth",
-                "email-otp",
-                "send-verification-otp"
-              ]
-            },
-            "description": "Sends a sign-in OTP for an unregistered email address."
-          }
-        },
-        {
-          "name": "REG-2: Email OTP sign-in — verify unregistered email (must 4xx)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status is 4xx — unregistered email rejected at verify step', function () {",
-                  "    pm.expect(pm.response.code).to.be.within(400, 499);",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"ghost-unregistered@example.com\",\n  \"otp\": \"000000\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/customers/auth/sign-in/email-otp",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "customers",
-                "auth",
-                "sign-in",
-                "email-otp"
-              ]
-            },
-            "description": "Attempts to complete sign-in for unregistered email."
-          }
-        },
-        {
-          "name": "REG-3: POST /sign-up/email — must return 400 (disabled)",
+          "name": "REG-1: POST /sign-up/email — must return 400 (disabled)",
           "event": [
             {
               "listen": "test",
@@ -1819,7 +1357,7 @@
           }
         },
         {
-          "name": "REG-4: POST /sign-in/email — must return 400 (disabled)",
+          "name": "REG-2: POST /sign-in/email — must return 400 (disabled)",
           "event": [
             {
               "listen": "test",
@@ -1868,7 +1406,7 @@
           }
         },
         {
-          "name": "REG-5: Duplicate phone number send OTP",
+          "name": "REG-3: Duplicate phone number send OTP",
           "event": [
             {
               "listen": "test",

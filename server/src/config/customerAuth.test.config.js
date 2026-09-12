@@ -13,7 +13,8 @@ import { handleEmailMasterOtp, verifyOTP } from "./otpHelper.js";
 import { isMasterOtpMatch } from "../utils/masterOtp.js";
 import { normalizePhoneNumber } from "../utils/phoneUtils.js";
 import { setSessionCookie } from "better-auth/cookies";
-import { getSessionFromCtx } from "better-auth/api";
+import { createAuthMiddleware, getSessionFromCtx } from "better-auth/api";
+import { enrichCustomerSessionResponse } from "../utils/customerSessionResponse.js";
 
 let testCustomerAuthInstance = null;
 let testCustomerAuthHandler = null;
@@ -103,6 +104,13 @@ export async function createTestCustomerAuth() {
         }
         await handleEmailMasterOtp(ctx);
       },
+      after: createAuthMiddleware(async (ctx) => {
+        const response = await enrichCustomerSessionResponse(ctx);
+        if (!response) {
+          return;
+        }
+        return ctx.json(response);
+      }),
     },
     plugins: [
       phoneNumber({
