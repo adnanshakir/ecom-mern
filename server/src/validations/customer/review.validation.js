@@ -18,23 +18,14 @@ export const createReviewSchema = z.object({
     .int("Rating must be a whole number")
     .min(1, "Rating must be at least 1")
     .max(5, "Rating cannot exceed 5"),
-  title: z
-    .string()
-    .trim()
-    .max(100, "Title cannot exceed 100 characters")
-    .optional()
-    .default(""),
+  title: z.string().trim().max(100, "Title cannot exceed 100 characters").optional().default(""),
   body: z
     .string()
     .trim()
     .max(2000, "Review body cannot exceed 2000 characters")
     .optional()
     .default(""),
-  images: z
-    .array(imageSchema)
-    .max(4, "A review can have at most 4 images")
-    .optional()
-    .default([]),
+  images: z.array(imageSchema).max(4, "A review can have at most 4 images").optional().default([]),
 });
 
 export const updateReviewSchema = z.object({
@@ -44,18 +35,7 @@ export const updateReviewSchema = z.object({
     .min(1, "Rating must be at least 1")
     .max(5, "Rating cannot exceed 5")
     .optional(),
-  title: z
-    .string()
-    .trim()
-    .max(100, "Title cannot exceed 100 characters")
-    .optional(),
-  body: z
-    .string()
-    .trim()
-    .max(2000, "Review body cannot exceed 2000 characters")
-    .optional(),
-  images: z
-    .array(imageSchema)
-    .max(4, "A review can have at most 4 images")
-    .optional(),
+  title: z.string().trim().max(100, "Title cannot exceed 100 characters").optional(),
+  body: z.string().trim().max(2000, "Review body cannot exceed 2000 characters").optional(),
+  images: z.array(imageSchema).max(4, "A review can have at most 4 images").optional(),
 });

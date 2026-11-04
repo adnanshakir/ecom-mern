@@ -25,10 +25,15 @@ import wishlistRoutes from "./routes/customer/wishlist.routes.js";
 import reviewRoutes from "./routes/customer/review.routes.js";
 import customerImageRoutes from "./routes/customer/customerImage.routes.js";
 import profileRoutes from "./routes/customer/profile.routes.js";
+import accountRoutes from "./routes/customer/account.routes.js";
 
 import { errorHandler, notFound } from "./middleware/error.middleware.js";
 
 const app = express();
+
+// The API is deployed behind a single trusted reverse proxy (Vercel).
+// Use the original client address for rate-limit buckets instead of the proxy IP.
+app.set("trust proxy", 1);
 
 app.use(
   cors({
@@ -106,6 +111,7 @@ app.use("/api/users", userRoutes);
 app.use("/api/banners", bannerRoutes);
 
 // ---- Customer routes ----
+app.use("/api/customers", accountRoutes);
 app.use("/api/customers/profile", profileRoutes);
 app.use("/api/customers/cart", cartRoutes);
 app.use("/api/customers/wishlist", wishlistRoutes);

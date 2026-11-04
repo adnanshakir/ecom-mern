@@ -49,9 +49,7 @@ describe("Customer Profile Single-Route API (/api/customers/profile)", () => {
   it("GET /api/customers/profile returns current user profile when authenticated", async () => {
     const { cookies } = await loginWithPhone("+919876543210");
 
-    const res = await request(app)
-      .get("/api/customers/profile")
-      .set("Cookie", cookies);
+    const res = await request(app).get("/api/customers/profile").set("Cookie", cookies);
 
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
@@ -114,9 +112,7 @@ describe("Customer Profile Single-Route API (/api/customers/profile)", () => {
     expect(updateRes.body.data.addresses[0].city).toBe("Bengaluru");
 
     // Fetch profile again to confirm persistence
-    const getRes = await request(app)
-      .get("/api/customers/profile")
-      .set("Cookie", cookies);
+    const getRes = await request(app).get("/api/customers/profile").set("Cookie", cookies);
 
     expect(getRes.status).toBe(200);
     expect(getRes.body.data.name).toBe("Adnan Shakir");

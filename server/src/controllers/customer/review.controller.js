@@ -259,19 +259,21 @@ export const updateReview = async (req, res, next) => {
 
     // Handle image updates + cleanup orphaned files from ImageKit
     if (images !== undefined) {
-      const oldFileIds = new Set(
-        (review.images || []).map((img) => img.fileId).filter(Boolean)
-      );
-      const newFileIds = new Set(
-        images.map((img) => img.fileId).filter(Boolean)
-      );
+      const oldFileIds = new Set((review.images || []).map((img) => img.fileId).filter(Boolean));
+      const newFileIds = new Set(images.map((img) => img.fileId).filter(Boolean));
 
       // Find fileIds that were removed
       const orphanedFileIds = [...oldFileIds].filter((id) => !newFileIds.has(id));
 
       // Check if images actually changed (compare URLs)
-      const oldUrls = (review.images || []).map((img) => img.url).sort().join(",");
-      const newUrls = images.map((img) => img.url).sort().join(",");
+      const oldUrls = (review.images || [])
+        .map((img) => img.url)
+        .sort()
+        .join(",");
+      const newUrls = images
+        .map((img) => img.url)
+        .sort()
+        .join(",");
 
       if (oldUrls !== newUrls) {
         review.images = images;
@@ -279,9 +281,9 @@ export const updateReview = async (req, res, next) => {
 
         // Best-effort cleanup of orphaned ImageKit files
         if (orphanedFileIds.length > 0) {
-          Promise.allSettled(
-            orphanedFileIds.map((fileId) => imagekit.deleteFile(fileId))
-          ).catch(() => {});
+          Promise.allSettled(orphanedFileIds.map((fileId) => imagekit.deleteFile(fileId))).catch(
+            () => {}
+          );
         }
       }
     }
@@ -348,17 +350,15 @@ export const deleteReview = async (req, res, next) => {
     }
 
     // Best-effort cleanup of image files from ImageKit
-    const fileIdsToDelete = (review.images || [])
-      .map((img) => img.fileId)
-      .filter(Boolean);
+    const fileIdsToDelete = (review.images || []).map((img) => img.fileId).filter(Boolean);
 
     await review.deleteOne();
 
     // Fire-and-forget — don't block the response for ImageKit cleanup
     if (fileIdsToDelete.length > 0) {
-      Promise.allSettled(
-        fileIdsToDelete.map((fileId) => imagekit.deleteFile(fileId))
-      ).catch(() => {});
+      Promise.allSettled(fileIdsToDelete.map((fileId) => imagekit.deleteFile(fileId))).catch(
+        () => {}
+      );
     }
 
     res.status(200).json({ success: true, message: "Review deleted successfully" });

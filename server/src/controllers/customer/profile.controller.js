@@ -51,7 +51,6 @@ export const getCustomerProfile = async (req, res, next) => {
   }
 };
 
-
 /**
  * Update customer profile details (name, email, address) in a single request.
  */
@@ -129,15 +128,19 @@ export const updateCustomerProfile = async (req, res, next) => {
         if (mongoose.Types.ObjectId.isValid(authUserId)) {
           orConditions.push({ _id: new mongoose.Types.ObjectId(authUserId) });
         }
-        await db.collection("customerUser").updateOne(
-          { $or: orConditions },
-          { $set: updatesToUser },
-          inTransaction && session ? { session } : {}
-        );
+        await db
+          .collection("customerUser")
+          .updateOne(
+            { $or: orConditions },
+            { $set: updatesToUser },
+            inTransaction && session ? { session } : {}
+          );
       }
 
       // Handle Address updates in CustomerProfile
-      profileDoc = await CustomerProfile.findOne({ authUserId }).session(inTransaction && session ? session : null);
+      profileDoc = await CustomerProfile.findOne({ authUserId }).session(
+        inTransaction && session ? session : null
+      );
       if (!profileDoc) {
         profileDoc = new CustomerProfile({ authUserId, addresses: [] });
       }
@@ -190,16 +193,16 @@ export const updateCustomerProfile = async (req, res, next) => {
         const rollbackFields = {};
         if (updatesToUser.name !== undefined) rollbackFields.name = previousUserDoc.name ?? "";
         if (updatesToUser.email !== undefined) rollbackFields.email = previousUserDoc.email ?? "";
-        if (updatesToUser.updatedAt !== undefined) rollbackFields.updatedAt = previousUserDoc.updatedAt;
+        if (updatesToUser.updatedAt !== undefined)
+          rollbackFields.updatedAt = previousUserDoc.updatedAt;
 
         const orConditions = [{ id: authUserId }, { _id: authUserId }];
         if (mongoose.Types.ObjectId.isValid(authUserId)) {
           orConditions.push({ _id: new mongoose.Types.ObjectId(authUserId) });
         }
-        await db.collection("customerUser").updateOne(
-          { $or: orConditions },
-          { $set: rollbackFields }
-        );
+        await db
+          .collection("customerUser")
+          .updateOne({ $or: orConditions }, { $set: rollbackFields });
       }
       throw writeErr;
     } finally {
