@@ -191,7 +191,7 @@ export const updateProduct = async (req, res, next) => {
     }
 
     const product = await Product.findByIdAndUpdate(req.params.id, updates, {
-      new: true,
+      returnDocument: "after",
       runValidators: true,
     });
     if (!product) throw new ApiError(404, "Product not found");
@@ -328,4 +328,3 @@ export const bulkDeleteProducts = async (req, res, next) => {
     session.endSession();
   }
 };
-

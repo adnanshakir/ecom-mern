@@ -85,6 +85,11 @@ const cartSlice = createSlice({
       state.error = null;
       state.pendingVariants = [];
     },
+    // Used after a successful payment because the server clears the persisted cart.
+    clearCartState(state) {
+      state.items = [];
+      state.error = null;
+    },
   },
   extraReducers: (builder) => {
     // fetchCart
@@ -163,7 +168,7 @@ const cartSlice = createSlice({
   },
 });
 
-export const { resetCart } = cartSlice.actions;
+export const { resetCart, clearCartState } = cartSlice.actions;
 
 // ── Selectors ─────────────────────────────────────────────────────────────────
 

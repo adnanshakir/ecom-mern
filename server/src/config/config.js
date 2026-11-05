@@ -1,6 +1,10 @@
 import dotenv from "dotenv";
+import { fileURLToPath } from "url";
+import path from "path";
 
-dotenv.config();
+dotenv.config({
+  path: path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../.env"),
+});
 
 /**
  * Loads, trims, and validates environment variables.
@@ -13,7 +17,11 @@ export const loadConfig = (envSource = process.env) => {
       val = envSource["FRONTEND"] || envSource["frontend"];
     }
     if ((val === undefined || val === null || val === "") && key === "TRUSTED_ORIGINS") {
-      val = envSource["TRUSTED"] || envSource["trusted"] || envSource["TRUSTED_ORIGIN"] || envSource["trusted_origin"];
+      val =
+        envSource["TRUSTED"] ||
+        envSource["trusted"] ||
+        envSource["TRUSTED_ORIGIN"] ||
+        envSource["trusted_origin"];
     }
     if (val === undefined || val === null) return defaultValue;
     return String(val).trim();
@@ -42,7 +50,9 @@ export const loadConfig = (envSource = process.env) => {
   const rawPort = getEnv("PORT", "5000");
   const port = Number(rawPort);
   if (!/^\d+$/.test(rawPort) || !Number.isInteger(port) || port < 1 || port > 65535) {
-    throw new Error(`Invalid PORT environment variable: "${rawPort}". Must be an integer between 1 and 65535.`);
+    throw new Error(
+      `Invalid PORT environment variable: "${rawPort}". Must be an integer between 1 and 65535.`
+    );
   }
 
   const validateProductionBetterAuthUrl = (url) => {
@@ -165,6 +175,15 @@ export const loadConfig = (envSource = process.env) => {
       },
       get urlEndpoint() {
         return getEnv("IMAGEKIT_URL_ENDPOINT");
+      },
+    },
+
+    razorpay: {
+      get keyId() {
+        return getEnv("RAZORPAY_KEY_ID");
+      },
+      get keySecret() {
+        return getEnv("RAZORPAY_KEY_SECRET");
       },
     },
 

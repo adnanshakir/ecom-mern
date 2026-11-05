@@ -17,7 +17,7 @@ export const authenticateCustomer = async (req, res, next) => {
     const customerProfile = await CustomerProfile.findOneAndUpdate(
       { authUserId: session.user.id },
       { $setOnInsert: { authUserId: session.user.id } },
-      { upsert: true, new: true, setDefaultsOnInsert: true }
+      { upsert: true, returnDocument: "after", setDefaultsOnInsert: true }
     );
 
     req.customer = session.user;
