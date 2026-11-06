@@ -354,10 +354,40 @@ export function CheckoutView() {
 
         <div className="h-fit rounded-lg border bg-card p-6">
           <h2 className="text-xl font-semibold">Order summary</h2>
+          <div className="mt-6 grid gap-3 border-b pb-4">
+            {checkoutItems.map((item) => {
+              const product = item.product || item.variant?.product;
+              const variant = item.variant;
+              const unitPrice = variant?.salePrice ?? variant?.price ?? 0;
+              const thumbnail = product?.images?.[0]?.url;
+
+              return (
+                <div key={variant?._id} className="flex gap-3">
+                  <div className="size-16 shrink-0 overflow-hidden rounded-md border bg-muted">
+                    {thumbnail ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={thumbnail} alt={product?.name || "Product"} className="size-full object-cover" />
+                    ) : (
+                      <div className="flex size-full items-center justify-center text-xs text-muted-foreground">
+                        No image
+                      </div>
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1 text-sm">
+                    <p className="line-clamp-2 font-medium">{product?.name || "Product"}</p>
+                    <p className="text-xs text-muted-foreground">
+                      SKU: {variant?.sku || "—"} · Qty: {item.quantity}
+                    </p>
+                    <p className="mt-1 font-semibold">{formatPrice(unitPrice * item.quantity)}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
           <div className="mt-6 grid gap-3 border-b pb-4 text-sm">
             <div className="flex justify-between">
               <span className="text-muted-foreground">
-                {count} item{count === 1 ? "" : "s"}
+                {checkoutCount} item{checkoutCount === 1 ? "" : "s"}
               </span>
               <span>{formatPrice(subtotal)}</span>
             </div>

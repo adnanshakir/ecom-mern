@@ -176,7 +176,15 @@ export function ProductInteractiveSection({ product, variantSelectorProps }) {
     try {
       sessionStorage.setItem(
         "fibio:buy-now",
-        JSON.stringify({ variant: selectedVariant, quantity })
+        JSON.stringify({
+          variant: selectedVariant,
+          product: {
+            name: product.name,
+            slug: product.slug,
+            images: product.images,
+          },
+          quantity,
+        })
       );
       router.push("/checkout?buyNow=1");
     } finally {
@@ -505,4 +513,3 @@ export function ProductInteractiveSection({ product, variantSelectorProps }) {
     </div>
   );
 }
-
