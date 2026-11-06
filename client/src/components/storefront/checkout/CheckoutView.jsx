@@ -8,7 +8,11 @@ import { toast } from "sonner";
 
 import { useCart } from "@/hooks/storefront/useCart";
 import { clearCartState } from "@/redux/slices/cartSlice";
-import { createPaymentOrderRequest, verifyPaymentRequest } from "@/services/storefront/payments";
+import {
+  createPaymentOrderRequest,
+  reconcilePaymentRequest,
+  verifyPaymentRequest,
+} from "@/services/storefront/payments";
 import { getCustomerProfileRequest, updateCustomerProfileRequest } from "@/services/storefront/customerAuth";
 import { formatPrice } from "@/lib/formatCurrency";
 import { Button } from "@/components/ui/button";
@@ -26,6 +30,7 @@ const EMPTY_ADDRESS = {
   phone: "",
 };
 
+/** Load the Razorpay checkout constructor once it is available in the browser. */
 const loadRazorpay = () =>
   new Promise((resolve, reject) => {
     if (window.Razorpay) return resolve(window.Razorpay);
@@ -49,6 +54,8 @@ export function CheckoutView() {
   const [selectedAddressId, setSelectedAddressId] = useState("");
   const [addressForm, setAddressForm] = useState(null);
   const [addressLoading, setAddressLoading] = useState(true);
+  const [addressesVersion, setAddressesVersion] = useState(0);
+  const [paymentReconciliation, setPaymentReconciliation] = useState(null);
 
   useEffect(() => {
     if (authReady && authStatus !== "authenticated") router.replace("/sign-in");
@@ -60,6 +67,7 @@ export function CheckoutView() {
       .then(({ data }) => {
         const savedAddresses = data.data?.addresses || [];
         setAddresses(savedAddresses);
+        setAddressesVersion(data.data?.addressesVersion ?? 0);
         setSelectedAddressId(savedAddresses.find((address) => address.isDefault)?._id || savedAddresses[0]?._id || "");
       })
       .catch(() => toast.error("Unable to load saved addresses"))
@@ -72,6 +80,7 @@ export function CheckoutView() {
   }, 0);
   const total = subtotal + DELIVERY_CHARGE;
 
+  /** Save an address against the profile version currently displayed in this tab. */
   const saveAddress = async (event) => {
     event.preventDefault();
     const nextAddress = { ...addressForm };
@@ -85,9 +94,10 @@ export function CheckoutView() {
       : [...addresses, { ...nextAddress, isDefault: addresses.length === 0 }];
 
     try {
-      const { data } = await updateCustomerProfileRequest({ addresses: nextAddresses });
+      const { data } = await updateCustomerProfileRequest({ addresses: nextAddresses, addressesVersion });
       const saved = data.data.addresses || nextAddresses;
       setAddresses(saved);
+      setAddressesVersion(data.data.addressesVersion ?? addressesVersion + 1);
       setSelectedAddressId(nextAddress._id || saved[saved.length - 1]?._id || "");
       setAddressForm(null);
       toast.success("Address saved");
@@ -96,31 +106,37 @@ export function CheckoutView() {
     }
   };
 
+  /** Remove an address using the same optimistic profile-version guard as saves. */
   const removeAddress = async (addressId) => {
     try {
       const { data } = await updateCustomerProfileRequest({
         addresses: addresses.filter((address) => address._id !== addressId),
+        addressesVersion,
       });
       const saved = data.data.addresses || [];
       setAddresses(saved);
+      setAddressesVersion(data.data.addressesVersion ?? addressesVersion + 1);
       setSelectedAddressId(saved[0]?._id || "");
     } catch (error) {
       toast.error(error.response?.data?.message || "Unable to remove address");
     }
   };
 
+  /** Load and validate the gateway before creating an order or opening checkout. */
   const pay = async () => {
-    if (!selectedAddressId) {
-      toast.error("Select or add a delivery address first");
+    if (!selectedAddressId || paymentReconciliation) {
+      if (paymentReconciliation) {
+        toast.error("Please wait while we confirm the previous payment");
+      }
+      if (!selectedAddressId) toast.error("Select or add a delivery address first");
       return;
     }
 
     setIsPaying(true);
     try {
-      const [{ data: orderResponse }, Razorpay] = await Promise.all([
-        createPaymentOrderRequest(selectedAddressId),
-        loadRazorpay(),
-      ]);
+      const Razorpay = await loadRazorpay();
+      if (typeof Razorpay !== "function") throw new Error("Payment gateway is unavailable");
+      const { data: orderResponse } = await createPaymentOrderRequest(selectedAddressId);
       const order = orderResponse.data;
       const razorpay = new Razorpay({
         key: order.keyId,
@@ -138,7 +154,34 @@ export function CheckoutView() {
             toast.success("Payment successful");
             router.replace(`/order?orderId=${order.orderId}`);
           } catch (error) {
-            toast.error(error.response?.data?.message || "Payment verification failed");
+            setPaymentReconciliation({
+              razorpayOrderId: payment.razorpay_order_id,
+              razorpayPaymentId: payment.razorpay_payment_id,
+            });
+            try {
+              const { data: reconciliation } = await reconcilePaymentRequest({
+                razorpayOrderId: payment.razorpay_order_id,
+                razorpayPaymentId: payment.razorpay_payment_id,
+              });
+              if (reconciliation.data?.status === "paid") {
+                dispatch(clearCartState());
+                toast.success("Payment successful");
+                router.replace(`/order?orderId=${reconciliation.data.orderId}`);
+                return;
+              }
+              if (reconciliation.data?.status === "failed") {
+                setPaymentReconciliation(null);
+                toast.error("Payment was unsuccessful. You can try again.");
+                return;
+              }
+              toast.error("Payment is still being confirmed. Please do not retry yet.");
+            } catch (reconciliationError) {
+              toast.error(
+                reconciliationError.response?.data?.message ||
+                  error.response?.data?.message ||
+                  "Payment outcome is still being confirmed"
+              );
+            }
           } finally {
             setIsPaying(false);
           }
@@ -147,6 +190,7 @@ export function CheckoutView() {
       });
       razorpay.on("payment.failed", (response) => {
         toast.error(response.error?.description || "Payment failed");
+        setPaymentReconciliation(null);
         setIsPaying(false);
       });
       razorpay.open();

@@ -37,6 +37,7 @@ export const getCustomerProfile = async (req, res, next) => {
       name: userDoc?.name ?? req.customer?.name ?? "",
       email: userDoc?.email ?? req.customer?.email ?? "",
       addresses: profileDoc?.addresses || [],
+      addressesVersion: profileDoc?.__v ?? 0,
       createdAt: userDoc?.createdAt || req.customer?.createdAt,
       updatedAt: userDoc?.updatedAt || req.customer?.updatedAt,
     };
@@ -62,7 +63,7 @@ export const updateCustomerProfile = async (req, res, next) => {
       throw new ApiError(401, "Unauthorized: Invalid customer session");
     }
 
-    const { name, email, address, addresses } = req.body;
+    const { name, email, address, addresses, addressesVersion } = req.body;
     const db = mongoose.connection.db;
 
     if (!db) {
@@ -107,23 +108,38 @@ export const updateCustomerProfile = async (req, res, next) => {
         if (mongoose.Types.ObjectId.isValid(authUserId)) {
           orConditions.push({ _id: new mongoose.Types.ObjectId(authUserId) });
         }
-        await db.collection("customerUser").updateOne(
-          { $or: orConditions },
-          { $set: updatesToUser },
-          inTransaction && session ? { session } : {}
-        );
+        await db
+          .collection("customerUser")
+          .updateOne(
+            { $or: orConditions },
+            { $set: updatesToUser },
+            inTransaction && session ? { session } : {}
+          );
       }
 
       // Handle Address updates in CustomerProfile
-      profileDoc = await CustomerProfile.findOne({ authUserId }).session(inTransaction && session ? session : null);
+      const profileQuery =
+        Array.isArray(addresses) && Number.isInteger(addressesVersion)
+          ? { authUserId, __v: addressesVersion }
+          : { authUserId };
+      profileDoc = await CustomerProfile.findOne(profileQuery).session(
+        inTransaction && session ? session : null
+      );
+      if (Array.isArray(addresses) && !Number.isInteger(addressesVersion)) {
+        throw new ApiError(400, "Address version is required for address updates");
+      }
+      if (Array.isArray(addresses) && !profileDoc && addressesVersion !== 0) {
+        throw new ApiError(409, "Saved addresses changed. Refresh and try again.");
+      }
       if (!profileDoc) {
         profileDoc = new CustomerProfile({ authUserId, addresses: [] });
       }
 
       if (Array.isArray(addresses)) {
-        // Direct replace of addresses array
         profileDoc.addresses = addresses.map((addr) => ({
-          ...(addr._id && { _id: addr._id }),
+          ...(addr._id && profileDoc.addresses.id(addr._id)
+            ? { _id: profileDoc.addresses.id(addr._id)._id }
+            : {}),
           label: addr.label || "Home",
           line1: (addr.line1 || "").trim(),
           line2: (addr.line2 || "").trim(),
@@ -169,16 +185,16 @@ export const updateCustomerProfile = async (req, res, next) => {
         const rollbackFields = {};
         if (updatesToUser.name !== undefined) rollbackFields.name = previousUserDoc.name ?? "";
         if (updatesToUser.email !== undefined) rollbackFields.email = previousUserDoc.email ?? "";
-        if (updatesToUser.updatedAt !== undefined) rollbackFields.updatedAt = previousUserDoc.updatedAt;
+        if (updatesToUser.updatedAt !== undefined)
+          rollbackFields.updatedAt = previousUserDoc.updatedAt;
 
         const orConditions = [{ id: authUserId }, { _id: authUserId }];
         if (mongoose.Types.ObjectId.isValid(authUserId)) {
           orConditions.push({ _id: new mongoose.Types.ObjectId(authUserId) });
         }
-        await db.collection("customerUser").updateOne(
-          { $or: orConditions },
-          { $set: rollbackFields }
-        );
+        await db
+          .collection("customerUser")
+          .updateOne({ $or: orConditions }, { $set: rollbackFields });
       }
       throw writeErr;
     } finally {
@@ -196,6 +212,7 @@ export const updateCustomerProfile = async (req, res, next) => {
       name: updatedUserDoc?.name ?? updatesToUser.name ?? req.customer?.name ?? "",
       email: updatedUserDoc?.email ?? req.customer?.email ?? "",
       addresses: profileDoc?.addresses || [],
+      addressesVersion: profileDoc?.__v ?? 0,
       createdAt: updatedUserDoc?.createdAt || req.customer?.createdAt,
       updatedAt: updatedUserDoc?.updatedAt || req.customer?.updatedAt,
     };

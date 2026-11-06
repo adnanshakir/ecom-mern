@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useSelector } from "react-redux";
+import { useRouter } from "next/navigation";
 import { ArrowRight, Loader2, Package, ShoppingBag } from "lucide-react";
 import { toast } from "sonner";
 
@@ -25,10 +26,17 @@ const getExpectedDeliveryDate = (createdAt) => {
 };
 
 export function OrdersView() {
+  const router = useRouter();
   const authStatus = useSelector((state) => state.customerAuth.status);
   const authReady = useSelector((state) => state.customerAuth.authReady);
   const [orders, setOrders] = useState([]);
   const [status, setStatus] = useState("loading");
+
+  useEffect(() => {
+    if (authReady && authStatus !== "authenticated") {
+      router.replace("/sign-in");
+    }
+  }, [authReady, authStatus, router]);
 
   useEffect(() => {
     if (!authReady || authStatus !== "authenticated") return;
@@ -57,7 +65,7 @@ export function OrdersView() {
 
   const paidOrders = useMemo(() => orders.filter((order) => order.status === "paid"), [orders]);
 
-  if (!authReady || authStatus === "loading" || status === "loading") {
+  if (!authReady || authStatus === "loading") {
     return (
       <div className="flex min-h-[50vh] items-center justify-center">
         <Loader2 className="size-5 animate-spin text-[#033936]" />
@@ -66,6 +74,13 @@ export function OrdersView() {
   }
 
   if (authStatus !== "authenticated") return null;
+  if (status === "loading") {
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center">
+        <Loader2 className="size-5 animate-spin text-[#033936]" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-[85vh] bg-muted/20 py-8 sm:py-12">

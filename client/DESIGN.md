@@ -231,7 +231,7 @@ The store is created by `makeStore()` and provided to Next.js App Router via `St
 - **Services**: `services/storefront/{cart, wishlist, reviews, customerAuth}.js`
 
 ### Storefront (Public)
-- **Base**: `publicApi.js` — plain Axios, no credentials
+- **Base**: `publicApi.js` — plain Axios; it does not explicitly configure credentials, although same-origin requests can still include cookies
 - **Services**: `services/storefront/{publicCatalog, publicBanners}.js`
 
 ### Next.js API Proxy

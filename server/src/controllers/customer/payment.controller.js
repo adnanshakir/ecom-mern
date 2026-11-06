@@ -12,6 +12,9 @@ import { config } from "../../config/config.js";
 
 const DELIVERY_CHARGE = 100;
 
+/**
+ * Return the configured Razorpay client or reject unavailable checkout.
+ */
 const getRazorpay = () => {
   if (!config.razorpay.keyId || !config.razorpay.keySecret) {
     throw new ApiError(503, "Online payments are not configured");
@@ -23,6 +26,28 @@ const getRazorpay = () => {
   });
 };
 
+/**
+ * Ensure the MongoDB deployment can provide the transaction guarantees checkout needs.
+ */
+const assertTransactionSupport = () => {
+  const topologyType = mongoose.connection.getClient()?.topology?.description?.type;
+  if (!["ReplicaSetWithPrimary", "Sharded", "LoadBalanced"].includes(topologyType)) {
+    throw new ApiError(503, "Checkout requires a transaction-capable MongoDB deployment");
+  }
+};
+
+/**
+ * Create a bounded, unique Razorpay receipt while retaining customer and time identity.
+ */
+const createReceipt = (customerId) =>
+  `fibio_${customerId.toString().slice(-12)}_${Date.now().toString(36)}_${crypto.randomBytes(3).toString("hex")}`.slice(
+    0,
+    40
+  );
+
+/**
+ * Read the current cart and return the validated order snapshot.
+ */
 const getCartItems = async (customerId) => {
   const cart = await Cart.findOne({ customer: customerId }).populate({
     path: "items.variant",
@@ -56,6 +81,9 @@ const getCartItems = async (customerId) => {
   return { cart, items, subtotal };
 };
 
+/**
+ * List the authenticated customer's orders from newest to oldest.
+ */
 export const getCustomerOrders = async (req, res, next) => {
   try {
     const orders = await Order.find({ customer: req.customerProfile._id })
@@ -70,8 +98,12 @@ export const getCustomerOrders = async (req, res, next) => {
   }
 };
 
+/**
+ * Validate the cart and address, then create the corresponding Razorpay order snapshot.
+ */
 export const createPaymentOrder = async (req, res, next) => {
   try {
+    assertTransactionSupport();
     const { items, subtotal } = await getCartItems(req.customerProfile._id);
     const profile = await CustomerProfile.findById(req.customerProfile._id);
     const addressId = req.body?.addressId;
@@ -82,7 +114,7 @@ export const createPaymentOrder = async (req, res, next) => {
 
     const total = subtotal + DELIVERY_CHARGE;
     const razorpay = getRazorpay();
-    const receipt = `fibio_${req.customerProfile._id}_${Date.now()}`;
+    const receipt = createReceipt(req.customerProfile._id);
     const razorpayOrder = await razorpay.orders.create({
       amount: Math.round(total * 100),
       currency: "INR",
@@ -119,6 +151,9 @@ export const createPaymentOrder = async (req, res, next) => {
   }
 };
 
+/**
+ * Verify a Razorpay signature and complete the order only after capture is confirmed.
+ */
 export const verifyPayment = async (req, res, next) => {
   const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
 
@@ -137,70 +172,178 @@ export const verifyPayment = async (req, res, next) => {
       .digest("hex");
 
     if (
+      typeof razorpay_signature !== "string" ||
+      !/^[a-f0-9]{64}$/i.test(razorpay_signature) ||
       expectedSignature.length !== razorpay_signature.length ||
       !crypto.timingSafeEqual(Buffer.from(expectedSignature), Buffer.from(razorpay_signature))
     ) {
       throw new ApiError(400, "Payment signature verification failed");
     }
 
-    const session = await mongoose.startSession();
-    try {
-      let completedOrder;
-      await session.withTransaction(async () => {
-        const order = await Order.findOne({
-          customer: req.customerProfile._id,
-          razorpayOrderId: razorpay_order_id,
-        }).session(session);
+    const razorpay = getRazorpay();
+    const gatewayPayment = await razorpay.payments.fetch(razorpay_payment_id);
+    if (gatewayPayment.order_id !== razorpay_order_id) {
+      throw new ApiError(400, "Payment does not belong to this order");
+    }
+    if (gatewayPayment.status !== "captured") {
+      throw new ApiError(409, "Payment has not been captured yet");
+    }
 
-        if (!order) throw new ApiError(404, "Payment order not found");
-        if (order.status === "paid") {
-          completedOrder = order;
-          return;
-        }
+    const completedOrder = await completeCapturedPayment({
+      customerId: req.customerProfile._id,
+      razorpayOrderId: razorpay_order_id,
+      razorpayPaymentId: razorpay_payment_id,
+      razorpay,
+    });
 
-        for (const item of order.items) {
-          const updated = await ProductVariant.findOneAndUpdate(
-            { _id: item.variant, isActive: true, stock: { $gte: item.quantity } },
-            { $inc: { stock: -item.quantity } },
-            { returnDocument: "after", session }
-          );
-          if (!updated) throw new ApiError(409, `Insufficient stock for ${item.sku}`);
+    res.status(200).json({
+      success: true,
+      data: { orderId: completeOrder._id, status: completeOrder.status },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
 
-          await InventoryMovement.create(
-            [
-              {
-                variant: updated._id,
-                product: item.product,
-                type: "sale",
-                quantityChange: -item.quantity,
-                previousStock: updated.stock + item.quantity,
-                newStock: updated.stock,
-                reason: `Razorpay payment ${razorpay_payment_id}`,
-              },
-            ],
-            { session }
-          );
-        }
+/**
+ * Complete a captured payment exactly once and reconcile only its order snapshot.
+ */
+const completeCapturedPayment = async ({
+  customerId,
+  razorpayOrderId,
+  razorpayPaymentId,
+  razorpay,
+}) => {
+  assertTransactionSupport();
+  const session = await mongoose.startSession();
+  let completedOrder;
+  try {
+    await session.withTransaction(async () => {
+      const order = await Order.findOne({
+        customer: customerId,
+        razorpayOrderId,
+      }).session(session);
 
-        order.status = "paid";
-        order.razorpayPaymentId = razorpay_payment_id;
-        order.paidAt = new Date();
-        await order.save({ session });
-        await Cart.updateOne(
-          { customer: req.customerProfile._id },
-          { $set: { items: [] } },
+      if (!order) throw new ApiError(404, "Payment order not found");
+      if (order.status === "paid") {
+        completedOrder = order;
+        return;
+      }
+      if (order.status === "failed")
+        throw new ApiError(409, "This payment order cannot be completed");
+
+      for (const item of order.items) {
+        const updated = await ProductVariant.findOneAndUpdate(
+          { _id: item.variant, isActive: true, stock: { $gte: item.quantity } },
+          { $inc: { stock: -item.quantity } },
+          { returnDocument: "after", session }
+        );
+        if (!updated) throw new ApiError(409, `Insufficient stock for ${item.sku}`);
+
+        await InventoryMovement.create(
+          [
+            {
+              variant: updated._id,
+              product: item.product,
+              type: "sale",
+              quantityChange: -item.quantity,
+              previousStock: updated.stock + item.quantity,
+              newStock: updated.stock,
+              reason: `Razorpay payment ${razorpayPaymentId}`,
+            },
+          ],
           { session }
         );
-        completedOrder = order;
-      });
+      }
 
-      res.status(200).json({
-        success: true,
-        data: { orderId: completedOrder._id, status: completedOrder.status },
-      });
-    } finally {
-      await session.endSession();
+      order.status = "paid";
+      order.razorpayPaymentId = razorpayPaymentId;
+      order.paidAt = new Date();
+      await order.save({ session });
+
+      const cart = await Cart.findOne({ customer: customerId }).session(session);
+      if (cart) {
+        const quantities = new Map(
+          order.items.map((item) => [item.variant.toString(), item.quantity])
+        );
+        cart.items = cart.items
+          .map((item) => {
+            const remaining = item.quantity - (quantities.get(item.variant.toString()) || 0);
+            quantities.delete(item.variant.toString());
+            return remaining > 0 ? { ...item.toObject(), quantity: remaining } : null;
+          })
+          .filter(Boolean);
+        await cart.save({ session });
+      }
+      completedOrder = order;
+    });
+  } catch (error) {
+    if (error.statusCode === 409 && razorpay) {
+      try {
+        await razorpay.payments.refund(razorpayPaymentId, {});
+      } catch {
+        throw new ApiError(502, "Payment was captured but could not be reconciled or refunded");
+      }
+      await Order.updateOne(
+        { customer: customerId, razorpayOrderId, status: "pending" },
+        { $set: { status: "failed", razorpayPaymentId, failureReason: error.message } }
+      );
     }
+    throw error;
+  } finally {
+    await session.endSession();
+  }
+  return completedOrder;
+};
+
+/**
+ * Reconcile a browser-interrupted payment using Razorpay's authoritative payment status.
+ */
+export const reconcilePayment = async (req, res, next) => {
+  try {
+    const { razorpayOrderId, razorpayPaymentId } = req.body || {};
+    if (
+      typeof razorpayOrderId !== "string" ||
+      typeof razorpayPaymentId !== "string" ||
+      !razorpayOrderId ||
+      !razorpayPaymentId
+    ) {
+      throw new ApiError(400, "Payment reconciliation details are required");
+    }
+
+    const razorpay = getRazorpay();
+    const payment = await razorpay.payments.fetch(razorpayPaymentId);
+    if (payment.order_id !== razorpayOrderId)
+      throw new ApiError(400, "Payment does not belong to this order");
+
+    if (payment.status === "captured") {
+      const existingOrder = await Order.findOne({
+        customer: req.customerProfile._id,
+        razorpayOrderId,
+      }).select("status");
+      if (existingOrder?.status === "failed") {
+        return res.status(200).json({ success: true, data: { status: "failed" } });
+      }
+      const order = await completeCapturedPayment({
+        customerId: req.customerProfile._id,
+        razorpayOrderId,
+        razorpayPaymentId,
+        razorpay,
+      });
+      return res
+        .status(200)
+        .json({ success: true, data: { orderId: order._id, status: order.status } });
+    }
+
+    if (["failed", "refunded"].includes(payment.status)) {
+      await Order.updateOne(
+        { customer: req.customerProfile._id, razorpayOrderId, status: "pending" },
+        { $set: { status: "failed", failureReason: `Razorpay payment status: ${payment.status}` } }
+      );
+      return res.status(200).json({ success: true, data: { status: "failed" } });
+    }
+
+    return res.status(200).json({ success: true, data: { status: "pending" } });
   } catch (err) {
     next(err);
   }
