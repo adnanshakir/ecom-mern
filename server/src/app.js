@@ -26,6 +26,7 @@ import reviewRoutes from "./routes/customer/review.routes.js";
 import customerImageRoutes from "./routes/customer/customerImage.routes.js";
 import profileRoutes from "./routes/customer/profile.routes.js";
 import accountRoutes from "./routes/customer/account.routes.js";
+import paymentRoutes from "./routes/customer/payment.routes.js";
 
 import { errorHandler, notFound } from "./middleware/error.middleware.js";
 
@@ -114,6 +115,7 @@ app.use("/api/banners", bannerRoutes);
 app.use("/api/customers", accountRoutes);
 app.use("/api/customers/profile", profileRoutes);
 app.use("/api/customers/cart", cartRoutes);
+app.use("/api/customers/payments", paymentRoutes);
 app.use("/api/customers/wishlist", wishlistRoutes);
 app.use("/api/customers/reviews", reviewRoutes);
 app.use("/api/customers/images", customerImageRoutes);

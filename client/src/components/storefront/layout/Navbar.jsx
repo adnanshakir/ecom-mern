@@ -48,8 +48,8 @@ export function Navbar() {
 
           {/* Action Icons */}
           <div className="flex shrink-0 items-center gap-1">
-            <Button variant="ghost" size="icon" asChild title="Track your order">
-              <Link href="/track-order">
+            <Button variant="ghost" size="icon" asChild title="Your orders">
+              <Link href="/order">
                 <Truck className="size-5" />
               </Link>
             </Button>

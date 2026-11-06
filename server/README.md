@@ -547,7 +547,7 @@ npm test
 
 ### 1. Requirements
 - **Node.js**: `v18.0.0` or higher
-- **MongoDB**: `v6.0+` (Local instance or MongoDB Atlas)
+- **MongoDB**: `v6.0+` with replica-set or sharded deployment support (required for checkout transactions)
 
 ### 2. Installation
 ```bash
@@ -566,6 +566,11 @@ PORT=5000
 NODE_ENV=development
 MONGO_URI=mongodb://localhost:27017/fibio-ecom
 FRONTEND_URL=http://localhost:3000
+BETTER_AUTH_SECRET=your_better_auth_secret_min_32_chars
+
+# Razorpay checkout credentials
+RAZORPAY_KEY_ID=your_razorpay_key_id
+RAZORPAY_KEY_SECRET=your_razorpay_key_secret
 
 # JWT Configuration (single secret for both admin & customer tokens)
 JWT_SECRET=your_jwt_secret_min_32_chars_long
@@ -578,6 +583,8 @@ IMAGEKIT_PUBLIC_KEY=your_imagekit_public_key
 IMAGEKIT_PRIVATE_KEY=your_imagekit_private_key
 IMAGEKIT_URL_ENDPOINT=https://ik.imagekit.io/your_id
 ```
+
+Checkout requires MongoDB transactions. Use a replica set locally (for example, a single-node replica set) or a sharded/replica-set MongoDB Atlas deployment before configuring Razorpay credentials.
 
 > **Note**: Unlike earlier versions, this API uses a **single `JWT_SECRET`** for both admin and customer tokens. Customer tokens are distinguished via a `type: "customer"` claim in the payload. You do **not** need separate `CUSTOMER_JWT_SECRET` or `JWT_REFRESH_SECRET` variables.
 

@@ -54,3 +54,6 @@ Thumbs.db
 
 # Misc
 *.pem
+
+# Internal docs (not for public repo)
+docs/

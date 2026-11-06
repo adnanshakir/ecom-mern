@@ -174,13 +174,11 @@ export function ProductInteractiveSection({ product, variantSelectorProps }) {
     if (!selectedVariant?._id) return;
     setBuyNowPending(true);
     try {
-      const result = await addItem(selectedVariant._id, quantity);
-      if (result?.payload?.message) {
-        toast.warning(result.payload.message);
-      } else if (!result?.error) {
-        toast.success("Redirecting to cart...");
-        router.push("/cart");
-      }
+      sessionStorage.setItem(
+        "fibio:buy-now",
+        JSON.stringify({ variant: selectedVariant, quantity })
+      );
+      router.push("/checkout?buyNow=1");
     } finally {
       setBuyNowPending(false);
     }
@@ -507,6 +505,4 @@ export function ProductInteractiveSection({ product, variantSelectorProps }) {
     </div>
   );
 }
-
-
 

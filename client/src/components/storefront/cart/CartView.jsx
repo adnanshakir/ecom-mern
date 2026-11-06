@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSelector } from "react-redux";
 import Link from "next/link";
-import { Loader2, Trash2, ShoppingBag, Plus, Minus } from "lucide-react";
+import { BadgeIndianRupee, Clock3, Loader2, ShieldCheck, Star, Trash2, ShoppingBag, Plus, Minus } from "lucide-react";
 
 import { useCart } from "@/hooks/storefront/useCart";
 import { formatPrice } from "@/lib/formatCurrency";
@@ -164,7 +164,7 @@ export function CartView() {
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Shipping</span>
-                <span className="text-muted-foreground">Calculated at checkout</span>
+                <span className="font-medium">{formatPrice(100)}</span>
               </div>
             </div>
 
@@ -172,7 +172,7 @@ export function CartView() {
 
             <div className="flex justify-between text-base font-semibold">
               <span>Total</span>
-              <span>{formatPrice(subtotal)}</span>
+              <span>{formatPrice(subtotal + 100)}</span>
             </div>
 
             <Button className="w-full bg-[#033936] text-white hover:bg-[#022826]" size="lg" asChild>
@@ -182,6 +182,24 @@ export function CartView() {
             <Button variant="outline" className="w-full" asChild>
               <Link href="/">Continue shopping</Link>
             </Button>
+            <div className="grid gap-3 border-t pt-4 text-xs text-muted-foreground">
+              <p className="flex items-center gap-2">
+                <ShieldCheck className="size-4 text-[#033936]" />
+                Secure payments powered by Razorpay
+              </p>
+              <p className="flex items-center gap-2">
+                <Clock3 className="size-4 text-[#033936]" />
+                Fast wholesale order processing
+              </p>
+              <p className="flex items-center gap-2">
+                <BadgeIndianRupee className="size-4 text-[#033936]" />
+                Transparent pricing, no hidden fees
+              </p>
+              <p className="flex items-center gap-2">
+                <Star className="size-4 text-[#033936]" />
+                Trusted quality for every order
+              </p>
+            </div>
           </div>
         </div>
       )}
