@@ -57,7 +57,7 @@ export function ProductCard({ product, showCartOnHover = false }) {
     toggle();
   };
 
-  const handleAddToCart = (e) => {
+  const handleAddToCart = async (e) => {
     e.preventDefault();
     e.stopPropagation();
     if (!isCustomerAuthed) {
@@ -72,7 +72,11 @@ export function ProductCard({ product, showCartOnHover = false }) {
       toast.info("Already in your cart.");
       return;
     }
-    addItem(variantId, 1);
+    const result = await addItem(variantId, 1);
+    if (result?.error) {
+      toast.error(result.payload || "Unable to add this product to your cart.");
+      return;
+    }
     toast.success(`${product.name} added to cart`);
   };
 

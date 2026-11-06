@@ -44,6 +44,7 @@ const orderSchema = new mongoose.Schema(
     total: { type: Number, required: true, min: 0 },
     shippingAddress: { type: orderAddressSchema, required: true },
     currency: { type: String, required: true, enum: ["INR"], default: "INR" },
+    checkoutType: { type: String, enum: ["cart", "direct"], default: "cart" },
     razorpayOrderId: { type: String, required: true, unique: true, index: true },
     razorpayPaymentId: { type: String, unique: true, sparse: true, index: true },
     status: { type: String, enum: ["pending", "paid", "failed"], default: "pending", index: true },

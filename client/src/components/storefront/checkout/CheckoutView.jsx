@@ -48,7 +48,8 @@ export function CheckoutView() {
   const authStatus = useSelector((state) => state.customerAuth.status);
   const authReady = useSelector((state) => state.customerAuth.authReady);
   const user = useSelector((state) => state.customerAuth.user);
-  const { items, count, status } = useCart();
+  const { items, status } = useCart();
+  const [directCheckoutItem, setDirectCheckoutItem] = useState(null);
   const [isPaying, setIsPaying] = useState(false);
   const [addresses, setAddresses] = useState([]);
   const [selectedAddressId, setSelectedAddressId] = useState("");
@@ -56,6 +57,20 @@ export function CheckoutView() {
   const [addressLoading, setAddressLoading] = useState(true);
   const [addressesVersion, setAddressesVersion] = useState(0);
   const [paymentReconciliation, setPaymentReconciliation] = useState(null);
+
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("buyNow") !== "1") return;
+    const storedItem = sessionStorage.getItem("fibio:buy-now");
+    if (!storedItem) return;
+    try {
+      const parsedItem = JSON.parse(storedItem);
+      if (parsedItem?.variant?._id && Number.isInteger(parsedItem.quantity) && parsedItem.quantity > 0) {
+        queueMicrotask(() => setDirectCheckoutItem(parsedItem));
+      }
+    } catch {
+      sessionStorage.removeItem("fibio:buy-now");
+    }
+  }, []);
 
   useEffect(() => {
     if (authReady && authStatus !== "authenticated") router.replace("/sign-in");
@@ -74,7 +89,9 @@ export function CheckoutView() {
       .finally(() => setAddressLoading(false));
   }, [authReady, authStatus]);
 
-  const subtotal = items.reduce((sum, item) => {
+  const checkoutItems = directCheckoutItem ? [directCheckoutItem] : items;
+  const checkoutCount = checkoutItems.reduce((sum, item) => sum + item.quantity, 0);
+  const subtotal = checkoutItems.reduce((sum, item) => {
     const price = item.variant?.salePrice ?? item.variant?.price ?? 0;
     return sum + price * item.quantity;
   }, 0);
@@ -136,21 +153,25 @@ export function CheckoutView() {
     try {
       const Razorpay = await loadRazorpay();
       if (typeof Razorpay !== "function") throw new Error("Payment gateway is unavailable");
-      const { data: orderResponse } = await createPaymentOrderRequest(selectedAddressId);
+      const checkoutItem = directCheckoutItem
+        ? { variantId: directCheckoutItem.variant._id, quantity: directCheckoutItem.quantity }
+        : undefined;
+      const { data: orderResponse } = await createPaymentOrderRequest(selectedAddressId, checkoutItem);
       const order = orderResponse.data;
       const razorpay = new Razorpay({
         key: order.keyId,
         amount: order.amount,
         currency: order.currency,
         name: "Fibio Wholesale",
-        description: `${count} item${count === 1 ? "" : "s"}`,
+        description: `${checkoutCount} item${checkoutCount === 1 ? "" : "s"}`,
         order_id: order.razorpayOrderId,
         prefill: { name: user?.name || "", email: user?.email || "" },
         theme: { color: "#033936" },
         handler: async (payment) => {
           try {
             await verifyPaymentRequest(payment);
-            dispatch(clearCartState());
+            if (!directCheckoutItem) dispatch(clearCartState());
+            sessionStorage.removeItem("fibio:buy-now");
             toast.success("Payment successful");
             router.replace(`/order?orderId=${order.orderId}`);
           } catch (error) {
@@ -164,7 +185,8 @@ export function CheckoutView() {
                 razorpayPaymentId: payment.razorpay_payment_id,
               });
               if (reconciliation.data?.status === "paid") {
-                dispatch(clearCartState());
+                if (!directCheckoutItem) dispatch(clearCartState());
+                sessionStorage.removeItem("fibio:buy-now");
                 toast.success("Payment successful");
                 router.replace(`/order?orderId=${reconciliation.data.orderId}`);
                 return;
@@ -189,9 +211,34 @@ export function CheckoutView() {
         modal: { ondismiss: () => setIsPaying(false) },
       });
       razorpay.on("payment.failed", (response) => {
-        toast.error(response.error?.description || "Payment failed");
-        setPaymentReconciliation(null);
         setIsPaying(false);
+        const paymentId = response.error?.metadata?.payment_id;
+        const paymentOrderId = response.error?.metadata?.order_id || order.razorpayOrderId;
+        if (!paymentId) {
+          toast.error(response.error?.description || "Payment failed");
+          setPaymentReconciliation(null);
+          return;
+        }
+
+        setPaymentReconciliation({
+          razorpayOrderId: paymentOrderId,
+          razorpayPaymentId: paymentId,
+        });
+        reconcilePaymentRequest({
+          razorpayOrderId: paymentOrderId,
+          razorpayPaymentId: paymentId,
+        })
+          .then(({ data: reconciliation }) => {
+            if (reconciliation.data?.status === "failed") {
+              toast.error(response.error?.description || "Payment failed");
+              setPaymentReconciliation(null);
+              return;
+            }
+            toast.error("Payment outcome is still being confirmed. Please do not retry yet.");
+          })
+          .catch(() => {
+            toast.error("Payment outcome is still being confirmed. Please do not retry yet.");
+          });
       });
       razorpay.open();
     } catch (error) {
@@ -208,7 +255,7 @@ export function CheckoutView() {
     );
   }
   if (authStatus !== "authenticated") return null;
-  if (!items.length) {
+  if (!checkoutItems.length) {
     return (
       <div className="mx-auto max-w-xl px-4 py-24 text-center">
         <p className="font-medium">Your cart is empty.</p>

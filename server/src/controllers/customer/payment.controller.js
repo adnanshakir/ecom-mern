@@ -81,6 +81,37 @@ const getCartItems = async (customerId) => {
   return { cart, items, subtotal };
 };
 
+const getDirectCheckoutItem = async (variantId, quantity) => {
+  const variant = await ProductVariant.findById(variantId).populate({
+    path: "product",
+    select: "name status",
+  });
+
+  if (!variant || !variant.isActive || variant.product?.status !== "active") {
+    throw new ApiError(400, "This product is no longer available");
+  }
+  if (!Number.isInteger(quantity) || quantity < 1) {
+    throw new ApiError(400, "Quantity must be a positive integer");
+  }
+  if (variant.stock < quantity) {
+    throw new ApiError(409, `Only ${variant.stock} of ${variant.sku} are available`);
+  }
+
+  const unitPrice = variant.salePrice ?? variant.price;
+  const items = [
+    {
+      variant: variant._id,
+      product: variant.product._id,
+      name: variant.product.name,
+      sku: variant.sku,
+      quantity,
+      unitPrice,
+    },
+  ];
+
+  return { items, subtotal: unitPrice * quantity };
+};
+
 /**
  * List the authenticated customer's orders from newest to oldest.
  */
@@ -104,7 +135,11 @@ export const getCustomerOrders = async (req, res, next) => {
 export const createPaymentOrder = async (req, res, next) => {
   try {
     assertTransactionSupport();
-    const { items, subtotal } = await getCartItems(req.customerProfile._id);
+    const isDirectCheckout = Boolean(req.body?.variantId);
+    const checkout = isDirectCheckout
+      ? await getDirectCheckoutItem(req.body.variantId, req.body.quantity)
+      : await getCartItems(req.customerProfile._id);
+    const { items, subtotal } = checkout;
     const profile = await CustomerProfile.findById(req.customerProfile._id);
     const addressId = req.body?.addressId;
     const shippingAddress = profile?.addresses?.find(
@@ -130,6 +165,7 @@ export const createPaymentOrder = async (req, res, next) => {
       total,
       shippingAddress: shippingAddress.toObject(),
       currency: "INR",
+      checkoutType: isDirectCheckout ? "direct" : "cart",
       razorpayOrderId: razorpayOrder.id,
     });
 
@@ -198,7 +234,7 @@ export const verifyPayment = async (req, res, next) => {
 
     res.status(200).json({
       success: true,
-      data: { orderId: completeOrder._id, status: completeOrder.status },
+      data: { orderId: completedOrder._id, status: completedOrder.status },
     });
   } catch (err) {
     next(err);
@@ -226,6 +262,9 @@ const completeCapturedPayment = async ({
 
       if (!order) throw new ApiError(404, "Payment order not found");
       if (order.status === "paid") {
+        if (order.razorpayPaymentId !== razorpayPaymentId) {
+          throw new ApiError(409, "This payment order has already been completed");
+        }
         completedOrder = order;
         return;
       }
@@ -261,7 +300,9 @@ const completeCapturedPayment = async ({
       order.paidAt = new Date();
       await order.save({ session });
 
-      const cart = await Cart.findOne({ customer: customerId }).session(session);
+      const cart = order.checkoutType === "cart"
+        ? await Cart.findOne({ customer: customerId }).session(session)
+        : null;
       if (cart) {
         const quantities = new Map(
           order.items.map((item) => [item.variant.toString(), item.quantity])
