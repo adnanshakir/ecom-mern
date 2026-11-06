@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "customer-auth-collection",
     "name": "Customer Auth",
-    "description": "# Customer Auth Postman Collection\n\nThis collection covers all customer authentication, session management, customer profile, cart, wishlist, payments, orders, reviews, and public storefront endpoints.\n\n## Auth Model & Features\n- **Sign-up**: Phone number + OTP only (creates account on verification if phone doesn't exist).\n- **Sign-in**: Phone + OTP *or* Email + OTP.\n- **Customer Profile**: Single-route endpoints GET and PUT `/api/customers/profile` for profile details & addresses.\n- **Email OTP**: Supports Sign-In (`type: sign-in`), Email Verification (`type: email-verification`), and Change Email (`type: change-email`).\n- **Cart Management**: GET, POST items, PUT item quantity, DELETE single item, DELETE clear cart.\n- **Wishlist Management**: GET, POST items, DELETE item.\n- **Payments & Orders**: Razorpay checkout integration — POST `/api/customers/payments/orders` (create order), GET `/api/customers/payments/orders` (order history), POST `/api/customers/payments/verify` (signature verification & inventory update).\n- **Customer Reviews & Images**: Upload review images, get my review, submit, update, and delete product reviews.\n- **Public Endpoints**: Search suggestions, Products, Product by Slug, Categories, Banners, Product Reviews, Review Summary.\n\n## How to use this collection\n1. Select the **Customer Auth (Local)** environment.\n2. Run folders in order — session cookies are managed automatically by Postman's cookie jar.\n3. **OTP codes** appear in server console log (`[DEV OTP LOG - PHONE SMS]` / `[DEV OTP LOG - EMAIL]`). Copy the 6-digit code into `otpCode` env var before running verify steps.",
+    "description": "# Customer Auth Postman Collection\n\nThis collection covers all customer authentication, session management, customer profile, cart, wishlist, payments, orders, reviews, and public storefront endpoints.\n\n## Auth Model & Features\n- **Sign-up**: Phone number + OTP only (creates account on verification if phone doesn't exist).\n- **Sign-in**: Phone + OTP *or* Email + OTP.\n- **Customer Profile**: Single-route endpoints GET and PUT `/api/customers/profile` for profile details & addresses.\n- **Email OTP**: Supports Sign-In (`type: sign-in`), Email Verification (`type: email-verification`), and Change Email (`type: change-email`).\n- **Cart Management**: GET, POST items, PUT item quantity, DELETE single item, DELETE clear cart.\n- **Wishlist Management**: GET, POST items, DELETE item.\n- **Payments & Orders**: Razorpay checkout integration — POST `/api/customers/payments/orders` (create order), GET `/api/customers/payments/orders` (order history), POST `/api/customers/payments/verify` (signature verification & inventory update), POST `/api/customers/payments/reconcile` (recover browser-interrupted checkout).\n- **Customer Reviews & Images**: Upload review images, get my review, submit, update, and delete product reviews.\n- **Public Endpoints**: Search suggestions, Products, Product by Slug, Categories, Banners, Product Reviews, Review Summary.\n\n## How to use this collection\n1. Select the **Customer Auth (Local)** environment.\n2. Run folders in order — session cookies are managed automatically by Postman's cookie jar.\n3. **OTP codes** appear in server console log (`[DEV OTP LOG - PHONE SMS]` / `[DEV OTP LOG - EMAIL]`). Copy the 6-digit code into `otpCode` env var before running verify steps.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -1693,6 +1693,59 @@
               ]
             },
             "description": "Verifies the Razorpay payment HMAC SHA256 signature, reduces inventory stock, logs inventory movement, marks order as paid, and clears the customer's cart."
+          }
+        },
+        {
+          "name": "4. Reconcile Payment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Reconciliation response structure', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.be.true;",
+                  "    pm.expect(jsonData.data.status).to.be.oneOf(['pending', 'failed']);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"razorpayOrderId\": \"{{razorpayOrderId}}\",\n  \"razorpayPaymentId\": \"pay_test1234567890\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/payments/reconcile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "payments",
+                "reconcile"
+              ]
+            },
+            "description": "Reconciles a browser-interrupted Razorpay checkout using the gateway payment status. Failed payments remain pending for Checkout retries; captured payments complete the order."
           }
         }
       ]

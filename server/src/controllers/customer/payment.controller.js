@@ -363,6 +363,11 @@ export const reconcilePayment = async (req, res, next) => {
         razorpayOrderId,
       }).select("status");
       if (existingOrder?.status === "failed") {
+        try {
+          await razorpay.payments.refund(razorpayPaymentId, {});
+        } catch {
+          throw new ApiError(502, "Payment was captured but could not be refunded");
+        }
         return res.status(200).json({ success: true, data: { status: "failed" } });
       }
       const order = await completeCapturedPayment({
@@ -376,10 +381,14 @@ export const reconcilePayment = async (req, res, next) => {
         .json({ success: true, data: { orderId: order._id, status: order.status } });
     }
 
-    if (["failed", "refunded"].includes(payment.status)) {
+    if (payment.status === "failed") {
+      return res.status(200).json({ success: true, data: { status: "failed" } });
+    }
+
+    if (payment.status === "refunded") {
       await Order.updateOne(
         { customer: req.customerProfile._id, razorpayOrderId, status: "pending" },
-        { $set: { status: "failed", failureReason: `Razorpay payment status: ${payment.status}` } }
+        { $set: { status: "failed", failureReason: "Razorpay payment status: refunded" } }
       );
       return res.status(200).json({ success: true, data: { status: "failed" } });
     }
