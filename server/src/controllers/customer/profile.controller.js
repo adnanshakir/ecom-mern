@@ -37,7 +37,6 @@ export const getCustomerProfile = async (req, res, next) => {
       name: userDoc?.name ?? req.customer?.name ?? "",
       email: userDoc?.email ?? req.customer?.email ?? "",
       addresses: profileDoc?.addresses || [],
-      addressesVersion: profileDoc?.__v ?? 0,
       createdAt: userDoc?.createdAt || req.customer?.createdAt,
       updatedAt: userDoc?.updatedAt || req.customer?.updatedAt,
     };
@@ -62,7 +61,7 @@ export const updateCustomerProfile = async (req, res, next) => {
       throw new ApiError(401, "Unauthorized: Invalid customer session");
     }
 
-    const { name, email, address, addresses, addressesVersion } = req.body;
+    const { name, email, address, addresses } = req.body;
     const db = mongoose.connection.db;
     if (!db) {
       throw new ApiError(500, "Database connection unavailable");
@@ -139,19 +138,35 @@ export const updateCustomerProfile = async (req, res, next) => {
       }
 
       // Handle Address updates in CustomerProfile
-      const profileQuery =
-        Array.isArray(addresses) && Number.isInteger(addressesVersion)
-          ? { authUserId, __v: addressesVersion }
-          : { authUserId };
-      profileDoc = await CustomerProfile.findOne(profileQuery).session(
+      if (Array.isArray(addresses)) {
+        for (const addr of addresses) {
+          if (!addr || typeof addr !== "object" || Array.isArray(addr)) {
+            throw new ApiError(400, "Each address must be an object");
+          }
+
+          for (const field of [
+            "_id",
+            "label",
+            "line1",
+            "line2",
+            "city",
+            "state",
+            "postalCode",
+            "country",
+            "phone",
+          ]) {
+            if (addr[field] !== undefined && typeof addr[field] !== "string") {
+              throw new ApiError(400, `Address field "${field}" must be a string`);
+            }
+          }
+          if (addr.isDefault !== undefined && typeof addr.isDefault !== "boolean") {
+            throw new ApiError(400, 'Address field "isDefault" must be a boolean');
+          }
+        }
+      }
+      profileDoc = await CustomerProfile.findOne({ authUserId }).session(
         inTransaction && session ? session : null
       );
-      if (Array.isArray(addresses) && !Number.isInteger(addressesVersion)) {
-        throw new ApiError(400, "Address version is required for address updates");
-      }
-      if (Array.isArray(addresses) && !profileDoc && addressesVersion !== 0) {
-        throw new ApiError(409, "Saved addresses changed. Refresh and try again.");
-      }
       if (!profileDoc) {
         profileDoc = new CustomerProfile({ authUserId, addresses: [] });
       }
@@ -233,7 +248,6 @@ export const updateCustomerProfile = async (req, res, next) => {
       name: updatedUserDoc?.name ?? updatesToUser.name ?? req.customer?.name ?? "",
       email: updatedUserDoc?.email ?? req.customer?.email ?? "",
       addresses: profileDoc?.addresses || [],
-      addressesVersion: profileDoc?.__v ?? 0,
       createdAt: updatedUserDoc?.createdAt || req.customer?.createdAt,
       updatedAt: updatedUserDoc?.updatedAt || req.customer?.updatedAt,
     };

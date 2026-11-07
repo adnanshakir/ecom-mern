@@ -3,7 +3,7 @@ import { fileURLToPath } from "url";
 import path from "path";
 
 dotenv.config({
-  path: path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../.env"),
+  path: path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..", ".env"),
 });
 
 /**
