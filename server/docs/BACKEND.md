@@ -12,21 +12,21 @@ The backend is an **Express 5** REST API server written in **JavaScript (ES Modu
 
 ## Tech Stack
 
-| Layer | Technology |
-|---|---|
-| Runtime | Node.js (ES Modules `"type": "module"`) |
-| Framework | Express 5 |
-| Database | MongoDB via Mongoose 9 |
-| Admin Auth | Custom JWT (`jsonwebtoken`) — access + refresh token pattern |
-| Customer Auth | Better Auth 1.7 (phone OTP + email OTP plugins) |
-| Image Storage | ImageKit |
-| Validation | Zod 4 |
-| Rate Limiting | `express-rate-limit` |
-| Security | Helmet, CORS (allowlist-based) |
-| Logging | Morgan |
-| File Uploads | Multer (images) + `csv-parse` / `fast-csv` (CSV import) |
-| Testing | Jest + Supertest + `mongodb-memory-server` |
-| Dev Tooling | Nodemon, Prettier, ESLint, Husky, lint-staged |
+| Layer         | Technology                                                   |
+| ------------- | ------------------------------------------------------------ |
+| Runtime       | Node.js (ES Modules `"type": "module"`)                      |
+| Framework     | Express 5                                                    |
+| Database      | MongoDB via Mongoose 9                                       |
+| Admin Auth    | Custom JWT (`jsonwebtoken`) — access + refresh token pattern |
+| Customer Auth | Better Auth 1.7 (phone OTP + email OTP plugins)              |
+| Image Storage | ImageKit                                                     |
+| Validation    | Zod 4                                                        |
+| Rate Limiting | `express-rate-limit`                                         |
+| Security      | Helmet, CORS (allowlist-based)                               |
+| Logging       | Morgan                                                       |
+| File Uploads  | Multer (images) + `csv-parse` / `fast-csv` (CSV import)      |
+| Testing       | Jest + Supertest + `mongodb-memory-server`                   |
+| Dev Tooling   | Nodemon, Prettier, ESLint, Husky, lint-staged                |
 
 ---
 
@@ -119,24 +119,24 @@ server.js
 
 ## Environment Variables
 
-| Variable | Required | Description |
-|---|---|---|
-| `PORT` | ✅ | Server port (integer 1-65535) |
-| `MONGO_URI` | ✅ | MongoDB connection string |
-| `JWT_SECRET` | ✅ | Secret for signing admin JWT tokens |
-| `BETTER_AUTH_SECRET` | ✅ | Secret for Better Auth customer sessions |
-| `IMAGEKIT_PUBLIC_KEY` | ✅ | ImageKit public API key |
-| `IMAGEKIT_PRIVATE_KEY` | ✅ | ImageKit private API key |
-| `IMAGEKIT_URL_ENDPOINT` | ✅ | ImageKit URL endpoint |
-| `FRONTEND_URL` | ✅ | Comma-separated allowed CORS origins |
-| `BETTER_AUTH_URL` | ✅ (prod) | Public HTTPS URL of the server (for Better Auth) |
-| `TRUSTED_ORIGINS` | ⬜ | Additional CORS-trusted origins |
-| `NODE_ENV` | ⬜ | `development` / `production` / `test` |
-| `RAZORPAY_KEY_ID` | ✅ (payments) | Razorpay public key ID |
-| `RAZORPAY_KEY_SECRET` | ✅ (payments) | Razorpay server-side secret |
-| `LOW_STOCK_THRESHOLD` | ⬜ | Stock level below which a variant is "low stock" (default: 10) |
-| `ALLOW_MASTER_OTP` | ⬜ | `"true"` to enable master OTP bypass (dev/test) |
-| `MASTER_OTP_CODE` | ⬜ | The master OTP code when `ALLOW_MASTER_OTP=true` |
+| Variable                | Required      | Description                                                    |
+| ----------------------- | ------------- | -------------------------------------------------------------- |
+| `PORT`                  | ✅            | Server port (integer 1-65535)                                  |
+| `MONGO_URI`             | ✅            | MongoDB connection string                                      |
+| `JWT_SECRET`            | ✅            | Secret for signing admin JWT tokens                            |
+| `BETTER_AUTH_SECRET`    | ✅            | Secret for Better Auth customer sessions                       |
+| `IMAGEKIT_PUBLIC_KEY`   | ✅            | ImageKit public API key                                        |
+| `IMAGEKIT_PRIVATE_KEY`  | ✅            | ImageKit private API key                                       |
+| `IMAGEKIT_URL_ENDPOINT` | ✅            | ImageKit URL endpoint                                          |
+| `FRONTEND_URL`          | ✅            | Comma-separated allowed CORS origins                           |
+| `BETTER_AUTH_URL`       | ✅ (prod)     | Public HTTPS URL of the server (for Better Auth)               |
+| `TRUSTED_ORIGINS`       | ⬜            | Additional CORS-trusted origins                                |
+| `NODE_ENV`              | ⬜            | `development` / `production` / `test`                          |
+| `RAZORPAY_KEY_ID`       | ✅ (payments) | Razorpay public key ID                                         |
+| `RAZORPAY_KEY_SECRET`   | ✅ (payments) | Razorpay server-side secret                                    |
+| `LOW_STOCK_THRESHOLD`   | ⬜            | Stock level below which a variant is "low stock" (default: 10) |
+| `ALLOW_MASTER_OTP`      | ⬜            | `"true"` to enable master OTP bypass (dev/test)                |
+| `MASTER_OTP_CODE`       | ⬜            | The master OTP code when `ALLOW_MASTER_OTP=true`               |
 
 ---
 
@@ -146,14 +146,15 @@ server.js
 
 Admin users use a classic access + refresh token pattern.
 
-| Aspect | Detail |
-|---|---|
-| Access Token | Short-lived JWT (15 min), signed with `JWT_SECRET` |
-| Refresh Token | Long-lived (7 days), stored in `RefreshToken` collection, sent as httpOnly cookie |
-| Token Payload | `{ id, role, type: "admin" }` |
+| Aspect            | Detail                                                                             |
+| ----------------- | ---------------------------------------------------------------------------------- |
+| Access Token      | Short-lived JWT (15 min), signed with `JWT_SECRET`                                 |
+| Refresh Token     | Long-lived (7 days), stored in `RefreshToken` collection, sent as httpOnly cookie  |
+| Token Payload     | `{ id, role, type: "admin" }`                                                      |
 | Cookie Attributes | `httpOnly: true`, `secure: true` (prod), `sameSite: "none"` (prod) / `"lax"` (dev) |
 
 **Flow:**
+
 1. `POST /api/auth/login` → validates credentials → returns `{ accessToken }` + sets `refreshToken` cookie
 2. All protected routes require `Authorization: Bearer <accessToken>` header
 3. `authenticate` middleware: verifies JWT, checks user still exists + is active in DB
@@ -164,23 +165,26 @@ Admin users use a classic access + refresh token pattern.
 
 Customers authenticate via **phone OTP** or **email OTP** using the [Better Auth](https://better-auth.com) library.
 
-| Aspect | Detail |
-|---|---|
-| Library | `better-auth` v1.7 |
-| Plugins | `phoneNumber` + `emailOTP` |
-| Session Storage | MongoDB collections: `customerUser`, `customerSession`, `customerAccount`, `customerVerification` |
-| Session Transport | httpOnly cookie (managed entirely by Better Auth) |
-| Mounted At | `/api/v1/customers/auth/*` |
+| Aspect            | Detail                                                                                            |
+| ----------------- | ------------------------------------------------------------------------------------------------- |
+| Library           | `better-auth` v1.7                                                                                |
+| Plugins           | `phoneNumber` + `emailOTP`                                                                        |
+| Session Storage   | MongoDB collections: `customerUser`, `customerSession`, `customerAccount`, `customerVerification` |
+| Session Transport | httpOnly cookie (managed entirely by Better Auth)                                                 |
+| Mounted At        | `/api/v1/customers/auth/*`                                                                        |
 
 **Phone OTP Flow:**
+
 1. `POST /api/v1/customers/auth/phone-number/send-otp` → sends OTP to phone (dev: logs to console)
 2. `POST /api/v1/customers/auth/phone-number/verify` → verifies OTP → creates session + auto-creates account if new user
 
 **Email OTP Flow:**
+
 1. `POST /api/v1/customers/auth/email-otp/send-verification-otp` → sends OTP to email
 2. `POST /api/v1/customers/auth/sign-in/email-otp` → verifies OTP → creates session
 
 **`authenticateCustomer` middleware:**
+
 - Calls `customerAuth.api.getSession()` with request headers
 - Upserts a `CustomerProfile` document linked to the Better Auth user via `authUserId`
 - Attaches `req.customer`, `req.customerProfile`, `req.session` to the request
@@ -192,6 +196,7 @@ Customers authenticate via **phone OTP** or **email OTP** using the [Better Auth
 ### Admin Models
 
 #### `User`
+
 ```
 {
   name: String (required)
@@ -204,6 +209,7 @@ Customers authenticate via **phone OTP** or **email OTP** using the [Better Auth
 ```
 
 #### `Brand`
+
 ```
 {
   name: String (unique)
@@ -214,6 +220,7 @@ Customers authenticate via **phone OTP** or **email OTP** using the [Better Auth
 ```
 
 #### `Category`
+
 ```
 {
   name: String
@@ -227,6 +234,7 @@ Indexes: { isActive, name }, { parent }
 ```
 
 #### `Product`
+
 ```
 {
   name: String
@@ -244,6 +252,7 @@ Indexes: { status, createdAt }, { category, status }
 ```
 
 #### `ProductVariant`
+
 ```
 {
   product: ObjectId → Product
@@ -262,6 +271,7 @@ Indexes: { product }, { price }
 ```
 
 #### `Banner`
+
 ```
 {
   key: "hero" | "bottom" | "budget"  (unique)
@@ -273,6 +283,7 @@ Indexes: { product }, { price }
 ```
 
 #### `InventoryMovement`
+
 ```
 {
   variant: ObjectId → ProductVariant
@@ -287,12 +298,15 @@ Indexes: { product }, { price }
 ```
 
 #### `ImportJob`
+
 Tracks CSV bulk import jobs (status: pending/completed/rolled_back, created product/variant IDs for rollback).
 
 #### `ActivityLog`
+
 Audit log of admin actions (entity, action, user, details).
 
 #### `RefreshToken`
+
 Stores hashed refresh tokens linked to a user. Cleaned up on logout.
 
 ---
@@ -300,6 +314,7 @@ Stores hashed refresh tokens linked to a user. Cleaned up on logout.
 ### Customer Models
 
 #### `CustomerProfile`
+
 ```
 {
   authUserId: String (unique) — Better Auth user.id
@@ -309,9 +324,11 @@ Stores hashed refresh tokens linked to a user. Cleaned up on logout.
   }]
 }
 ```
+
 Created automatically (upsert) by `authenticateCustomer` middleware on first request.
 
 #### `Cart`
+
 ```
 {
   customer: ObjectId → CustomerProfile  (unique — one cart per customer)
@@ -320,6 +337,7 @@ Created automatically (upsert) by `authenticateCustomer` middleware on first req
 ```
 
 #### `Wishlist`
+
 ```
 {
   customer: ObjectId → CustomerProfile  (unique)
@@ -328,6 +346,7 @@ Created automatically (upsert) by `authenticateCustomer` middleware on first req
 ```
 
 #### `Review`
+
 ```
 {
   product: ObjectId → Product
@@ -352,20 +371,20 @@ Base URL: `https://ecom-mern-c5wz.onrender.com`
 
 ### Health Check
 
-| Method | Path | Auth | Description |
-|---|---|---|---|
-| GET | `/health` | None | Server health + uptime |
+| Method | Path      | Auth | Description            |
+| ------ | --------- | ---- | ---------------------- |
+| GET    | `/health` | None | Server health + uptime |
 
 ---
 
 ### Admin Auth — `/api/auth`
 
-| Method | Path | Auth | Roles | Description |
-|---|---|---|---|---|
-| POST | `/api/auth/login` | None | — | Login with email+password. Returns `{ accessToken }` + sets refresh cookie |
-| POST | `/api/auth/logout` | Cookie | — | Revoke refresh token, clear cookie |
-| POST | `/api/auth/refresh` | Cookie | — | Exchange refresh cookie for new access token |
-| POST | `/api/auth/register` | Bearer | super_admin | Create a new admin/staff user |
+| Method | Path                 | Auth   | Roles       | Description                                                                |
+| ------ | -------------------- | ------ | ----------- | -------------------------------------------------------------------------- |
+| POST   | `/api/auth/login`    | None   | —           | Login with email+password. Returns `{ accessToken }` + sets refresh cookie |
+| POST   | `/api/auth/logout`   | Cookie | —           | Revoke refresh token, clear cookie                                         |
+| POST   | `/api/auth/refresh`  | Cookie | —           | Exchange refresh cookie for new access token                               |
+| POST   | `/api/auth/register` | Bearer | super_admin | Create a new admin/staff user                                              |
 
 **Rate limit:** login/register: 10 req/15min; refresh: 60 req/15min
 
@@ -373,106 +392,106 @@ Base URL: `https://ecom-mern-c5wz.onrender.com`
 
 ### Admin — Brands `/api/brands`
 
-| Method | Path | Auth | Roles | Description |
-|---|---|---|---|---|
-| GET | `/api/brands` | Bearer | All | List all brands |
-| GET | `/api/brands/:id` | Bearer | All | Get brand by ID |
-| POST | `/api/brands` | Bearer | super_admin, admin | Create brand |
-| PUT | `/api/brands/:id` | Bearer | super_admin, admin | Update brand |
+| Method | Path              | Auth   | Roles              | Description                                     |
+| ------ | ----------------- | ------ | ------------------ | ----------------------------------------------- |
+| GET    | `/api/brands`     | Bearer | All                | List all brands                                 |
+| GET    | `/api/brands/:id` | Bearer | All                | Get brand by ID                                 |
+| POST   | `/api/brands`     | Bearer | super_admin, admin | Create brand                                    |
+| PUT    | `/api/brands/:id` | Bearer | super_admin, admin | Update brand                                    |
 | DELETE | `/api/brands/:id` | Bearer | super_admin, admin | Delete brand (blocked if products reference it) |
 
 ---
 
 ### Admin — Categories `/api/categories`
 
-| Method | Path | Auth | Roles | Description |
-|---|---|---|---|---|
-| GET | `/api/categories` | Bearer | All | List all categories |
-| GET | `/api/categories/:id` | Bearer | All | Get category by ID |
-| POST | `/api/categories` | Bearer | super_admin, admin | Create category (supports `parent` for nesting) |
-| PUT | `/api/categories/:id` | Bearer | super_admin, admin | Update category |
-| DELETE | `/api/categories/:id` | Bearer | super_admin, admin | Delete (blocked if has children or products) |
+| Method | Path                  | Auth   | Roles              | Description                                     |
+| ------ | --------------------- | ------ | ------------------ | ----------------------------------------------- |
+| GET    | `/api/categories`     | Bearer | All                | List all categories                             |
+| GET    | `/api/categories/:id` | Bearer | All                | Get category by ID                              |
+| POST   | `/api/categories`     | Bearer | super_admin, admin | Create category (supports `parent` for nesting) |
+| PUT    | `/api/categories/:id` | Bearer | super_admin, admin | Update category                                 |
+| DELETE | `/api/categories/:id` | Bearer | super_admin, admin | Delete (blocked if has children or products)    |
 
 ---
 
 ### Admin — Products `/api/products`
 
-| Method | Path | Auth | Roles | Description |
-|---|---|---|---|---|
-| GET | `/api/products` | Bearer | All | List products (filters: category, brand, status, featured, search, pagination) |
-| GET | `/api/products/:id` | Bearer | All | Get product + variants |
-| POST | `/api/products` | Bearer | super_admin, admin | Create product with ≥1 variant (transactional) |
-| PUT | `/api/products/:id` | Bearer | super_admin, admin | Update product fields |
-| DELETE | `/api/products/:id` | Bearer | super_admin, admin | Delete product + cascade-delete variants |
-| PATCH | `/api/products/bulk` | Bearer | super_admin, admin | Bulk update status / featured flag |
-| DELETE | `/api/products/bulk` | Bearer | super_admin, admin | Bulk delete products |
+| Method | Path                 | Auth   | Roles              | Description                                                                    |
+| ------ | -------------------- | ------ | ------------------ | ------------------------------------------------------------------------------ |
+| GET    | `/api/products`      | Bearer | All                | List products (filters: category, brand, status, featured, search, pagination) |
+| GET    | `/api/products/:id`  | Bearer | All                | Get product + variants                                                         |
+| POST   | `/api/products`      | Bearer | super_admin, admin | Create product with ≥1 variant (transactional)                                 |
+| PUT    | `/api/products/:id`  | Bearer | super_admin, admin | Update product fields                                                          |
+| DELETE | `/api/products/:id`  | Bearer | super_admin, admin | Delete product + cascade-delete variants                                       |
+| PATCH  | `/api/products/bulk` | Bearer | super_admin, admin | Bulk update status / featured flag                                             |
+| DELETE | `/api/products/bulk` | Bearer | super_admin, admin | Bulk delete products                                                           |
 
 **Product Variants** (nested):
 
-| Method | Path | Auth | Roles | Description |
-|---|---|---|---|---|
-| GET | `/api/products/:productId/variants` | Bearer | All | List all variants for a product |
-| GET | `/api/products/:productId/variants/:id` | Bearer | All | Get a single variant |
-| POST | `/api/products/:productId/variants` | Bearer | super_admin, admin | Add a variant to a product |
-| PUT | `/api/products/:productId/variants/:id` | Bearer | super_admin, admin | Update a variant |
+| Method | Path                                    | Auth   | Roles              | Description                              |
+| ------ | --------------------------------------- | ------ | ------------------ | ---------------------------------------- |
+| GET    | `/api/products/:productId/variants`     | Bearer | All                | List all variants for a product          |
+| GET    | `/api/products/:productId/variants/:id` | Bearer | All                | Get a single variant                     |
+| POST   | `/api/products/:productId/variants`     | Bearer | super_admin, admin | Add a variant to a product               |
+| PUT    | `/api/products/:productId/variants/:id` | Bearer | super_admin, admin | Update a variant                         |
 | DELETE | `/api/products/:productId/variants/:id` | Bearer | super_admin, admin | Delete variant (blocked if last variant) |
 
 **CSV Import**:
 
-| Method | Path | Auth | Roles | Description |
-|---|---|---|---|---|
-| POST | `/api/products/import/preview` | Bearer | super_admin, admin | Parse + validate CSV (Shopify format), no DB writes |
-| POST | `/api/products/import/confirm` | Bearer | super_admin, admin | Import validated rows (transactional), creates ImportJob |
-| POST | `/api/products/import/:id/rollback` | Bearer | super_admin, admin | Undo a completed import by ImportJob ID |
-| GET | `/api/products/import` | Bearer | super_admin, admin | List ImportJob documents (paginated, filterable by status) |
-| GET | `/api/products/import/:id` | Bearer | super_admin, admin | Get a single ImportJob |
+| Method | Path                                | Auth   | Roles              | Description                                                |
+| ------ | ----------------------------------- | ------ | ------------------ | ---------------------------------------------------------- |
+| POST   | `/api/products/import/preview`      | Bearer | super_admin, admin | Parse + validate CSV (Shopify format), no DB writes        |
+| POST   | `/api/products/import/confirm`      | Bearer | super_admin, admin | Import validated rows (transactional), creates ImportJob   |
+| POST   | `/api/products/import/:id/rollback` | Bearer | super_admin, admin | Undo a completed import by ImportJob ID                    |
+| GET    | `/api/products/import`              | Bearer | super_admin, admin | List ImportJob documents (paginated, filterable by status) |
+| GET    | `/api/products/import/:id`          | Bearer | super_admin, admin | Get a single ImportJob                                     |
 
 ---
 
 ### Admin — Dashboard `/api/dashboard`
 
-| Method | Path | Auth | Roles | Description |
-|---|---|---|---|---|
-| GET | `/api/dashboard/stats` | Bearer | All | Aggregate stats: product/category/brand counts, low-stock variants, activity log |
+| Method | Path                   | Auth   | Roles | Description                                                                      |
+| ------ | ---------------------- | ------ | ----- | -------------------------------------------------------------------------------- |
+| GET    | `/api/dashboard/stats` | Bearer | All   | Aggregate stats: product/category/brand counts, low-stock variants, activity log |
 
 ---
 
 ### Admin — Images `/api/images`
 
-| Method | Path | Auth | Roles | Description |
-|---|---|---|---|---|
-| POST | `/api/images/upload` | Bearer | super_admin, admin | Upload up to 4 images to ImageKit. Returns `[{ url, fileId }]` |
+| Method | Path                 | Auth   | Roles              | Description                                                    |
+| ------ | -------------------- | ------ | ------------------ | -------------------------------------------------------------- |
+| POST   | `/api/images/upload` | Bearer | super_admin, admin | Upload up to 4 images to ImageKit. Returns `[{ url, fileId }]` |
 
 ---
 
 ### Admin — Inventory `/api/inventory`
 
-| Method | Path | Auth | Roles | Description |
-|---|---|---|---|---|
-| POST | `/api/inventory/movements` | Bearer | super_admin, admin | Record a stock movement (restock/sale/return/damage/correction) |
-| GET | `/api/inventory/movements/:variantId` | Bearer | All | Full movement history for a variant |
-| GET | `/api/inventory/reconcile/:variantId` | Bearer | super_admin, admin | Recompute stock from ledger to detect drift |
+| Method | Path                                  | Auth   | Roles              | Description                                                     |
+| ------ | ------------------------------------- | ------ | ------------------ | --------------------------------------------------------------- |
+| POST   | `/api/inventory/movements`            | Bearer | super_admin, admin | Record a stock movement (restock/sale/return/damage/correction) |
+| GET    | `/api/inventory/movements/:variantId` | Bearer | All                | Full movement history for a variant                             |
+| GET    | `/api/inventory/reconcile/:variantId` | Bearer | super_admin, admin | Recompute stock from ledger to detect drift                     |
 
 ---
 
 ### Admin — Users `/api/users`
 
-| Method | Path | Auth | Roles | Description |
-|---|---|---|---|---|
-| GET | `/api/users/me` | Bearer | All | Current user's profile (session hydration) |
-| GET | `/api/users` | Bearer | super_admin | List users (filters: role, isActive, search, pagination) |
-| GET | `/api/users/:id` | Bearer | super_admin | Get user by ID |
-| PUT | `/api/users/:id` | Bearer | super_admin | Update user (self-modification blocked) |
-| DELETE | `/api/users/:id` | Bearer | super_admin | Delete user (self-deletion blocked) |
+| Method | Path             | Auth   | Roles       | Description                                              |
+| ------ | ---------------- | ------ | ----------- | -------------------------------------------------------- |
+| GET    | `/api/users/me`  | Bearer | All         | Current user's profile (session hydration)               |
+| GET    | `/api/users`     | Bearer | super_admin | List users (filters: role, isActive, search, pagination) |
+| GET    | `/api/users/:id` | Bearer | super_admin | Get user by ID                                           |
+| PUT    | `/api/users/:id` | Bearer | super_admin | Update user (self-modification blocked)                  |
+| DELETE | `/api/users/:id` | Bearer | super_admin | Delete user (self-deletion blocked)                      |
 
 ---
 
 ### Admin — Banners `/api/banners`
 
-| Method | Path | Auth | Roles | Description |
-|---|---|---|---|---|
-| GET | `/api/banners` | Bearer | All | Get all banner configurations |
-| PUT | `/api/banners/:key` | Bearer | super_admin, admin | Update banner by key (`hero`, `bottom`, `budget`) |
+| Method | Path                | Auth   | Roles              | Description                                       |
+| ------ | ------------------- | ------ | ------------------ | ------------------------------------------------- |
+| GET    | `/api/banners`      | Bearer | All                | Get all banner configurations                     |
+| PUT    | `/api/banners/:key` | Bearer | super_admin, admin | Update banner by key (`hero`, `bottom`, `budget`) |
 
 ---
 
@@ -480,16 +499,16 @@ Base URL: `https://ecom-mern-c5wz.onrender.com`
 
 Handled entirely by **Better Auth**. Full route list auto-generated by the library.
 
-| Path | Plugin | Description |
-|---|---|---|
-| `POST /api/v1/customers/auth/phone-number/send-otp` | phoneNumber | Send OTP to phone |
-| `POST /api/v1/customers/auth/phone-number/verify` | phoneNumber | Verify OTP → sign in / sign up |
-| `POST /api/v1/customers/auth/email-otp/send-verification-otp` | emailOTP | Send OTP to email |
-| `POST /api/v1/customers/auth/sign-in/email-otp` | emailOTP | Sign in with email OTP |
-| `POST /api/v1/customers/auth/email-otp/request-email-change` | emailOTP | Request email change OTP |
-| `POST /api/v1/customers/auth/email-otp/change-email` | emailOTP | Confirm email change |
-| `POST /api/v1/customers/auth/sign-out` | core | Sign out (clear session) |
-| `GET /api/v1/customers/auth/get-session` | core | Get current session |
+| Path                                                          | Plugin      | Description                    |
+| ------------------------------------------------------------- | ----------- | ------------------------------ |
+| `POST /api/v1/customers/auth/phone-number/send-otp`           | phoneNumber | Send OTP to phone              |
+| `POST /api/v1/customers/auth/phone-number/verify`             | phoneNumber | Verify OTP → sign in / sign up |
+| `POST /api/v1/customers/auth/email-otp/send-verification-otp` | emailOTP    | Send OTP to email              |
+| `POST /api/v1/customers/auth/sign-in/email-otp`               | emailOTP    | Sign in with email OTP         |
+| `POST /api/v1/customers/auth/email-otp/request-email-change`  | emailOTP    | Request email change OTP       |
+| `POST /api/v1/customers/auth/email-otp/change-email`          | emailOTP    | Confirm email change           |
+| `POST /api/v1/customers/auth/sign-out`                        | core        | Sign out (clear session)       |
+| `GET /api/v1/customers/auth/get-session`                      | core        | Get current session            |
 
 **Rate limit:** OTP send/verify endpoints: 10 req/15min
 
@@ -497,69 +516,69 @@ Handled entirely by **Better Auth**. Full route list auto-generated by the libra
 
 ### Customer — Account `/api/customers`
 
-| Method | Path | Auth | Description |
-|---|---|---|---|
+| Method | Path                | Auth             | Description                                 |
+| ------ | ------------------- | ---------------- | ------------------------------------------- |
 | DELETE | `/api/customers/me` | Customer Session | Delete account after phone OTP verification |
 
 ---
 
 ### Customer — Profile `/api/customers/profile`
 
-| Method | Path | Auth | Description |
-|---|---|---|---|
-| GET | `/api/customers/profile` | Customer Session | Get profile + addresses |
-| PUT | `/api/customers/profile` | Customer Session | Update profile (name, email, addresses) |
+| Method | Path                     | Auth             | Description                             |
+| ------ | ------------------------ | ---------------- | --------------------------------------- |
+| GET    | `/api/customers/profile` | Customer Session | Get profile + addresses                 |
+| PUT    | `/api/customers/profile` | Customer Session | Update profile (name, email, addresses) |
 
 ---
 
 ### Customer — Cart `/api/customers/cart`
 
-| Method | Path | Auth | Description |
-|---|---|---|---|
-| GET | `/api/customers/cart` | Customer Session | Get (or create) cart |
-| POST | `/api/customers/cart/items` | Customer Session | Add variant to cart (increments if exists, clamps to stock) |
-| PUT | `/api/customers/cart/items/:variantId` | Customer Session | Set item quantity (≤0 removes item) |
-| DELETE | `/api/customers/cart/items/:variantId` | Customer Session | Remove a single item |
-| DELETE | `/api/customers/cart` | Customer Session | Clear entire cart |
+| Method | Path                                   | Auth             | Description                                                 |
+| ------ | -------------------------------------- | ---------------- | ----------------------------------------------------------- |
+| GET    | `/api/customers/cart`                  | Customer Session | Get (or create) cart                                        |
+| POST   | `/api/customers/cart/items`            | Customer Session | Add variant to cart (increments if exists, clamps to stock) |
+| PUT    | `/api/customers/cart/items/:variantId` | Customer Session | Set item quantity (≤0 removes item)                         |
+| DELETE | `/api/customers/cart/items/:variantId` | Customer Session | Remove a single item                                        |
+| DELETE | `/api/customers/cart`                  | Customer Session | Clear entire cart                                           |
 
 ---
 
 ### Customer — Payments and Orders `/api/customers/payments`
 
-| Method | Path | Auth | Description |
-|---|---|---|---|
-| POST | `/api/customers/payments/orders` | Customer Session | Create a server-priced Razorpay order from the current cart |
-| GET | `/api/customers/payments/orders` | Customer Session | List the authenticated customer's orders |
-| POST | `/api/customers/payments/verify` | Customer Session | Verify Razorpay signature, decrement stock, record inventory movement, and clear the cart |
+| Method | Path                             | Auth             | Description                                                                               |
+| ------ | -------------------------------- | ---------------- | ----------------------------------------------------------------------------------------- |
+| POST   | `/api/customers/payments/orders` | Customer Session | Create a server-priced Razorpay order from the current cart                               |
+| GET    | `/api/customers/payments/orders` | Customer Session | List the authenticated customer's orders                                                  |
+| POST   | `/api/customers/payments/verify` | Customer Session | Verify Razorpay signature, decrement stock, record inventory movement, and clear the cart |
 
 Payment amounts are calculated from current server-side variant prices. Configure `RAZORPAY_KEY_ID` and `RAZORPAY_KEY_SECRET`; never expose the secret to the frontend.
 
 ### Customer — Wishlist `/api/customers/wishlist`
 
-| Method | Path | Auth | Description |
-|---|---|---|---|
-| GET | `/api/customers/wishlist` | Customer Session | Get (or create) wishlist |
-| POST | `/api/customers/wishlist/items` | Customer Session | Add product (no-op if already present) |
-| DELETE | `/api/customers/wishlist/items/:productId` | Customer Session | Remove product |
+| Method | Path                                       | Auth             | Description                            |
+| ------ | ------------------------------------------ | ---------------- | -------------------------------------- |
+| GET    | `/api/customers/wishlist`                  | Customer Session | Get (or create) wishlist               |
+| POST   | `/api/customers/wishlist/items`            | Customer Session | Add product (no-op if already present) |
+| DELETE | `/api/customers/wishlist/items/:productId` | Customer Session | Remove product                         |
 
 ---
 
 ### Customer — Reviews `/api/customers/reviews`
 
-| Method | Path | Auth | Description |
-|---|---|---|---|
-| GET | `/api/customers/reviews/mine/:productId` | Customer Session | Get the customer's own review for a product (or null) |
-| POST | `/api/customers/reviews/:productId` | Customer Session | Create a review (one per customer per product) |
-| PUT | `/api/customers/reviews/:reviewId` | Customer Session | Update own review |
-| DELETE | `/api/customers/reviews/:reviewId` | Customer Session | Delete own review |
+| Method | Path                                     | Auth             | Description                                           |
+| ------ | ---------------------------------------- | ---------------- | ----------------------------------------------------- |
+| GET    | `/api/customers/reviews/mine/:productId` | Customer Session | Get the customer's own review for a product (or null) |
+| POST   | `/api/customers/reviews/:productId`      | Customer Session | Create a review (one per customer per product)        |
+| PUT    | `/api/customers/reviews/:reviewId`       | Customer Session | Update own review                                     |
+| DELETE | `/api/customers/reviews/:reviewId`       | Customer Session | Delete own review                                     |
 
 ---
 
 ### Customer — Images `/api/customers/images`
 
-| Method | Path | Auth | Description |
-|---|---|---|---|
-| POST | `/api/customers/images/upload` | Customer Session | Upload up to 4 images (for reviews) to ImageKit |
+| Method | Path                           | Auth             | Description                                     |
+| ------ | ------------------------------ | ---------------- | ----------------------------------------------- |
+| POST   | `/api/customers/images/upload` | Customer Session | Upload up to 4 images (for reviews) to ImageKit |
 
 ---
 
@@ -567,25 +586,25 @@ Payment amounts are calculated from current server-side variant prices. Configur
 
 No authentication required.
 
-| Method | Path | Description |
-|---|---|---|
-| GET | `/api/public/products` | List active products (filters: search, category, brand, sort, pagination) |
-| GET | `/api/public/products/:slug` | Get a single active product by slug |
-| GET | `/api/public/categories` | List all active categories |
-| GET | `/api/public/banners` | Get all active banner configurations |
-| GET | `/api/public/search/suggestions` | Search autocomplete suggestions |
-| GET | `/api/public/products/:productId/reviews` | Paginated reviews for a product |
-| GET | `/api/public/products/:productId/reviews/summary` | Average rating + count breakdown |
+| Method | Path                                              | Description                                                               |
+| ------ | ------------------------------------------------- | ------------------------------------------------------------------------- |
+| GET    | `/api/public/products`                            | List active products (filters: search, category, brand, sort, pagination) |
+| GET    | `/api/public/products/:slug`                      | Get a single active product by slug                                       |
+| GET    | `/api/public/categories`                          | List all active categories                                                |
+| GET    | `/api/public/banners`                             | Get all active banner configurations                                      |
+| GET    | `/api/public/search/suggestions`                  | Search autocomplete suggestions                                           |
+| GET    | `/api/public/products/:productId/reviews`         | Paginated reviews for a product                                           |
+| GET    | `/api/public/products/:productId/reviews/summary` | Average rating + count breakdown                                          |
 
 ---
 
 ## Role-Based Access Control (RBAC)
 
-| Role | Description | Capabilities |
-|---|---|---|
-| `super_admin` | Full access | All operations including user management, all write operations |
-| `admin` | Store manager | Products, categories, brands, inventory, banners, CSV import |
-| `staff` | Read-only admin | View products, categories, brands, banners, inventory |
+| Role          | Description     | Capabilities                                                   |
+| ------------- | --------------- | -------------------------------------------------------------- |
+| `super_admin` | Full access     | All operations including user management, all write operations |
+| `admin`       | Store manager   | Products, categories, brands, inventory, banners, CSV import   |
+| `staff`       | Read-only admin | View products, categories, brands, banners, inventory          |
 
 The `authorize(...roles)` middleware returns **403 Forbidden** if the authenticated user's role is not in the allowed list.
 
@@ -596,6 +615,7 @@ The `authorize(...roles)` middleware returns **403 Forbidden** if the authentica
 All errors are routed through the global `errorHandler` middleware. Errors are thrown as `ApiError` instances.
 
 **Standard error response shape:**
+
 ```json
 {
   "success": false,
@@ -605,6 +625,7 @@ All errors are routed through the global `errorHandler` middleware. Errors are t
 ```
 
 **Common status codes:**
+
 - `400` — Bad Request (validation failure, business rule violation)
 - `401` — Unauthorized (missing/invalid/expired token or session)
 - `403` — Forbidden (insufficient role)
@@ -618,16 +639,16 @@ All errors are routed through the global `errorHandler` middleware. Errors are t
 
 Requests are validated using **Zod** via the `validate(schema)` middleware. Validation schemas:
 
-| Schema File | Covers |
-|---|---|
-| `admin/auth.validation.js` | Register (name, email, password, role), Login (email, password) |
-| `admin/product.validation.js` | Create/update product, variant, brand, category |
-| `admin/inventory.validation.js` | Create inventory movement |
-| `admin/user.validation.js` | Update user (name, role, isActive) |
-| `customer/account.validation.js` | Delete account (OTP verification) |
-| `customer/cart.validation.js` | Add to cart (variantId, quantity), update cart item |
-| `customer/review.validation.js` | Create/update review (rating, title, body, images) |
-| `customer/wishlist.validation.js` | Add to wishlist (productId) |
+| Schema File                       | Covers                                                          |
+| --------------------------------- | --------------------------------------------------------------- |
+| `admin/auth.validation.js`        | Register (name, email, password, role), Login (email, password) |
+| `admin/product.validation.js`     | Create/update product, variant, brand, category                 |
+| `admin/inventory.validation.js`   | Create inventory movement                                       |
+| `admin/user.validation.js`        | Update user (name, role, isActive)                              |
+| `customer/account.validation.js`  | Delete account (OTP verification)                               |
+| `customer/cart.validation.js`     | Add to cart (variantId, quantity), update cart item             |
+| `customer/review.validation.js`   | Create/update review (rating, title, body, images)              |
+| `customer/wishlist.validation.js` | Add to wishlist (productId)                                     |
 
 ---
 

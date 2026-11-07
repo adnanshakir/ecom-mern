@@ -32,16 +32,11 @@ export const uploadCustomerImage = async (req, res, next) => {
     if (rejected.length > 0) {
       // Best-effort cleanup — don't let cleanup failures mask the original error
       await Promise.allSettled(
-        fulfilled
-          .filter((r) => r.value?.fileId)
-          .map((r) => imagekit.deleteFile(r.value.fileId))
+        fulfilled.filter((r) => r.value?.fileId).map((r) => imagekit.deleteFile(r.value.fileId))
       );
 
       const firstError = rejected[0].reason;
-      throw new ApiError(
-        500,
-        firstError?.message || "One or more image uploads failed"
-      );
+      throw new ApiError(500, firstError?.message || "One or more image uploads failed");
     }
 
     res.status(201).json({

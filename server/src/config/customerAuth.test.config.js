@@ -128,9 +128,7 @@ export async function createTestCustomerAuth() {
             const digits = phoneNumber.replace(/\D/g, "");
             const localDigits =
               digits.length === 12 && digits.startsWith("91") ? digits.slice(2) : digits;
-            const canonical = /^[6-9]\d{9}$/.test(localDigits)
-              ? `+91${localDigits}`
-              : phoneNumber;
+            const canonical = /^[6-9]\d{9}$/.test(localDigits) ? `+91${localDigits}` : phoneNumber;
             return `${canonical.replace(/[^0-9]/g, "")}@customer.local`;
           },
           getTempName: (phoneNumber) => {

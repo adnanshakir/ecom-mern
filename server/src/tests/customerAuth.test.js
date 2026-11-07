@@ -461,7 +461,9 @@ describe("Customer Auth - Master OTP Feature", () => {
     const db = mongoose.connection.db;
     const ObjectId = mongoose.Types.ObjectId;
     const filter = ObjectId.isValid(userId) ? { _id: new ObjectId(userId) } : { _id: userId };
-    await db.collection("customerUser").updateOne(filter, { $set: { email: "master@example.com" } });
+    await db
+      .collection("customerUser")
+      .updateOne(filter, { $set: { email: "master@example.com" } });
 
     const signInRes = await request(testApp)
       .post("/api/v1/customers/auth/sign-in/email-otp")
@@ -484,7 +486,9 @@ describe("Customer Auth - Master OTP Feature", () => {
     const db = mongoose.connection.db;
     const ObjectId = mongoose.Types.ObjectId;
     const filter = ObjectId.isValid(userId) ? { _id: new ObjectId(userId) } : { _id: userId };
-    await db.collection("customerUser").updateOne(filter, { $set: { email: "verify@example.com" } });
+    await db
+      .collection("customerUser")
+      .updateOne(filter, { $set: { email: "verify@example.com" } });
 
     const verifyEmailRes = await request(testApp)
       .post("/api/v1/customers/auth/email-otp/verify-email")
@@ -513,7 +517,9 @@ describe("Customer Auth - Master OTP Feature", () => {
 
     expect(changeEmailRes.status).toBe(200);
     const db = mongoose.connection.db;
-    const updatedUser = await db.collection("customerUser").findOne({ email: "newmaster@example.com" });
+    const updatedUser = await db
+      .collection("customerUser")
+      .findOne({ email: "newmaster@example.com" });
     expect(updatedUser).toBeDefined();
     expect(updatedUser.email).toBe("newmaster@example.com");
   });
@@ -599,5 +605,3 @@ describe("Customer Auth - Atomic Failed OTP Attempts & Attempt Limits", () => {
     expect(doc).toBeNull();
   });
 });
-
-

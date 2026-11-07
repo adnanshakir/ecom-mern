@@ -34,7 +34,9 @@ export async function handleEmailMasterOtp(ctx) {
     if (type === "change-email") {
       const session = await getSessionFromCtx(ctx);
       if (session?.user?.email) {
-        identifiers.push(`change-email-otp-${session.user.email.toLowerCase()}-${rawEmail.toLowerCase()}`);
+        identifiers.push(
+          `change-email-otp-${session.user.email.toLowerCase()}-${rawEmail.toLowerCase()}`
+        );
       }
     }
 
@@ -82,7 +84,9 @@ export async function verifyOTP({ phoneNumber, code }, allowedAttempts = ALLOWED
 
   while (retries < MAX_RETRIES) {
     retries++;
-    const existing = await db.collection("customerVerification").findOne({ identifier: phoneNumber });
+    const existing = await db
+      .collection("customerVerification")
+      .findOne({ identifier: phoneNumber });
     if (!existing || existing.expiresAt < new Date()) {
       return false;
     }
@@ -109,10 +113,12 @@ export async function verifyOTP({ phoneNumber, code }, allowedAttempts = ALLOWED
       continue;
     }
 
-    const updateRes = await db.collection("customerVerification").updateOne(
-      { identifier: phoneNumber, value: existing.value },
-      { $set: { value: `${otpValue}:${newAttempts}`, updatedAt: new Date() } }
-    );
+    const updateRes = await db
+      .collection("customerVerification")
+      .updateOne(
+        { identifier: phoneNumber, value: existing.value },
+        { $set: { value: `${otpValue}:${newAttempts}`, updatedAt: new Date() } }
+      );
 
     if (updateRes.matchedCount > 0) {
       return false;
