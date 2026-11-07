@@ -55,7 +55,6 @@ export function CheckoutView() {
   const [selectedAddressId, setSelectedAddressId] = useState("");
   const [addressForm, setAddressForm] = useState(null);
   const [addressLoading, setAddressLoading] = useState(true);
-  const [addressesVersion, setAddressesVersion] = useState(0);
   const [paymentReconciliation, setPaymentReconciliation] = useState(null);
 
   useEffect(() => {
@@ -82,7 +81,6 @@ export function CheckoutView() {
       .then(({ data }) => {
         const savedAddresses = data.data?.addresses || [];
         setAddresses(savedAddresses);
-        setAddressesVersion(data.data?.addressesVersion ?? 0);
         setSelectedAddressId(savedAddresses.find((address) => address.isDefault)?._id || savedAddresses[0]?._id || "");
       })
       .catch(() => toast.error("Unable to load saved addresses"))
@@ -111,10 +109,9 @@ export function CheckoutView() {
       : [...addresses, { ...nextAddress, isDefault: addresses.length === 0 }];
 
     try {
-      const { data } = await updateCustomerProfileRequest({ addresses: nextAddresses, addressesVersion });
+      const { data } = await updateCustomerProfileRequest({ addresses: nextAddresses });
       const saved = data.data.addresses || nextAddresses;
       setAddresses(saved);
-      setAddressesVersion(data.data.addressesVersion ?? addressesVersion + 1);
       setSelectedAddressId(nextAddress._id || saved[saved.length - 1]?._id || "");
       setAddressForm(null);
       toast.success("Address saved");
@@ -128,11 +125,9 @@ export function CheckoutView() {
     try {
       const { data } = await updateCustomerProfileRequest({
         addresses: addresses.filter((address) => address._id !== addressId),
-        addressesVersion,
       });
       const saved = data.data.addresses || [];
       setAddresses(saved);
-      setAddressesVersion(data.data.addressesVersion ?? addressesVersion + 1);
       setSelectedAddressId(saved[0]?._id || "");
     } catch (error) {
       toast.error(error.response?.data?.message || "Unable to remove address");
