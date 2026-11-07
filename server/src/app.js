@@ -17,6 +17,7 @@ import imageRoutes from "./routes/admin/image.routes.js";
 import inventoryRoutes from "./routes/admin/inventory.routes.js";
 import userRoutes from "./routes/admin/user.routes.js";
 import bannerRoutes from "./routes/admin/banner.routes.js";
+import orderRoutes from "./routes/admin/order.routes.js";
 
 // Customer routes
 import publicRoutes from "./routes/customer/public.routes.js";
@@ -105,6 +106,7 @@ app.use("/api/images", imageRoutes);
 app.use("/api/inventory", inventoryRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/banners", bannerRoutes);
+app.use("/api/orders", orderRoutes);
 
 // ---- Customer routes ----
 app.use("/api/customers/profile", profileRoutes);
@@ -113,6 +115,7 @@ app.use("/api/customers/wishlist", wishlistRoutes);
 app.use("/api/customers/reviews", reviewRoutes);
 app.use("/api/customers/images", customerImageRoutes);
 app.use("/api/public", publicRoutes);
+app.use("/api/customers/payments", paymentRoutes);
 
 // Global error handling middleware
 app.use(notFound);

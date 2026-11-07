@@ -19,6 +19,10 @@ import { ImportHistoryModal } from "@/components/admin/csv-import/ImportHistoryM
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { DashboardSkeleton } from "@/components/admin/dashboard/DashboardSkeleton";
 import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import { ShoppingBag } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useOrders } from "@/hooks/admin/useOrders";
 
 export default function DashboardPage() {
   const [stats, setStats] = useState(null);
@@ -28,6 +32,7 @@ export default function DashboardPage() {
   const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
 
   const recentImports = useRecentImports();
+  const { orders: recentOrders, stats: orderStats } = useOrders();
 
   const fetchStats = useCallback(async (isManualRefresh = false) => {
     if (isManualRefresh) setRefreshing(true);
@@ -44,7 +49,8 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
-    fetchStats();
+    const timer = setTimeout(fetchStats, 0);
+    return () => clearTimeout(timer);
   }, [fetchStats]);
 
   if (loading) {
@@ -128,6 +134,9 @@ export default function DashboardPage() {
           color="blue"
           subtitle="Active catalog"
         />
+        <Link href="/admin/orders">
+          <StatCard label="New Orders" value={orderStats.newCount} icon={ShoppingBag} color="violet" subtitle="Awaiting review" />
+        </Link>
         <StatCard
           label="Categories"
           value={stats?.totalCategories}
@@ -163,6 +172,24 @@ export default function DashboardPage() {
           items={stats?.latestActivity}
         />
       </div>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-sm font-medium">Recent Orders</CardTitle>
+          <Link href="/admin/orders" className="text-xs text-primary hover:underline">View all</Link>
+        </CardHeader>
+        <CardContent className="grid gap-2">
+          {recentOrders.slice(0, 5).map((order) => (
+            <div key={order._id} className="flex items-center justify-between gap-3 border-b py-2 last:border-0">
+              <div className="min-w-0"><p className="truncate text-sm font-medium">{order.orderNumber}</p><p className="truncate text-xs text-muted-foreground">{order.customer?.name || "Customer"}</p></div>
+              <span className="text-sm">{Number(order.total || 0).toLocaleString("en-IN", { style: "currency", currency: "INR" })}</span>
+              <span className="text-xs capitalize text-muted-foreground">{order.orderStatus}</span>
+              <Button variant="ghost" size="sm" onClick={() => window.open(`/admin/orders/${order._id}/invoice`, "_blank", "noopener,noreferrer")}>Print</Button>
+            </div>
+          ))}
+          {!recentOrders.length && <p className="text-sm text-muted-foreground">No paid orders yet.</p>}
+        </CardContent>
+      </Card>
 
       {/* Import History Modal Dialog */}
       <ImportHistoryModal
