@@ -191,7 +191,7 @@ export const updateProduct = async (req, res, next) => {
     }
 
     const product = await Product.findByIdAndUpdate(req.params.id, updates, {
-      returnDocument: "after",
+      new: true,
       runValidators: true,
     });
     if (!product) throw new ApiError(404, "Product not found");
@@ -271,7 +271,10 @@ export const bulkUpdateProducts = async (req, res, next) => {
       throw new ApiError(400, "No valid update fields provided");
     }
 
-    const result = await Product.updateMany({ _id: { $in: ids } }, { $set: allowedUpdates });
+    const result = await Product.updateMany(
+      { _id: { $in: ids } },
+      { $set: allowedUpdates }
+    );
 
     await logActivity({
       userId: req.user.id,
@@ -325,3 +328,4 @@ export const bulkDeleteProducts = async (req, res, next) => {
     session.endSession();
   }
 };
+

@@ -3,6 +3,3 @@ node_modules
 uploads
 build
 .agents
-
-# Internal docs (not for public repo)
-docs/

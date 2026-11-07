@@ -161,7 +161,6 @@ server/
 ## ⚡ Deep Core Technical Workflows
 
 ### 1. ACID Product & Variant Creation
-
 Product creation (`createProduct` in `product.controller.js`) guarantees database consistency by executing inside a Mongoose Multi-Document Transaction Session:
 
 ```
@@ -199,7 +198,6 @@ Product creation (`createProduct` in `product.controller.js`) guarantees databas
 ---
 
 ### 2. Inventory Movement Ledger Engine
-
 Direct mutation of `variant.stock` is strictly forbidden. Stock updates execute via `adjustStock()` in `src/utils/inventory.js`:
 
 - **Audit Record Creation**: Every movement logs `variant`, `user`, `type` (`initial`, `adjustment`, `sale`, `return`, `cancel`), `quantityDelta`, `previousStock`, `newStock`, and `reason`.
@@ -209,7 +207,6 @@ Direct mutation of `variant.stock` is strictly forbidden. Stock updates execute 
 ---
 
 ### 3. Bulk CSV Import Engine Architecture
-
 The CSV import pipeline (`csvImport.controller.js` & `csvMapper.js`) converts bulk CSV uploads into structured database entities:
 
 1. **Upload & Job Creation**: Uploads CSV file via `csvUpload.middleware.js` and creates an `ImportJob` record (`status: "processing"`).
@@ -222,7 +219,6 @@ The CSV import pipeline (`csvImport.controller.js` & `csvMapper.js`) converts bu
 ---
 
 ### 4. Dynamic Storefront Banner Engine
-
 Banners (`hero`, `secondary-left`, `secondary-right`, `bottom`) are managed via `/api/banners`:
 
 - **Database Store**: `Banner` model stores `title`, `subtitle`, `image` (`url`, `fileId`), `href`, `ctaText`, `showGradient`, `overlayColor`, and `placement` (`left` vs `right`).
@@ -235,7 +231,6 @@ Banners (`hero`, `secondary-left`, `secondary-right`, `bottom`) are managed via 
 ---
 
 ### 5. Dual JWT Authentication & RBAC Stack
-
 The server maintains strict security isolation between admin staff and storefront customers using a **single shared `JWT_SECRET`** with token-type discrimination:
 
 ```
@@ -260,7 +255,6 @@ The server maintains strict security isolation between admin staff and storefron
 ```
 
 **Refresh Token Flow** (opaque tokens, stored in MongoDB):
-
 1. Client calls `POST /api/auth/refresh` — server reads the `refreshToken` cookie.
 2. Server looks up the token in `RefreshToken` collection and validates expiry.
 3. Issues a new short-lived JWT access token (15 min) and rotates the opaque refresh token (7 days).
@@ -271,14 +265,12 @@ The server maintains strict security isolation between admin staff and storefron
 ## 🔍 Detailed Folder & Component Guide
 
 ### Config (`src/config/`)
-
 - **`config.js`**: Parses and validates required environment variables at startup (`PORT`, `MONGO_URI`, `JWT_SECRET`, `IMAGEKIT_PUBLIC_KEY`, `IMAGEKIT_PRIVATE_KEY`, `IMAGEKIT_URL_ENDPOINT`, `FRONTEND_URL`). Throws a descriptive error for any missing variable before the server boots. Also reads optional `LOW_STOCK_THRESHOLD`.
 - **`db.js`**: Connects to MongoDB via Mongoose with connection pooling and lifecycle logging.
 
 ---
 
 ### Middleware (`src/middleware/`)
-
 - **`authenticate.middleware.js`**: Decodes Admin JWT from `Authorization: Bearer <token>`, verifies validity, checks that `decoded.type !== "customer"`, then confirms the user still exists and `isActive` in DB before attaching `req.user`.
 - **`authenticateCustomer.middleware.js`**: Decodes Customer JWT from `Authorization: Bearer <token>`, verifies validity, and sets `req.customer`.
 - **`authorize.middleware.js`**: Accepts allowed role arrays (`authorize("super_admin", "admin")`). Rejects unauthorized requests with `403 Forbidden`.
@@ -295,7 +287,6 @@ The server maintains strict security isolation between admin staff and storefron
 ### Database Models (`src/models/`)
 
 #### Admin & Core Schemas (`src/models/admin/`)
-
 - **`product.model.js`**:
   - `name` (String, required)
   - `slug` (String, unique, indexed)
@@ -323,7 +314,6 @@ The server maintains strict security isolation between admin staff and storefron
 - **`importJob.model.js`**: `filename`, `status` (`"pending"`, `"processing"`, `"completed"`, `"failed"`), `totalRows`, `processedRows`, `failedRows`, `errors`.
 
 #### Customer Schemas (`src/models/customer/`)
-
 - **`customer.model.js`**: `name`, `email` (unique), `password` (bcrypt hashed), `phone`, `addresses`.
 - **`cart.model.js`**: `customer` (ref `Customer`), `items: [{ variant: ref ProductVariant, quantity: Number }]`.
 - **`wishlist.model.js`**: `customer` (ref `Customer`), `products: [ref Product]`.
@@ -334,7 +324,6 @@ The server maintains strict security isolation between admin staff and storefron
 ### Controllers (`src/controllers/`)
 
 #### Admin Controllers (`src/controllers/admin/`)
-
 - **`product.controller.js`**:
   - `createProduct`: Session-based creation of product + variants + initial stock ledger entries.
   - `getProducts`: Filtered product retrieval (category, brand, status, featured, search) with pagination and safe `ObjectId.isValid()` checks. Search uses `escapeRegex.js` for safe MongoDB regex queries.
@@ -355,7 +344,6 @@ The server maintains strict security isolation between admin staff and storefron
 - **`image.controller.js`**: Uploads buffer to ImageKit CDN via SDK.
 
 #### Customer Controllers (`src/controllers/customer/`)
-
 - **`public.controller.js`**:
   - `getPublicProducts`: Public active product listing with category tree resolution and price filtering.
   - `getPublicProductBySlug`: Public single product detail lookup.
@@ -369,7 +357,6 @@ The server maintains strict security isolation between admin staff and storefron
 ---
 
 ### Validations (`src/validations/`)
-
 All mutating endpoints use Zod schemas to validate request payloads before they reach the controller. Schemas are split by domain:
 
 - **`admin/auth.validation.js`**: Admin login schema (`email`, `password`).
@@ -384,7 +371,6 @@ All mutating endpoints use Zod schemas to validate request payloads before they 
 ---
 
 ### Utilities (`src/utils/`)
-
 - **`inventory.js`**: Core `adjustStock()` function managing atomic stock increment/decrement and ledger entries.
 - **`csvMapper.js`**: Header normalization, row validation, category parsing, and variant building logic.
 - **`csvParser.js`**: Node.js stream wrapper converting CSV buffer/file to JS objects.
@@ -398,7 +384,6 @@ All mutating endpoints use Zod schemas to validate request payloads before they 
 ---
 
 ### Scripts (`src/scripts/`)
-
 - **`seedAdmin.js`**: One-shot script to seed the initial `super_admin` account into the database. Safe to run multiple times — exits early if the admin email already exists.
   ```bash
   node src/scripts/seedAdmin.js
@@ -407,14 +392,12 @@ All mutating endpoints use Zod schemas to validate request payloads before they 
 ---
 
 ### Tests (`src/tests/`)
-
 The test suite uses **Jest** + **Supertest** + **mongodb-memory-server** for fast, isolated integration tests with no external database dependency:
 
 - **`setup.js`**: Global Jest setup — spins up an in-memory MongoDB instance before all tests and tears it down after.
 - **14 test files** covering: `auth`, `brand`, `cart`, `category`, `csvImport`, `customerAuth`, `dashboard`, `image`, `inventory`, `product`, `productVariant`, `user`, `wishlist`.
 
 Run tests:
-
 ```bash
 npm test
 ```
@@ -426,122 +409,109 @@ npm test
 ### Admin API Routes (`/api/...`)
 
 #### Auth Routes (`/api/auth`)
-
-| Method | Endpoint            | Access        | Description                                                    |
-| :----- | :------------------ | :------------ | :------------------------------------------------------------- |
-| `POST` | `/api/auth/login`   | Public        | Admin/Staff login (Returns access token & sets refresh cookie) |
-| `POST` | `/api/auth/refresh` | Public        | Rotates refresh token & returns new access token               |
-| `POST` | `/api/auth/logout`  | Authenticated | Revokes refresh token & clears cookie                          |
-| `GET`  | `/api/auth/me`      | Authenticated | Gets current logged-in user profile                            |
+| Method | Endpoint | Access | Description |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/auth/login` | Public | Admin/Staff login (Returns access token & sets refresh cookie) |
+| `POST` | `/api/auth/refresh` | Public | Rotates refresh token & returns new access token |
+| `POST` | `/api/auth/logout` | Authenticated | Revokes refresh token & clears cookie |
+| `GET` | `/api/auth/me` | Authenticated | Gets current logged-in user profile |
 
 #### Product Routes (`/api/products`)
-
-| Method   | Endpoint                            | Access                          | Description                                               |
-| :------- | :---------------------------------- | :------------------------------ | :-------------------------------------------------------- |
-| `GET`    | `/api/products`                     | `super_admin`, `admin`, `staff` | Get paginated products with category/brand/search filters |
-| `POST`   | `/api/products`                     | `super_admin`, `admin`          | Create new product with variants and initial stock        |
-| `GET`    | `/api/products/:id`                 | `super_admin`, `admin`, `staff` | Get single product detail with variants                   |
-| `PUT`    | `/api/products/:id`                 | `super_admin`, `admin`          | Update product details                                    |
-| `DELETE` | `/api/products/:id`                 | `super_admin`, `admin`          | Delete product and all its variants                       |
-| `PATCH`  | `/api/products/bulk-update`         | `super_admin`, `admin`          | Bulk update product statuses or featured flag             |
-| `POST`   | `/api/products/bulk-delete`         | `super_admin`, `admin`          | Bulk delete products and variants                         |
-| `POST`   | `/api/products/:id/variants`        | `super_admin`, `admin`          | Add new variant to existing product                       |
-| `PUT`    | `/api/products/variants/:variantId` | `super_admin`, `admin`          | Update variant details/price                              |
-| `DELETE` | `/api/products/variants/:variantId` | `super_admin`, `admin`          | Delete individual variant                                 |
+| Method | Endpoint | Access | Description |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/products` | `super_admin`, `admin`, `staff` | Get paginated products with category/brand/search filters |
+| `POST` | `/api/products` | `super_admin`, `admin` | Create new product with variants and initial stock |
+| `GET` | `/api/products/:id` | `super_admin`, `admin`, `staff` | Get single product detail with variants |
+| `PUT` | `/api/products/:id` | `super_admin`, `admin` | Update product details |
+| `DELETE` | `/api/products/:id` | `super_admin`, `admin` | Delete product and all its variants |
+| `PATCH` | `/api/products/bulk-update` | `super_admin`, `admin` | Bulk update product statuses or featured flag |
+| `POST` | `/api/products/bulk-delete` | `super_admin`, `admin` | Bulk delete products and variants |
+| `POST` | `/api/products/:id/variants` | `super_admin`, `admin` | Add new variant to existing product |
+| `PUT` | `/api/products/variants/:variantId` | `super_admin`, `admin` | Update variant details/price |
+| `DELETE` | `/api/products/variants/:variantId` | `super_admin`, `admin` | Delete individual variant |
 
 #### Category Routes (`/api/categories`)
-
-| Method   | Endpoint              | Access                          | Description         |
-| :------- | :-------------------- | :------------------------------ | :------------------ |
-| `GET`    | `/api/categories`     | `super_admin`, `admin`, `staff` | List all categories |
-| `POST`   | `/api/categories`     | `super_admin`, `admin`          | Create new category |
-| `GET`    | `/api/categories/:id` | `super_admin`, `admin`, `staff` | Get category detail |
-| `PUT`    | `/api/categories/:id` | `super_admin`, `admin`          | Update category     |
-| `DELETE` | `/api/categories/:id` | `super_admin`, `admin`          | Delete category     |
+| Method | Endpoint | Access | Description |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/categories` | `super_admin`, `admin`, `staff` | List all categories |
+| `POST` | `/api/categories` | `super_admin`, `admin` | Create new category |
+| `GET` | `/api/categories/:id` | `super_admin`, `admin`, `staff` | Get category detail |
+| `PUT` | `/api/categories/:id` | `super_admin`, `admin` | Update category |
+| `DELETE` | `/api/categories/:id` | `super_admin`, `admin` | Delete category |
 
 #### Brand Routes (`/api/brands`)
-
-| Method   | Endpoint          | Access                          | Description     |
-| :------- | :---------------- | :------------------------------ | :-------------- |
-| `GET`    | `/api/brands`     | `super_admin`, `admin`, `staff` | List all brands |
-| `POST`   | `/api/brands`     | `super_admin`, `admin`          | Create brand    |
-| `PUT`    | `/api/brands/:id` | `super_admin`, `admin`          | Update brand    |
-| `DELETE` | `/api/brands/:id` | `super_admin`, `admin`          | Delete brand    |
+| Method | Endpoint | Access | Description |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/brands` | `super_admin`, `admin`, `staff` | List all brands |
+| `POST` | `/api/brands` | `super_admin`, `admin` | Create brand |
+| `PUT` | `/api/brands/:id` | `super_admin`, `admin` | Update brand |
+| `DELETE` | `/api/brands/:id` | `super_admin`, `admin` | Delete brand |
 
 #### Storefront Banner Routes (`/api/banners`)
-
-| Method | Endpoint            | Access                          | Description                                                    |
-| :----- | :------------------ | :------------------------------ | :------------------------------------------------------------- |
-| `GET`  | `/api/banners`      | `super_admin`, `admin`, `staff` | Get all banner configurations (merged with defaults)           |
-| `PUT`  | `/api/banners/:key` | `super_admin`, `admin`          | Update banner settings by key (`hero`, `secondary-left`, etc.) |
+| Method | Endpoint | Access | Description |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/banners` | `super_admin`, `admin`, `staff` | Get all banner configurations (merged with defaults) |
+| `PUT` | `/api/banners/:key` | `super_admin`, `admin` | Update banner settings by key (`hero`, `secondary-left`, etc.) |
 
 #### Inventory Routes (`/api/inventory`)
-
-| Method | Endpoint                   | Access                          | Description                          |
-| :----- | :------------------------- | :------------------------------ | :----------------------------------- |
-| `POST` | `/api/inventory/adjust`    | `super_admin`, `admin`          | Manually adjust stock & log movement |
-| `GET`  | `/api/inventory/movements` | `super_admin`, `admin`, `staff` | Get inventory movement ledger trail  |
+| Method | Endpoint | Access | Description |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/inventory/adjust` | `super_admin`, `admin` | Manually adjust stock & log movement |
+| `GET` | `/api/inventory/movements` | `super_admin`, `admin`, `staff` | Get inventory movement ledger trail |
 
 #### Image Routes (`/api/images`)
-
-| Method | Endpoint             | Access                 | Description                         |
-| :----- | :------------------- | :--------------------- | :---------------------------------- |
+| Method | Endpoint | Access | Description |
+| :--- | :--- | :--- | :--- |
 | `POST` | `/api/images/upload` | `super_admin`, `admin` | Upload image buffer to ImageKit CDN |
 
 #### User Routes (`/api/users`)
-
-| Method   | Endpoint         | Access        | Description                 |
-| :------- | :--------------- | :------------ | :-------------------------- |
-| `GET`    | `/api/users`     | `super_admin` | List all admin/staff users  |
-| `POST`   | `/api/users`     | `super_admin` | Create new admin/staff user |
-| `PUT`    | `/api/users/:id` | `super_admin` | Update user details         |
-| `DELETE` | `/api/users/:id` | `super_admin` | Delete user                 |
+| Method | Endpoint | Access | Description |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/users` | `super_admin` | List all admin/staff users |
+| `POST` | `/api/users` | `super_admin` | Create new admin/staff user |
+| `PUT` | `/api/users/:id` | `super_admin` | Update user details |
+| `DELETE` | `/api/users/:id` | `super_admin` | Delete user |
 
 #### Dashboard Routes (`/api/dashboard`)
-
-| Method | Endpoint         | Access                          | Description                            |
-| :----- | :--------------- | :------------------------------ | :------------------------------------- |
-| `GET`  | `/api/dashboard` | `super_admin`, `admin`, `staff` | Get summary metrics & low stock alerts |
+| Method | Endpoint | Access | Description |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/dashboard` | `super_admin`, `admin`, `staff` | Get summary metrics & low stock alerts |
 
 ---
 
 ### Customer & Public API Routes (`/api/public/...` & `/api/customers/...`)
 
 #### Public Storefront Routes (`/api/public`)
-
-| Method | Endpoint                         | Access | Description                            |
-| :----- | :------------------------------- | :----- | :------------------------------------- |
-| `GET`  | `/api/public/products`           | Public | Paginated product listing with filters |
-| `GET`  | `/api/public/products/:slug`     | Public | Single product detail by slug          |
-| `GET`  | `/api/public/categories`         | Public | Active categories list                 |
-| `GET`  | `/api/public/banners`            | Public | Active banner configurations           |
-| `GET`  | `/api/public/search/suggestions` | Public | Search autocomplete suggestions        |
+| Method | Endpoint | Access | Description |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/public/products` | Public | Paginated product listing with filters |
+| `GET` | `/api/public/products/:slug` | Public | Single product detail by slug |
+| `GET` | `/api/public/categories` | Public | Active categories list |
+| `GET` | `/api/public/banners` | Public | Active banner configurations |
+| `GET` | `/api/public/search/suggestions` | Public | Search autocomplete suggestions |
 
 #### Customer Auth Routes (`/api/customers/auth`)
-
-| Method | Endpoint                       | Access        | Description                   |
-| :----- | :----------------------------- | :------------ | :---------------------------- |
-| `POST` | `/api/customers/auth/register` | Public        | Customer account registration |
-| `POST` | `/api/customers/auth/login`    | Public        | Customer login                |
-| `POST` | `/api/customers/auth/refresh`  | Public        | Refresh customer access token |
-| `POST` | `/api/customers/auth/logout`   | Customer Auth | Customer logout               |
-| `GET`  | `/api/customers/auth/me`       | Customer Auth | Get current customer profile  |
+| Method | Endpoint | Access | Description |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/customers/auth/register` | Public | Customer account registration |
+| `POST` | `/api/customers/auth/login` | Public | Customer login |
+| `POST` | `/api/customers/auth/refresh` | Public | Refresh customer access token |
+| `POST` | `/api/customers/auth/logout` | Customer Auth | Customer logout |
+| `GET` | `/api/customers/auth/me` | Customer Auth | Get current customer profile |
 
 #### Customer Cart Routes (`/api/customers/cart`)
-
-| Method   | Endpoint                               | Access        | Description              |
-| :------- | :------------------------------------- | :------------ | :----------------------- |
-| `GET`    | `/api/customers/cart`                  | Customer Auth | Fetch active cart        |
-| `POST`   | `/api/customers/cart`                  | Customer Auth | Add item/variant to cart |
-| `PUT`    | `/api/customers/cart/items/:variantId` | Customer Auth | Update item quantity     |
-| `DELETE` | `/api/customers/cart/items/:variantId` | Customer Auth | Remove item from cart    |
-| `DELETE` | `/api/customers/cart`                  | Customer Auth | Clear entire cart        |
+| Method | Endpoint | Access | Description |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/customers/cart` | Customer Auth | Fetch active cart |
+| `POST` | `/api/customers/cart` | Customer Auth | Add item/variant to cart |
+| `PUT` | `/api/customers/cart/items/:variantId` | Customer Auth | Update item quantity |
+| `DELETE` | `/api/customers/cart/items/:variantId` | Customer Auth | Remove item from cart |
+| `DELETE` | `/api/customers/cart` | Customer Auth | Clear entire cart |
 
 #### Customer Wishlist Routes (`/api/customers/wishlist`)
-
-| Method | Endpoint                  | Access        | Description                       |
-| :----- | :------------------------ | :------------ | :-------------------------------- |
-| `GET`  | `/api/customers/wishlist` | Customer Auth | Fetch customer wishlist           |
+| Method | Endpoint | Access | Description |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/customers/wishlist` | Customer Auth | Fetch customer wishlist |
 | `POST` | `/api/customers/wishlist` | Customer Auth | Toggle product in/out of wishlist |
 
 ---
@@ -549,7 +519,6 @@ npm test
 ## 📊 Standardized JSON Response Schemas
 
 ### Success Response Format
-
 ```json
 {
   "success": true,
@@ -564,7 +533,6 @@ npm test
 ```
 
 ### Error Response Format
-
 ```json
 {
   "success": false,
@@ -578,12 +546,10 @@ npm test
 ## 🚀 Environment Setup & Quick Start
 
 ### 1. Requirements
-
 - **Node.js**: `v18.0.0` or higher
-- **MongoDB**: `v6.0+` with replica-set or sharded deployment support (required for checkout transactions)
+- **MongoDB**: `v6.0+` (Local instance or MongoDB Atlas)
 
 ### 2. Installation
-
 ```bash
 # Clone repository
 git clone https://github.com/your-repo/fibio-backend.git
@@ -594,19 +560,12 @@ npm install
 ```
 
 ### 3. Environment File Configuration
-
 Create a `.env` file in the `server/` root directory:
-
 ```env
 PORT=5000
 NODE_ENV=development
 MONGO_URI=mongodb://localhost:27017/fibio-ecom
 FRONTEND_URL=http://localhost:3000
-BETTER_AUTH_SECRET=your_better_auth_secret_min_32_chars
-
-# Razorpay checkout credentials
-RAZORPAY_KEY_ID=your_razorpay_key_id
-RAZORPAY_KEY_SECRET=your_razorpay_key_secret
 
 # JWT Configuration (single secret for both admin & customer tokens)
 JWT_SECRET=your_jwt_secret_min_32_chars_long
@@ -620,22 +579,16 @@ IMAGEKIT_PRIVATE_KEY=your_imagekit_private_key
 IMAGEKIT_URL_ENDPOINT=https://ik.imagekit.io/your_id
 ```
 
-Checkout requires MongoDB transactions. Use a replica set locally (for example, a single-node replica set) or a sharded/replica-set MongoDB Atlas deployment before configuring Razorpay credentials.
-
 > **Note**: Unlike earlier versions, this API uses a **single `JWT_SECRET`** for both admin and customer tokens. Customer tokens are distinguished via a `type: "customer"` claim in the payload. You do **not** need separate `CUSTOMER_JWT_SECRET` or `JWT_REFRESH_SECRET` variables.
 
 ### 4. Seed the Super Admin
-
 Before logging in for the first time, run the seeder to create the initial super admin account:
-
 ```bash
 node src/scripts/seedAdmin.js
 ```
-
 Default credentials: `admin@example.com` / `123456!` — **change these immediately after first login**.
 
 ### 5. Development & Production Execution
-
 ```bash
 # Run in development mode with nodemon
 npm run dev
@@ -643,19 +596,15 @@ npm run dev
 # Run in production mode
 npm start
 ```
-
 The REST API will be live at `http://localhost:5000`. Health check endpoint: `http://localhost:5000/health`.
 
 ### 6. Running Tests
-
 ```bash
 npm test
 ```
-
 Tests run against an isolated in-memory MongoDB instance — no external database required.
 
 ### 7. Code Quality
-
 ```bash
 # Format all files with Prettier
 npm run format
@@ -663,5 +612,4 @@ npm run format
 # Check formatting without writing
 npm run format:check
 ```
-
 Husky + lint-staged run ESLint and Prettier automatically on every `git commit`.

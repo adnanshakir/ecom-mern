@@ -107,46 +107,4 @@ describe("Customer Profile Single-Route API (/api/customers/profile)", () => {
     expect(updateRes.body.success).toBe(false);
     expect(updateRes.body.message).toContain("Email updates require the verified email-change flow");
   });
-
-  it("PUT /api/customers/profile preserves multiple addresses and removes duplicates", async () => {
-    const { cookies } = await loginWithPhone("+919876543210");
-    const address = {
-      label: "Home",
-      line1: "123 Tech Park",
-      city: "Bengaluru",
-      state: "Karnataka",
-      postalCode: "560001",
-      country: "India",
-      phone: "+919876543210",
-      isDefault: true,
-    };
-
-    const updateRes = await request(app)
-      .put("/api/customers/profile")
-      .set("Cookie", cookies)
-      .send({
-        addresses: [
-          address,
-          { ...address, label: "Duplicate Home", isDefault: false },
-          {
-            label: "Office",
-            line1: "456 Business Park",
-            city: "Bengaluru",
-            state: "Karnataka",
-            postalCode: "560002",
-            country: "India",
-            phone: "+919876543210",
-            isDefault: false,
-          },
-        ],
-        addressesVersion: 0,
-      });
-
-    expect(updateRes.status).toBe(200);
-    expect(updateRes.body.data.addresses).toHaveLength(2);
-    expect(updateRes.body.data.addresses.filter((item) => item.isDefault)).toHaveLength(1);
-
-    const getRes = await request(app).get("/api/customers/profile").set("Cookie", cookies);
-    expect(getRes.body.data.addresses).toHaveLength(2);
-  });
 });

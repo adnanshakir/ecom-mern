@@ -8,11 +8,7 @@ const startServer = async () => {
   await createCustomerAuth();
 
   app.listen(config.port, () => {
-    console.log(
-      `Server running on - ${config.port} (Razorpay: ${
-        config.razorpay.keyId && config.razorpay.keySecret ? "configured" : "not configured"
-      })`
-    );
+    console.log(`Server running on - ${config.port}`);
   });
 };
 

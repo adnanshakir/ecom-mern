@@ -13,56 +13,6 @@ async function findCustomerUserDoc(db, authUserId) {
   return await db.collection("customerUser").findOne({ $or: orConditions });
 }
 
-const normalizeAddress = (address, existingAddresses = []) => {
-  const existingAddress = address._id ? existingAddresses.id(address._id) : null;
-  return {
-    ...(existingAddress ? { _id: existingAddress._id } : {}),
-    label: typeof address.label === "string" ? address.label.trim() || "Home" : "Home",
-    line1: typeof address.line1 === "string" ? address.line1.trim() : "",
-    line2: typeof address.line2 === "string" ? address.line2.trim() : "",
-    city: typeof address.city === "string" ? address.city.trim() : "",
-    state: typeof address.state === "string" ? address.state.trim() : "",
-    postalCode: typeof address.postalCode === "string" ? address.postalCode.trim() : "",
-    country: typeof address.country === "string" ? address.country.trim() || "India" : "India",
-    phone: typeof address.phone === "string" ? address.phone.trim() : "",
-    isDefault: Boolean(address.isDefault),
-  };
-};
-
-const addressKey = (address) =>
-  [
-    address.line1,
-    address.line2,
-    address.city,
-    address.state,
-    address.postalCode,
-    address.country,
-    address.phone,
-  ]
-    .map((value) => value.trim().toLowerCase())
-    .join("|");
-
-const deduplicateAddresses = (addresses, existingAddresses) => {
-  const seen = new Set();
-  let defaultAssigned = false;
-
-  return addresses.reduce((uniqueAddresses, address) => {
-    const normalizedAddress = normalizeAddress(address, existingAddresses);
-    if (!normalizedAddress.line1 || !normalizedAddress.city || !normalizedAddress.postalCode) {
-      throw new ApiError(400, "Each address requires line1, city, and postalCode");
-    }
-
-    const key = addressKey(normalizedAddress);
-    if (seen.has(key)) return uniqueAddresses;
-    seen.add(key);
-
-    const isDefault = normalizedAddress.isDefault && !defaultAssigned;
-    defaultAssigned = defaultAssigned || isDefault;
-    uniqueAddresses.push({ ...normalizedAddress, isDefault });
-    return uniqueAddresses;
-  }, []);
-};
-
 /**
  * Get current customer profile details (merging Better Auth user data and Mongoose addresses)
  */
@@ -87,7 +37,6 @@ export const getCustomerProfile = async (req, res, next) => {
       name: userDoc?.name ?? req.customer?.name ?? "",
       email: userDoc?.email ?? req.customer?.email ?? "",
       addresses: profileDoc?.addresses || [],
-      addressesVersion: profileDoc?.__v ?? 0,
       createdAt: userDoc?.createdAt || req.customer?.createdAt,
       updatedAt: userDoc?.updatedAt || req.customer?.updatedAt,
     };
@@ -113,7 +62,7 @@ export const updateCustomerProfile = async (req, res, next) => {
       throw new ApiError(401, "Unauthorized: Invalid customer session");
     }
 
-    const { name, email, address, addresses, addressesVersion } = req.body;
+    const { name, email, address, addresses } = req.body;
     const db = mongoose.connection.db;
 
     if (!db) {
@@ -168,42 +117,47 @@ export const updateCustomerProfile = async (req, res, next) => {
       }
 
       // Handle Address updates in CustomerProfile
-      const profileQuery =
-        Array.isArray(addresses) && Number.isInteger(addressesVersion)
-          ? { authUserId, __v: addressesVersion }
-          : { authUserId };
-      profileDoc = await CustomerProfile.findOne(profileQuery).session(
+      profileDoc = await CustomerProfile.findOne({ authUserId }).session(
         inTransaction && session ? session : null
       );
-      if (Array.isArray(addresses) && !Number.isInteger(addressesVersion)) {
-        throw new ApiError(400, "Address version is required for address updates");
-      }
-      if (Array.isArray(addresses) && !profileDoc && addressesVersion !== 0) {
-        throw new ApiError(409, "Saved addresses changed. Refresh and try again.");
-      }
       if (!profileDoc) {
         profileDoc = new CustomerProfile({ authUserId, addresses: [] });
       }
 
       if (Array.isArray(addresses)) {
-        profileDoc.addresses = deduplicateAddresses(addresses, profileDoc.addresses);
+        // Direct replace of addresses array
+        profileDoc.addresses = addresses.map((addr) => ({
+          label: addr.label || "Home",
+          line1: (addr.line1 || "").trim(),
+          line2: (addr.line2 || "").trim(),
+          city: (addr.city || "").trim(),
+          state: (addr.state || "").trim(),
+          postalCode: (addr.postalCode || "").trim(),
+          country: addr.country || "India",
+          phone: addr.phone || "",
+          isDefault: Boolean(addr.isDefault),
+        }));
         await profileDoc.save(inTransaction && session ? { session } : {});
       } else if (address && typeof address === "object") {
         // Single address passed - update or append primary address
-        const formattedAddress = normalizeAddress(
-          { ...address, isDefault: true },
-          profileDoc.addresses
-        );
+        const formattedAddress = {
+          label: address.label || "Home",
+          line1: (address.line1 || "").trim(),
+          line2: (address.line2 || "").trim(),
+          city: (address.city || "").trim(),
+          state: (address.state || "").trim(),
+          postalCode: (address.postalCode || "").trim(),
+          country: address.country || "India",
+          phone: address.phone || "",
+          isDefault: true,
+        };
 
         if (!profileDoc.addresses || profileDoc.addresses.length === 0) {
           profileDoc.addresses = [formattedAddress];
-        } else if (address._id && profileDoc.addresses.id(address._id)) {
-          profileDoc.addresses.id(address._id).set(formattedAddress);
         } else {
           // Replace primary address or set first element
           profileDoc.addresses[0] = formattedAddress;
         }
-        profileDoc.addresses = deduplicateAddresses(profileDoc.addresses, profileDoc.addresses);
         await profileDoc.save(inTransaction && session ? { session } : {});
       }
 
@@ -245,7 +199,6 @@ export const updateCustomerProfile = async (req, res, next) => {
       name: updatedUserDoc?.name ?? updatesToUser.name ?? req.customer?.name ?? "",
       email: updatedUserDoc?.email ?? req.customer?.email ?? "",
       addresses: profileDoc?.addresses || [],
-      addressesVersion: profileDoc?.__v ?? 0,
       createdAt: updatedUserDoc?.createdAt || req.customer?.createdAt,
       updatedAt: updatedUserDoc?.updatedAt || req.customer?.updatedAt,
     };
