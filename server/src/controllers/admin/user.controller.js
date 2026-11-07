@@ -71,7 +71,7 @@ export const updateUser = async (req, res, next) => {
     }
 
     const user = await User.findByIdAndUpdate(req.params.id, updates, {
-      returnDocument: "after",
+      new: true,
       runValidators: true,
     });
     if (!user) throw new ApiError(404, "User not found");

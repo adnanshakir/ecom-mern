@@ -56,7 +56,7 @@ export const updateBrand = async (req, res, next) => {
     }
 
     const brand = await Brand.findByIdAndUpdate(req.params.id, updates, {
-      returnDocument: "after",
+      new: true,
       runValidators: true,
     });
     if (!brand) throw new ApiError(404, "Brand not found");

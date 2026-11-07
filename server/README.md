@@ -547,7 +547,7 @@ npm test
 
 ### 1. Requirements
 - **Node.js**: `v18.0.0` or higher
-- **MongoDB**: `v6.0+` running as a replica set or sharded deployment (required for checkout transactions)
+- **MongoDB**: `v6.0+` (Local instance or MongoDB Atlas)
 
 ### 2. Installation
 ```bash

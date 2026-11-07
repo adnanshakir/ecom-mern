@@ -172,10 +172,8 @@ export const updateCustomerProfile = async (req, res, next) => {
       }
 
       if (Array.isArray(addresses)) {
+        // Direct replace of addresses array
         profileDoc.addresses = addresses.map((addr) => ({
-          ...(addr._id && profileDoc.addresses.id(addr._id)
-            ? { _id: profileDoc.addresses.id(addr._id)._id }
-            : {}),
           label: addr.label || "Home",
           line1: (addr.line1 || "").trim(),
           line2: (addr.line2 || "").trim(),

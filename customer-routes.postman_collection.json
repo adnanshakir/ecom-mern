@@ -1,8 +1,8 @@
 {
   "info": {
-    "_postman_id": "customer-routes-collection",
-    "name": "customer-routes",
-    "description": "# customer-routes Postman Collection\n\nComprehensive Postman collection containing customer routes across:\n- `customerAuth.js` (Better Auth phone OTP authentication & session management)\n- `profile.routes.js` (Customer profile updates: name, email, address, addresses)\n- `cart.routes.js` (Customer cart operations)\n- `wishlist.routes.js` (Customer wishlist operations)\n- `review.routes.js` (Authenticated customer product reviews)\n- `customerImage.routes.js` (Customer image uploads)\n- `public.routes.js` (Public storefront browsing & public reviews)\n\n## Authentication & Headers\nRequests automatically include `Origin: {{customerOrigin}}` (default `http://localhost:3000`) in pre-request scripts to satisfy backend CORS policy. Authentication uses HttpOnly cookies managed automatically by Postman's Cookie Jar.",
+    "_postman_id": "customer-auth-collection",
+    "name": "Customer Auth",
+    "description": "# Customer Auth Postman Collection\n\nThis collection covers all customer authentication, session management, customer profile, cart, wishlist, payments, orders, reviews, and public storefront endpoints.\n\n## Auth Model & Features\n- **Sign-up**: Phone number + OTP only (creates account on verification if phone doesn't exist).\n- **Sign-in**: Phone + OTP *or* Email + OTP.\n- **Customer Profile**: Single-route endpoints GET and PUT `/api/customers/profile` for profile details & multiple saved addresses.\n- **Email OTP**: Supports Sign-In (`type: sign-in`), Email Verification (`type: email-verification`), and Change Email (`type: change-email`).\n- **Cart Management**: GET, POST items, PUT item quantity, DELETE single item, DELETE clear cart.\n- **Wishlist Management**: GET, POST items, DELETE item.\n- **Payments & Orders**: Razorpay checkout integration — POST `/api/customers/payments/orders` (cart or Buy Now order creation), GET `/api/customers/payments/orders` (order history), POST `/api/customers/payments/verify` (signature verification & inventory update), POST `/api/customers/payments/reconcile` (recover browser-interrupted checkout).\n- **Customer Reviews & Images**: Upload review images, get my review, submit, update, and delete product reviews.\n- **Public Endpoints**: Search suggestions, Products, Product by Slug, Categories, Banners, Product Reviews, Review Summary.\n\n## How to use this collection\n1. Select the **Customer Auth (Local)** environment.\n2. Run folders in order — session cookies are managed automatically by Postman's cookie jar.\n3. **OTP codes** appear in server console log (`[DEV OTP LOG - PHONE SMS]` / `[DEV OTP LOG - EMAIL]`). Copy the 6-digit code into `otpCode` env var before running verify steps.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -438,7 +438,62 @@
           }
         },
         {
-          "name": "3. Get Customer Session (Better Auth)",
+          "name": "3. Save Multiple Addresses",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Addresses were saved', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.be.true;",
+                  "    pm.expect(jsonData.data.addresses).to.be.an('array');",
+                  "    if (jsonData.data.addresses.length > 0) {",
+                  "        pm.environment.set('addressId', jsonData.data.addresses[0]._id);",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"addresses\": [\n    {\n      \"_id\": \"{{addressId}}\",\n      \"label\": \"Home\",\n      \"line1\": \"123 Main St\",\n      \"line2\": \"\",\n      \"city\": \"Bengaluru\",\n      \"state\": \"Karnataka\",\n      \"postalCode\": \"560001\",\n      \"country\": \"India\",\n      \"phone\": \"{{customerPhone}}\",\n      \"isDefault\": true\n    },\n    {\n      \"label\": \"Office\",\n      \"line1\": \"456 Business Park\",\n      \"line2\": \"\",\n      \"city\": \"Bengaluru\",\n      \"state\": \"Karnataka\",\n      \"postalCode\": \"560002\",\n      \"country\": \"India\",\n      \"phone\": \"{{customerPhone}}\",\n      \"isDefault\": false\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "profile"
+              ]
+            },
+            "description": "Adds or edits multiple saved addresses. Include an existing _id to edit and omit _id to add. Send the complete addresses array; duplicate addresses are normalized by the API and only one address can be default."
+          }
+        },
+        {
+          "name": "4. Get Customer Session (Better Auth)",
           "event": [
             {
               "listen": "test",
@@ -1688,7 +1743,63 @@
                 "orders"
               ]
             },
-            "description": "Creates an order from items in the customer's cart, generates a Razorpay order, and returns payment details. Requires items in cart and an existing address ID from customer profile."
+            "description": "Creates a cart payment order using the selected saved address. Requires an existing addressId from the customer profile."
+          }
+        },
+        {
+          "name": "1b. Create Buy Now Payment Order",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 201 or 200', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "});",
+                  "",
+                  "pm.test('Response contains Buy Now order details', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.be.true;",
+                  "    pm.expect(jsonData.data).to.have.property('orderId');",
+                  "    pm.expect(jsonData.data).to.have.property('razorpayOrderId');",
+                  "    pm.environment.set('orderId', jsonData.data.orderId);",
+                  "    pm.environment.set('razorpayOrderId', jsonData.data.razorpayOrderId);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"addressId\": \"{{addressId}}\",\n  \"variantId\": \"{{variantId}}\",\n  \"quantity\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/payments/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "payments",
+                "orders"
+              ]
+            },
+            "description": "Creates a direct Buy Now payment order for one variant and quantity. The server validates current stock and snapshots the selected saved address into the order."
           }
         },
         {
@@ -1766,7 +1877,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"razorpay_order_id\": \"{{razorpayOrderId}}\",\n  \"razorpay_payment_id\": \"pay_test1234567890\",\n  \"razorpay_signature\": \"sample_signature_hash\"\n}",
+              "raw": "{\n  \"razorpay_order_id\": \"{{razorpayOrderId}}\",\n  \"razorpay_payment_id\": \"{{razorpayPaymentId}}\",\n  \"razorpay_signature\": \"sample_signature_hash\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1819,7 +1930,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"razorpayOrderId\": \"{{razorpayOrderId}}\",\n  \"razorpayPaymentId\": \"pay_test1234567890\"\n}",
+              "raw": "{\n  \"razorpayOrderId\": \"{{razorpayOrderId}}\",\n  \"razorpayPaymentId\": \"{{razorpayPaymentId}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
