@@ -300,9 +300,10 @@ const completeCapturedPayment = async ({
       order.paidAt = new Date();
       await order.save({ session });
 
-      const cart = order.checkoutType === "cart"
-        ? await Cart.findOne({ customer: customerId }).session(session)
-        : null;
+      const cart =
+        order.checkoutType === "cart"
+          ? await Cart.findOne({ customer: customerId }).session(session)
+          : null;
       if (cart) {
         const quantities = new Map(
           order.items.map((item) => [item.variant.toString(), item.quantity])

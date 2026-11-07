@@ -72,7 +72,7 @@ export const loadConfig = (envSource = process.env) => {
       }
     } catch (err) {
       if (err.message.includes("BETTER_AUTH_URL")) throw err;
-      throw new Error(`Invalid BETTER_AUTH_URL in production: ${url}`);
+      throw new Error(`Invalid BETTER_AUTH_URL in production: ${url}`, { cause: err });
     }
   };
 

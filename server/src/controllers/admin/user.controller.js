@@ -66,7 +66,10 @@ export const updateUser = async (req, res, next) => {
     if (isActive !== undefined) updates.isActive = isActive;
 
     // prevent a Super Admin from demoting/deactivating themselves
-    if (String(req.params.id) === String(req.user.id) && (updates.role || updates.isActive === false)) {
+    if (
+      String(req.params.id) === String(req.user.id) &&
+      (updates.role || updates.isActive === false)
+    ) {
       throw new ApiError(400, "You cannot change your own role or deactivate your own account");
     }
 

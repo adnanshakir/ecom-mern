@@ -271,10 +271,7 @@ export const bulkUpdateProducts = async (req, res, next) => {
       throw new ApiError(400, "No valid update fields provided");
     }
 
-    const result = await Product.updateMany(
-      { _id: { $in: ids } },
-      { $set: allowedUpdates }
-    );
+    const result = await Product.updateMany({ _id: { $in: ids } }, { $set: allowedUpdates });
 
     await logActivity({
       userId: req.user.id,
