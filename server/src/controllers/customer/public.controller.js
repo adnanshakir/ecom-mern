@@ -191,26 +191,89 @@ export const getPublicProductBySlug = async (req, res, next) => {
 };
 
 // ---------------- GET /api/public/categories ----------------
-// All active categories as a flat array with parent populated as { _id, name }.
-// Supports optional parentOnly=true query param to return top-level categories only.
+// All active categories.
+// Supports:
+// - parentOnly=true: returns top-level parent categories with subcategories nested inside each
+// - tree=true or nested=true: returns hierarchical tree of parent categories with subcategories nested
+// - default: flat list of active categories with direct subcategories also populated on parents
 export const getPublicCategories = async (req, res, next) => {
   try {
-    const { parentOnly } = req.query;
-    const filter = { isActive: true };
+    const { parentOnly, tree, nested, includeSubcategories } = req.query;
 
-    if (parentOnly === "true") {
-      filter.parent = null;
+    const allCategories = await Category.find({ isActive: true })
+      .populate("parent", "_id name")
+      .sort({ name: 1 })
+      .lean();
+
+    const isTreeMode =
+      tree === "true" ||
+      nested === "true" ||
+      includeSubcategories === "true" ||
+      (parentOnly === "true" && includeSubcategories !== "false");
+
+    if (isTreeMode) {
+      const treeData = buildCategoryHierarchy(allCategories);
+      return res.status(200).json({ success: true, data: treeData });
     }
 
-    const categories = await Category.find(filter)
-      .populate("parent", "_id name")
-      .sort({ name: 1 });
+    if (parentOnly === "true" && includeSubcategories === "false") {
+      const topLevelOnly = allCategories.filter((c) => !c.parent);
+      return res.status(200).json({ success: true, data: topLevelOnly });
+    }
 
-    res.status(200).json({ success: true, data: categories });
+    // Default: flat array with direct subcategories populated for backward compatibility
+    const categoryMap = new Map();
+    allCategories.forEach((cat) => {
+      cat.subcategories = [];
+      cat.children = [];
+      categoryMap.set(cat._id.toString(), cat);
+    });
+
+    allCategories.forEach((cat) => {
+      const rawParent = cat.parent?._id || cat.parent;
+      const parentId = rawParent ? rawParent.toString() : null;
+      if (parentId && categoryMap.has(parentId)) {
+        const parent = categoryMap.get(parentId);
+        parent.subcategories.push(cat);
+        parent.children.push(cat);
+      }
+    });
+
+    res.status(200).json({ success: true, data: allCategories });
   } catch (err) {
     next(err);
   }
 };
+
+// Helper: build recursive category tree
+function buildCategoryHierarchy(categories) {
+  const categoryMap = new Map();
+  const roots = [];
+
+  for (const cat of categories) {
+    categoryMap.set(cat._id.toString(), {
+      ...cat,
+      subcategories: [],
+      children: [], // alias
+    });
+  }
+
+  for (const cat of categories) {
+    const node = categoryMap.get(cat._id.toString());
+    const rawParent = cat.parent?._id || cat.parent;
+    const parentId = rawParent ? rawParent.toString() : null;
+
+    if (parentId && categoryMap.has(parentId)) {
+      const parent = categoryMap.get(parentId);
+      parent.subcategories.push(node);
+      parent.children.push(node);
+    } else {
+      roots.push(node);
+    }
+  }
+
+  return roots;
+}
 
 // ---------------- GET /api/public/search/suggestions ----------------
 // Fast autocomplete suggestions for product names and category names
