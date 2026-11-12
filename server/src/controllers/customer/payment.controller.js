@@ -40,7 +40,10 @@ const waitForIdempotentOrder = async (customerId, idempotencyKey) => {
   for (let attempt = 0; attempt < 15; attempt++) {
     const existing = await Order.findOne({ customer: customerId, idempotencyKey });
     if (!existing) return null;
-    if (existing.payment?.razorpayOrderId || FINALIZED_PAYMENT_STATUSES.includes(existing.payment?.status)) {
+    if (
+      existing.payment?.razorpayOrderId ||
+      FINALIZED_PAYMENT_STATUSES.includes(existing.payment?.status)
+    ) {
       return existing;
     }
     await sleep(100);
@@ -60,10 +63,19 @@ const getCheckoutItems = async (customerId, checkoutItem) => {
 
   const items = [];
   for (const requested of ids) {
-    if (!mongoose.Types.ObjectId.isValid(requested.variant)) throw new ApiError(400, "Invalid product variant");
-    const variant = await ProductVariant.findById(requested.variant).populate("product", "name images");
-    if (!variant || !variant.isActive) throw new ApiError(400, "A product in your cart is no longer available");
-    if (!Number.isInteger(requested.quantity) || requested.quantity < 1 || requested.quantity > variant.stock) {
+    if (!mongoose.Types.ObjectId.isValid(requested.variant))
+      throw new ApiError(400, "Invalid product variant");
+    const variant = await ProductVariant.findById(requested.variant).populate(
+      "product",
+      "name images"
+    );
+    if (!variant || !variant.isActive)
+      throw new ApiError(400, "A product in your cart is no longer available");
+    if (
+      !Number.isInteger(requested.quantity) ||
+      requested.quantity < 1 ||
+      requested.quantity > variant.stock
+    ) {
       throw new ApiError(400, `${variant.product?.name || "Product"} has insufficient stock`);
     }
     const unitPrice = variant.salePrice ?? variant.price;
@@ -269,7 +281,10 @@ export const createPaymentOrder = async (req, res, next) => {
 
     const address = req.customerProfile.addresses.id(req.body.addressId);
     if (!address) throw new ApiError(400, "Delivery address not found");
-    const items = await getCheckoutItems(req.customerProfile._id, req.body.variantId ? req.body : null);
+    const items = await getCheckoutItems(
+      req.customerProfile._id,
+      req.body.variantId ? req.body : null
+    );
     const subtotal = items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
 
     let order = null;
@@ -323,7 +338,10 @@ export const createPaymentOrder = async (req, res, next) => {
     }
 
     try {
-      const razorpayOrder = await createRazorpayOrder(Math.round(order.total * 100), order.orderNumber);
+      const razorpayOrder = await createRazorpayOrder(
+        Math.round(order.total * 100),
+        order.orderNumber
+      );
       order.payment.razorpayOrderId = razorpayOrder.id;
       if (razorpayOrder.currency) order.payment.currency = razorpayOrder.currency;
       await order.save();
@@ -400,11 +418,18 @@ export const verifyPayment = async (req, res, next) => {
       .digest("hex");
     const expectedBuffer = Buffer.from(expected);
     const actualBuffer = Buffer.from(String(signature || ""));
-    if (expectedBuffer.length !== actualBuffer.length || !crypto.timingSafeEqual(expectedBuffer, actualBuffer)) {
+    if (
+      expectedBuffer.length !== actualBuffer.length ||
+      !crypto.timingSafeEqual(expectedBuffer, actualBuffer)
+    ) {
       throw new ApiError(400, "Invalid payment signature");
     }
 
-    const { gatewayState, paidAt } = await evaluateCapturedPayment(order, razorpayOrderId, paymentId);
+    const { gatewayState, paidAt } = await evaluateCapturedPayment(
+      order,
+      razorpayOrderId,
+      paymentId
+    );
     if (gatewayState === "mismatch") {
       throw new ApiError(400, "Payment details do not match order");
     }
@@ -434,8 +459,8 @@ export const verifyPayment = async (req, res, next) => {
       ...(completed.payment.status === "refunded"
         ? { message: "Item went out of stock after checkout; your payment has been refunded." }
         : completed.payment.status === "refund_pending"
-        ? { message: "Item went out of stock after checkout; refund initiation is in progress." }
-        : {}),
+          ? { message: "Item went out of stock after checkout; refund initiation is in progress." }
+          : {}),
     });
   } catch (error) {
     next(error);
@@ -469,7 +494,11 @@ export const reconcilePayment = async (req, res, next) => {
       });
     }
 
-    const { gatewayState, paidAt } = await evaluateCapturedPayment(order, razorpayOrderId, razorpayPaymentId);
+    const { gatewayState, paidAt } = await evaluateCapturedPayment(
+      order,
+      razorpayOrderId,
+      razorpayPaymentId
+    );
     if (gatewayState === "mismatch" || gatewayState === "failed") {
       if (gatewayState === "failed") {
         await Order.updateOne(
@@ -498,8 +527,8 @@ export const reconcilePayment = async (req, res, next) => {
       ...(completed.payment.status === "refunded"
         ? { message: "Item went out of stock after checkout; your payment has been refunded." }
         : completed.payment.status === "refund_pending"
-        ? { message: "Item went out of stock after checkout; refund initiation is in progress." }
-        : {}),
+          ? { message: "Item went out of stock after checkout; refund initiation is in progress." }
+          : {}),
     });
   } catch (error) {
     next(error);

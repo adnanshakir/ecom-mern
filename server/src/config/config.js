@@ -15,7 +15,11 @@ export const loadConfig = (envSource = process.env) => {
       val = envSource["FRONTEND"] || envSource["frontend"];
     }
     if ((val === undefined || val === null || val === "") && key === "TRUSTED_ORIGINS") {
-      val = envSource["TRUSTED"] || envSource["trusted"] || envSource["TRUSTED_ORIGIN"] || envSource["trusted_origin"];
+      val =
+        envSource["TRUSTED"] ||
+        envSource["trusted"] ||
+        envSource["TRUSTED_ORIGIN"] ||
+        envSource["trusted_origin"];
     }
     if (val === undefined || val === null) return defaultValue;
     return String(val).trim();
@@ -44,7 +48,9 @@ export const loadConfig = (envSource = process.env) => {
   const rawPort = getEnv("PORT", "5000");
   const port = Number(rawPort);
   if (!/^\d+$/.test(rawPort) || !Number.isInteger(port) || port < 1 || port > 65535) {
-    throw new Error(`Invalid PORT environment variable: "${rawPort}". Must be an integer between 1 and 65535.`);
+    throw new Error(
+      `Invalid PORT environment variable: "${rawPort}". Must be an integer between 1 and 65535.`
+    );
   }
 
   const validateProductionBetterAuthUrl = (url) => {

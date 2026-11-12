@@ -36,7 +36,12 @@ router.post("/items", authenticateCustomer, validate(addToCartSchema), addToCart
  * @desc    Set the quantity of a cart item directly (quantity <= 0 removes the item, clamps to stock)
  * @access  Private (authenticateCustomer)
  */
-router.put("/items/:variantId", authenticateCustomer, validate(updateCartItemSchema), updateCartItem);
+router.put(
+  "/items/:variantId",
+  authenticateCustomer,
+  validate(updateCartItemSchema),
+  updateCartItem
+);
 
 /**
  * @route   DELETE /api/customers/cart/items/:variantId

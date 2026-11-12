@@ -17,10 +17,7 @@ const findCustomerUsersByAuthIds = async (authIds) => {
   return mongoose.connection.db
     .collection("customerUser")
     .find({
-      $or: [
-        { id: { $in: authIds } },
-        { _id: { $in: [...authIds, ...objectIds] } },
-      ],
+      $or: [{ id: { $in: authIds } }, { _id: { $in: [...authIds, ...objectIds] } }],
     })
     .project({ id: 1, name: 1, email: 1, phoneNumber: 1 })
     .toArray();
@@ -48,7 +45,12 @@ const customerDetails = async (orders) => {
     return {
       ...value,
       customer: profile
-        ? { ...profile.toObject(), name: user?.name || "", email: user?.email || "", phone: user?.phoneNumber || "" }
+        ? {
+            ...profile.toObject(),
+            name: user?.name || "",
+            email: user?.email || "",
+            phone: user?.phoneNumber || "",
+          }
         : null,
     };
   });
@@ -71,15 +73,28 @@ export const getAdminOrders = async (req, res, next) => {
         .project({ id: 1, _id: 1 })
         .toArray();
       const matchingProfiles = await CustomerProfile.find({
-        authUserId: { $in: matchedUsers.flatMap((user) => [user.id, String(user._id)].filter(Boolean)) },
+        authUserId: {
+          $in: matchedUsers.flatMap((user) => [user.id, String(user._id)].filter(Boolean)),
+        },
       }).select("_id");
-      filter.$or = [{ orderNumber: regex }, { customer: { $in: matchingProfiles.map((profile) => profile._id) } }];
+      filter.$or = [
+        { orderNumber: regex },
+        { customer: { $in: matchingProfiles.map((profile) => profile._id) } },
+      ];
     }
     const [orders, total] = await Promise.all([
-      Order.find(filter).populate("customer").sort({ createdAt: -1 }).skip((Number(page) - 1) * safeLimit).limit(safeLimit),
+      Order.find(filter)
+        .populate("customer")
+        .sort({ createdAt: -1 })
+        .skip((Number(page) - 1) * safeLimit)
+        .limit(safeLimit),
       Order.countDocuments(filter),
     ]);
-    res.json({ success: true, data: await customerDetails(orders), pagination: { total, page: Number(page), pages: Math.ceil(total / safeLimit) } });
+    res.json({
+      success: true,
+      data: await customerDetails(orders),
+      pagination: { total, page: Number(page), pages: Math.ceil(total / safeLimit) },
+    });
   } catch (error) {
     next(error);
   }
@@ -99,8 +114,19 @@ export const getAdminOrderStats = async (req, res, next) => {
         ],
       }).select("total"),
     ]);
-    const pendingCount = await Order.countDocuments({ ...baseQuery(), orderStatus: { $in: ["placed", "packed", "shipped"] } });
-    res.json({ success: true, data: { newCount, todayCount: today.length, todayRevenue: today.reduce((sum, order) => sum + order.total, 0), pendingCount } });
+    const pendingCount = await Order.countDocuments({
+      ...baseQuery(),
+      orderStatus: { $in: ["placed", "packed", "shipped"] },
+    });
+    res.json({
+      success: true,
+      data: {
+        newCount,
+        todayCount: today.length,
+        todayRevenue: today.reduce((sum, order) => sum + order.total, 0),
+        pendingCount,
+      },
+    });
   } catch (error) {
     next(error);
   }
@@ -108,7 +134,8 @@ export const getAdminOrderStats = async (req, res, next) => {
 
 export const getAdminOrder = async (req, res, next) => {
   try {
-    if (!mongoose.Types.ObjectId.isValid(req.params.id)) throw new ApiError(400, "Invalid order id");
+    if (!mongoose.Types.ObjectId.isValid(req.params.id))
+      throw new ApiError(400, "Invalid order id");
     const order = await Order.findOne({ _id: req.params.id }).populate("customer");
     if (!order) throw new ApiError(404, "Order not found");
     res.json({ success: true, data: (await customerDetails([order]))[0] });
@@ -146,7 +173,9 @@ const reconcileExistingRefundsBeforeRetry = async (order, claimTimestamp) => {
     return { refundId: null, refundedAt: null };
   }
 
-  const refundedAt = activeRefund.created_at ? new Date(activeRefund.created_at * 1000) : new Date();
+  const refundedAt = activeRefund.created_at
+    ? new Date(activeRefund.created_at * 1000)
+    : new Date();
   if (activeRefund.status === "processed") {
     await recordRefundSuccess(order._id, activeRefund.id, refundedAt);
     return { refundId: activeRefund.id, refundedAt };
@@ -168,7 +197,9 @@ const reconcileExistingRefundsBeforeRetry = async (order, claimTimestamp) => {
 const cancelPaidOrderWithRefundAndRestock = async (orderId, userId) => {
   const now = new Date();
   const staleBefore = new Date(now.getTime() - REFUND_CLAIM_LEASE_MS);
-  const claimUpdate = { $set: { "payment.refundStatus": "pending", "payment.refundClaimedAt": now } };
+  const claimUpdate = {
+    $set: { "payment.refundStatus": "pending", "payment.refundClaimedAt": now },
+  };
 
   // Atomically claim a fresh order or reclaim a stale pending refund claim after lease expiration
   let order = await Order.findOneAndUpdate(
@@ -307,7 +338,10 @@ const cancelPaidOrderWithRefundAndRestock = async (orderId, userId) => {
     if (locked.stockDeducted !== false && !locked.stockRestored) {
       for (const item of locked.items) {
         if (!item.variantId) {
-          throw new ApiError(400, `Cannot restore stock for item ${item.name}: missing variant reference`);
+          throw new ApiError(
+            400,
+            `Cannot restore stock for item ${item.name}: missing variant reference`
+          );
         }
         await adjustStock({
           variantId: item.variantId,
@@ -342,7 +376,8 @@ const cancelPaidOrderWithRefundAndRestock = async (orderId, userId) => {
 
 export const updateAdminOrderStatus = async (req, res, next) => {
   try {
-    if (!mongoose.Types.ObjectId.isValid(req.params.id)) throw new ApiError(400, "Invalid order id");
+    if (!mongoose.Types.ObjectId.isValid(req.params.id))
+      throw new ApiError(400, "Invalid order id");
     if (!STATUSES.includes(req.body.orderStatus)) throw new ApiError(400, "Invalid order status");
 
     if (req.body.orderStatus === "cancelled") {
@@ -384,8 +419,13 @@ export const updateAdminOrderStatus = async (req, res, next) => {
 
 export const markAdminOrderSeen = async (req, res, next) => {
   try {
-    if (!mongoose.Types.ObjectId.isValid(req.params.id)) throw new ApiError(400, "Invalid order id");
-    const order = await Order.findOneAndUpdate({ _id: req.params.id }, { $set: { adminSeen: true } }, { new: true });
+    if (!mongoose.Types.ObjectId.isValid(req.params.id))
+      throw new ApiError(400, "Invalid order id");
+    const order = await Order.findOneAndUpdate(
+      { _id: req.params.id },
+      { $set: { adminSeen: true } },
+      { new: true }
+    );
     if (!order) throw new ApiError(404, "Order not found");
     res.json({ success: true, data: order });
   } catch (error) {

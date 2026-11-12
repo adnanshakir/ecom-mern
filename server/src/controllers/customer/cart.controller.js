@@ -13,9 +13,7 @@ const populateCart = (cartId) =>
 // ---------------- GET /api/customers/cart ----------------
 export const getCart = async (req, res, next) => {
   try {
-    let cart = await populateCart(
-      (await Cart.findOne({ customer: req.customerProfile._id }))?._id
-    );
+    let cart = await populateCart((await Cart.findOne({ customer: req.customerProfile._id }))?._id);
 
     if (!cart) {
       // find-or-create: return an empty cart instead of 404
@@ -42,9 +40,7 @@ export const addToCart = async (req, res, next) => {
       cart = await Cart.create({ customer: req.customerProfile._id, items: [] });
     }
 
-    const existingItem = cart.items.find(
-      (item) => item.variant.toString() === variantId
-    );
+    const existingItem = cart.items.find((item) => item.variant.toString() === variantId);
 
     let message = null;
 
@@ -89,9 +85,7 @@ export const updateCartItem = async (req, res, next) => {
     const cart = await Cart.findOne({ customer: req.customerProfile._id });
     if (!cart) throw new ApiError(404, "Cart not found");
 
-    const itemIndex = cart.items.findIndex(
-      (item) => item.variant.toString() === variantId
-    );
+    const itemIndex = cart.items.findIndex((item) => item.variant.toString() === variantId);
     if (itemIndex === -1) throw new ApiError(404, "Item not in cart");
 
     // If quantity <= 0, remove the item instead of setting zero/negative
@@ -136,9 +130,7 @@ export const removeCartItem = async (req, res, next) => {
     const cart = await Cart.findOne({ customer: req.customerProfile._id });
     if (!cart) throw new ApiError(404, "Cart not found");
 
-    cart.items = cart.items.filter(
-      (item) => item.variant.toString() !== variantId
-    );
+    cart.items = cart.items.filter((item) => item.variant.toString() !== variantId);
     await cart.save();
 
     const populated = await populateCart(cart._id);

@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { objectId } from "../shared.js";
 
-
 const imageSchema = z.object({
   url: z.string().url("Invalid image URL"),
   fileId: z.string().nullable().optional(),
@@ -160,10 +159,9 @@ const baseProductSchema = z.object({
     .string()
     .trim()
     .min(1, "Product description is required")
-    .refine(
-      (val) => val.trim().split(/\s+/).filter(Boolean).length <= 500,
-      { message: "Description cannot exceed 500 words" }
-    ),
+    .refine((val) => val.trim().split(/\s+/).filter(Boolean).length <= 500, {
+      message: "Description cannot exceed 500 words",
+    }),
 
   keyFeatures: z.string().trim().optional(),
 
