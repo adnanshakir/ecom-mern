@@ -49,6 +49,14 @@ export function ProfileHeader({
           <Package className="size-4 shrink-0" />
           <span>My Orders</span>
         </Link>
+        {isAuthenticated && (
+          <Link
+            href="/account/delete"
+            className={buttonVariants({ variant: "ghost", size: "sm" })}
+          >
+            Delete account
+          </Link>
+        )}
 
         {isAuthenticated && (
           <Button

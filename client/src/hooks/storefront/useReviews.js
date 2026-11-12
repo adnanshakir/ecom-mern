@@ -100,6 +100,9 @@ export function useReviews(productId, isAuthenticated = false) {
 
     return () => {
       cancelled = true;
+      // Reset so that React Strict Mode re-mount (or genuine re-mount)
+      // will re-run loadAll instead of bailing on the fetchKey check.
+      lastFetchKey.current = null;
     };
   }, [productId, fetchReviews, fetchSummary]);
 

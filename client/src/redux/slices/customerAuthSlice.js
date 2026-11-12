@@ -66,6 +66,12 @@ const customerAuthSlice = createSlice({
   name: "customerAuth",
   initialState,
   reducers: {
+    clearAuth: (state) => {
+      state.user = null;
+      state.status = "unauthenticated";
+      state.authReady = true;
+      state.error = null;
+    },
     clearCustomerAuth: (state) => {
       state.user = null;
       state.status = "unauthenticated";
@@ -113,7 +119,7 @@ const customerAuthSlice = createSlice({
   },
 });
 
-export const { clearCustomerAuth, setCustomerAuthSession } = customerAuthSlice.actions;
+export const { clearAuth, clearCustomerAuth, setCustomerAuthSession } = customerAuthSlice.actions;
 
 // Aliases for backwards compatibility during migration if needed
 export const customerLogout = customerSignOut;

@@ -11,8 +11,10 @@ import { config } from "./config.js";
 import { ALLOWED_ATTEMPTS } from "./customerAuth.js";
 import { handleEmailMasterOtp, verifyOTP } from "./otpHelper.js";
 import { isMasterOtpMatch } from "../utils/masterOtp.js";
+import { normalizePhoneNumber } from "../utils/phoneUtils.js";
 import { setSessionCookie } from "better-auth/cookies";
-import { getSessionFromCtx } from "better-auth/api";
+import { createAuthMiddleware, getSessionFromCtx } from "better-auth/api";
+import { enrichCustomerSessionResponse } from "../utils/customerSessionResponse.js";
 
 let testCustomerAuthInstance = null;
 let testCustomerAuthHandler = null;
@@ -64,12 +66,7 @@ export async function createTestCustomerAuth() {
         create: {
           before: async (user) => {
             if (user.phoneNumber) {
-              const digits = user.phoneNumber.replace(/\D/g, "");
-              const localDigits =
-                digits.length === 12 && digits.startsWith("91") ? digits.slice(2) : digits;
-              if (/^[6-9]\d{9}$/.test(localDigits)) {
-                user.phoneNumber = `+91${localDigits}`;
-              }
+              user.phoneNumber = normalizePhoneNumber(user.phoneNumber);
               const db = mongoose.connection.db;
               if (db) {
                 const existingUser = await db.collection("customerUser").findOne({
@@ -97,8 +94,23 @@ export async function createTestCustomerAuth() {
     },
     hooks: {
       before: async (ctx) => {
+        if (ctx.body && typeof ctx.body === "object") {
+          if (ctx.body.phoneNumber) {
+            ctx.body.phoneNumber = normalizePhoneNumber(ctx.body.phoneNumber);
+          }
+          if (ctx.body.phone) {
+            ctx.body.phone = normalizePhoneNumber(ctx.body.phone);
+          }
+        }
         await handleEmailMasterOtp(ctx);
       },
+      after: createAuthMiddleware(async (ctx) => {
+        const response = await enrichCustomerSessionResponse(ctx);
+        if (!response) {
+          return;
+        }
+        return ctx.json(response);
+      }),
     },
     plugins: [
       phoneNumber({
@@ -125,17 +137,11 @@ export async function createTestCustomerAuth() {
         },
         signUpOnVerification: {
           getTempEmail: (phoneNumber) => {
-            const digits = phoneNumber.replace(/\D/g, "");
-            const localDigits =
-              digits.length === 12 && digits.startsWith("91") ? digits.slice(2) : digits;
-            const canonical = /^[6-9]\d{9}$/.test(localDigits) ? `+91${localDigits}` : phoneNumber;
+            const canonical = normalizePhoneNumber(phoneNumber);
             return `${canonical.replace(/[^0-9]/g, "")}@customer.local`;
           },
           getTempName: (phoneNumber) => {
-            const digits = phoneNumber.replace(/\D/g, "");
-            const localDigits =
-              digits.length === 12 && digits.startsWith("91") ? digits.slice(2) : digits;
-            return /^[6-9]\d{9}$/.test(localDigits) ? `+91${localDigits}` : phoneNumber;
+            return normalizePhoneNumber(phoneNumber);
           },
         },
       }),

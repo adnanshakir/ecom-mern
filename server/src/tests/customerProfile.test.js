@@ -57,11 +57,38 @@ describe("Customer Profile Single-Route API (/api/customers/profile)", () => {
     expect(Array.isArray(res.body.data.addresses)).toBe(true);
   });
 
-  it("PUT /api/customers/profile updates name and address in a single request", async () => {
+  it("GET /api/v1/customers/auth/get-session includes addresses without email verification state", async () => {
+    const { cookies } = await loginWithPhone("+919876543210");
+
+    await request(app)
+      .put("/api/customers/profile")
+      .set("Cookie", cookies)
+      .send({
+        address: {
+          line1: "123 Tech Park",
+          city: "Bengaluru",
+          state: "Karnataka",
+          postalCode: "560001",
+          country: "India",
+        },
+      });
+
+    const sessionRes = await request(app)
+      .get("/api/v1/customers/auth/get-session")
+      .set("Cookie", cookies);
+
+    expect(sessionRes.status).toBe(200);
+    expect(sessionRes.body.user.addresses).toHaveLength(1);
+    expect(sessionRes.body.user.addresses[0].line1).toBe("123 Tech Park");
+    expect(sessionRes.body.user).not.toHaveProperty("emailVerified");
+  });
+
+  it("PUT /api/customers/profile updates name, email, and address in a single request", async () => {
     const { cookies } = await loginWithPhone("+919876543210");
 
     const updatePayload = {
       name: "Adnan Shakir",
+      email: "adnan@example.com",
       address: {
         fullName: "Adnan Shakir",
         line1: "123 Tech Park",
@@ -80,6 +107,7 @@ describe("Customer Profile Single-Route API (/api/customers/profile)", () => {
     expect(updateRes.status).toBe(200);
     expect(updateRes.body.success).toBe(true);
     expect(updateRes.body.data.name).toBe("Adnan Shakir");
+    expect(updateRes.body.data.email).toBe("adnan@example.com");
     expect(updateRes.body.data.addresses.length).toBe(1);
     expect(updateRes.body.data.addresses[0].fullName).toBe("Adnan Shakir");
     expect(updateRes.body.data.addresses[0].line1).toBe("123 Tech Park");
@@ -90,21 +118,63 @@ describe("Customer Profile Single-Route API (/api/customers/profile)", () => {
 
     expect(getRes.status).toBe(200);
     expect(getRes.body.data.name).toBe("Adnan Shakir");
+    expect(getRes.body.data.email).toBe("adnan@example.com");
     expect(getRes.body.data.addresses[0].line1).toBe("123 Tech Park");
   });
 
-  it("PUT /api/customers/profile rejects direct unverified email updates", async () => {
+  it("PUT /api/customers/profile rejects invalid email format", async () => {
     const { cookies } = await loginWithPhone("+919876543210");
 
     const updateRes = await request(app)
       .put("/api/customers/profile")
       .set("Cookie", cookies)
-      .send({ email: "adnan@example.com" });
+      .send({ email: "invalid-email" });
 
     expect(updateRes.status).toBe(400);
     expect(updateRes.body.success).toBe(false);
-    expect(updateRes.body.message).toContain(
-      "Email updates require the verified email-change flow"
-    );
+    expect(updateRes.body.message).toContain("Please enter a valid email address");
+  });
+
+  it("PUT /api/customers/profile replaces and deletes addresses without a version", async () => {
+    const { cookies } = await loginWithPhone("+919876543210");
+    const address = {
+      label: "Office",
+      line1: "123 Tech Park",
+      city: "Bengaluru",
+      state: "Karnataka",
+      postalCode: "560001",
+      country: "India",
+    };
+
+    const saveRes = await request(app)
+      .put("/api/customers/profile")
+      .set("Cookie", cookies)
+      .send({ addresses: [address] });
+
+    expect(saveRes.status).toBe(200);
+    const savedProfile = await request(app).get("/api/customers/profile").set("Cookie", cookies);
+    expect(savedProfile.body.data.addresses).toHaveLength(1);
+    expect(savedProfile.body.data.addresses[0].line1).toBe(address.line1);
+
+    const deleteRes = await request(app)
+      .put("/api/customers/profile")
+      .set("Cookie", cookies)
+      .send({ addresses: [] });
+
+    expect(deleteRes.status).toBe(200);
+    const deletedProfile = await request(app).get("/api/customers/profile").set("Cookie", cookies);
+    expect(deletedProfile.body.data.addresses).toEqual([]);
+  });
+
+  it("PUT /api/customers/profile rejects invalid address entries", async () => {
+    const { cookies } = await loginWithPhone("+919876543210");
+
+    const res = await request(app)
+      .put("/api/customers/profile")
+      .set("Cookie", cookies)
+      .send({ addresses: [null] });
+
+    expect(res.status).toBe(400);
+    expect(res.body.message).toContain("Each address must be an object");
   });
 });

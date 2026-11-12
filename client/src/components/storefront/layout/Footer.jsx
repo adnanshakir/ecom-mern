@@ -22,8 +22,8 @@ const FOOTER_SECTIONS = [
     title: "Company",
     links: [
       { label: "About Us", href: "/about" },
-      { label: "Terms & Conditions", href: "/terms" },
       { label: "Privacy Policy", href: "/privacy" },
+      { label: "Delete account", href: "/account/delete" },
     ],
   },
 ];

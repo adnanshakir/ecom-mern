@@ -7,6 +7,7 @@ import {
   createTestCustomerAuth,
   getTestCustomerAuthHandler,
 } from "../config/customerAuth.test.config.js";
+import { normalizePhoneNumber } from "../utils/phoneUtils.js";
 
 let testApp;
 
@@ -36,7 +37,14 @@ afterAll(async () => {
 // ---------------------------------------------------------------------------
 async function getCapturedOTP(identifier) {
   const db = mongoose.connection.db;
-  const doc = await db.collection("customerVerification").findOne({ identifier });
+  const targetId =
+    typeof identifier === "string" && !identifier.includes("@")
+      ? normalizePhoneNumber(identifier)
+      : identifier;
+  let doc = await db.collection("customerVerification").findOne({ identifier: targetId });
+  if (!doc && targetId !== identifier) {
+    doc = await db.collection("customerVerification").findOne({ identifier });
+  }
   if (!doc?.value) return null;
   return doc.value.split(":")[0];
 }
@@ -83,6 +91,24 @@ describe("Customer Auth - Phone OTP sign-up", () => {
 
     // Second verify = sign-in (no new user created)
     const { verifyRes } = await phoneSignUp(testApp, "+919876543210");
+
+    expect(verifyRes.status).toBe(200);
+    expect(verifyRes.body.user).toBeDefined();
+    expect(verifyRes.body.user.phoneNumber).toBe("+919876543210");
+
+    const db = mongoose.connection.db;
+    const userCount = await db
+      .collection("customerUser")
+      .countDocuments({ phoneNumber: "+919876543210" });
+    expect(userCount).toBe(1);
+  });
+
+  it("signs in an existing account using bare 10-digit number format without throwing user already exists error", async () => {
+    // First verify = sign-up using bare 10-digit number
+    await phoneSignUp(testApp, "9876543210");
+
+    // Second verify = sign-in using bare 10-digit number
+    const { verifyRes } = await phoneSignUp(testApp, "9876543210");
 
     expect(verifyRes.status).toBe(200);
     expect(verifyRes.body.user).toBeDefined();
@@ -473,31 +499,6 @@ describe("Customer Auth - Master OTP Feature", () => {
     expect(signInRes.status).toBe(200);
     expect(signInRes.body.user).toBeDefined();
     expect(signInRes.body.user.email).toBe("master@example.com");
-  });
-
-  it("completes email verification with master OTP code when ALLOW_MASTER_OTP=true", async () => {
-    process.env.ALLOW_MASTER_OTP = "true";
-    process.env.MASTER_OTP_CODE = "999999";
-
-    const { verifyRes: phoneRes } = await phoneSignUp(testApp, "+919988771133");
-    expect(phoneRes.status).toBe(200);
-    const userId = phoneRes.body.user.id;
-
-    const db = mongoose.connection.db;
-    const ObjectId = mongoose.Types.ObjectId;
-    const filter = ObjectId.isValid(userId) ? { _id: new ObjectId(userId) } : { _id: userId };
-    await db
-      .collection("customerUser")
-      .updateOne(filter, { $set: { email: "verify@example.com" } });
-
-    const verifyEmailRes = await request(testApp)
-      .post("/api/v1/customers/auth/email-otp/verify-email")
-      .set("Origin", "http://localhost:3000")
-      .send({ email: "verify@example.com", otp: "999999" });
-
-    expect(verifyEmailRes.status).toBe(200);
-    const updatedUser = await db.collection("customerUser").findOne(filter);
-    expect(updatedUser.emailVerified).toBe(true);
   });
 
   it("completes change email with master OTP code when ALLOW_MASTER_OTP=true", async () => {

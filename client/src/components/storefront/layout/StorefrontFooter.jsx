@@ -10,6 +10,7 @@ const HIDDEN_FOOTER_PATHS = [
   "/account/orders",
   "/profile",
   "/orders",
+  "/account/delete",
 ];
 
 export function StorefrontFooter() {

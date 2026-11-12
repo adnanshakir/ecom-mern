@@ -1,0 +1,2390 @@
+{
+  "info": {
+    "_postman_id": "customer-auth-collection",
+    "name": "Customer Auth",
+    "description": "# Customer Auth Postman Collection\n\nThis collection covers all customer authentication, session management, customer profile, cart, wishlist, payments, orders, reviews, and public storefront endpoints.\n\n## Auth Model & Features\n- **Sign-up**: Phone number + OTP only (creates account on verification if phone doesn't exist).\n- **Sign-in**: Phone + OTP *or* Email + OTP.\n- **Customer Profile**: Single-route endpoints GET and PUT `/api/customers/profile` for profile details & multiple saved addresses.\n- **Email OTP**: Supports Sign-In (`type: sign-in`), Email Verification (`type: email-verification`), and Change Email (`type: change-email`).\n- **Cart Management**: GET, POST items, PUT item quantity, DELETE single item, DELETE clear cart.\n- **Wishlist Management**: GET, POST items, DELETE item.\n- **Payments & Orders**: Razorpay checkout integration — POST `/api/customers/payments/orders` (cart or Buy Now order creation), GET `/api/customers/payments/orders` (order history), POST `/api/customers/payments/verify` (signature verification & inventory update), POST `/api/customers/payments/reconcile` (recover browser-interrupted checkout).\n- **Customer Reviews & Images**: Upload review images, get my review, submit, update, and delete product reviews.\n- **Public Endpoints**: Search suggestions, Products, Product by Slug, Categories, Banners, Product Reviews, Review Summary.\n\n## How to use this collection\n1. Select the **Customer Auth (Local)** environment.\n2. Run folders in order — session cookies are managed automatically by Postman's cookie jar.\n3. **OTP codes** appear in server console log (`[DEV OTP LOG - PHONE SMS]` / `[DEV OTP LOG - EMAIL]`). Copy the 6-digit code into `otpCode` env var before running verify steps.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Customer Auth (customerAuth.js)",
+      "description": "Endpoints powered by Better Auth for customer phone OTP authentication, session management, and sign-out.",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const origin = pm.environment.get('customerOrigin') || 'http://localhost:3000';",
+              "pm.request.headers.upsert({ key: 'Origin', value: origin });"
+            ]
+          }
+        }
+      ],
+      "item": [
+        {
+          "name": "1. Send Phone OTP",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response confirms code sent', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('message');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phoneNumber\": \"{{customerPhone}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/customers/auth/phone-number/send-otp",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers",
+                "auth",
+                "phone-number",
+                "send-otp"
+              ]
+            },
+            "description": "Sends an OTP to the given phone number.\n\nLook for `[DEV OTP LOG - PHONE SMS]` in the server console log."
+          }
+        },
+        {
+          "name": "2. Verify Phone OTP (sign-up / sign-in)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response contains user with phoneNumber', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('user');",
+                  "    pm.expect(jsonData.user).to.have.property('phoneNumber');",
+                  "    const userId = jsonData.user.id || jsonData.user._id;",
+                  "    pm.expect(userId).to.be.a('string').that.is.not.empty;",
+                  "    pm.environment.set('lastUserId', userId);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phoneNumber\": \"{{customerPhone}}\",\n  \"code\": \"{{otpCode}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/customers/auth/phone-number/verify",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers",
+                "auth",
+                "phone-number",
+                "verify"
+              ]
+            },
+            "description": "Verifies phone OTP and creates customer account (if new) or signs in (if existing)."
+          }
+        },
+        {
+          "name": "2. Verify OTP (sign-in)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response contains user with matching ID', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('user');",
+                  "    const userId = jsonData.user.id || jsonData.user._id;",
+                  "    pm.expect(userId).to.be.a('string').that.is.not.empty;",
+                  "    const lastUserId = pm.environment.get('lastUserId');",
+                  "    if (lastUserId) {",
+                  "        pm.expect(userId).to.equal(lastUserId);",
+                  "    } else {",
+                  "        pm.environment.set('lastUserId', userId);",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phoneNumber\": \"{{customerPhone}}\",\n  \"code\": \"{{otpCode}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/customers/auth/phone-number/verify",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers",
+                "auth",
+                "phone-number",
+                "verify"
+              ]
+            },
+            "description": "Verifies the OTP and signs in."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Sign-In (Email OTP)",
+      "description": "Signs in using an email address associated with an account.",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const origin = pm.environment.get('customerOrigin') || 'http://localhost:3000';",
+              "pm.request.headers.upsert({ key: 'Origin', value: origin });"
+            ]
+          }
+        }
+      ],
+      "item": [
+        {
+          "name": "1. Send Email OTP (sign-in)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response confirms OTP sent', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('message');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{customerEmail}}\",\n  \"type\": \"sign-in\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/customers/auth/email-otp/send-verification-otp",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers",
+                "auth",
+                "email-otp",
+                "send-verification-otp"
+              ]
+            },
+            "description": "Sends a sign-in OTP to the given email address. Check `[DEV OTP LOG - EMAIL]` in server logs."
+          }
+        },
+        {
+          "name": "2. Sign In with Email OTP",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response contains user', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('user');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{customerEmail}}\",\n  \"otp\": \"{{otpCode}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/customers/auth/sign-in/email-otp",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers",
+                "auth",
+                "sign-in",
+                "email-otp"
+              ]
+            },
+            "description": "Verifies the email OTP and signs in."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Customer Profile & Account Management",
+      "description": "Endpoints for retrieving customer profile details, updating profile info (e.g. name), email verification, changing email, and signing out.\n\n**Requires an active session**.",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const origin = pm.environment.get('customerOrigin') || 'http://localhost:3000';",
+              "pm.request.headers.upsert({ key: 'Origin', value: origin });"
+            ]
+          }
+        }
+      ],
+      "item": [
+        {
+          "name": "1. Get Single Customer Profile",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response contains customer profile data', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.be.true;",
+                  "    pm.expect(jsonData.data).to.have.property('phoneNumber');",
+                  "    pm.expect(jsonData.data).to.have.property('addresses');",
+                  "    if (jsonData.data.addresses && jsonData.data.addresses.length > 0) {",
+                  "        pm.environment.set('addressId', jsonData.data.addresses[0]._id);",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "profile"
+              ]
+            },
+            "description": "Fetches current customer profile and address details."
+          }
+        },
+        {
+          "name": "2. Update Customer Profile & Addresses",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Profile updated successfully', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.be.true;",
+                  "    pm.expect(jsonData.data).to.have.property('name', 'Updated Customer Name');",
+                  "    if (jsonData.data.addresses && jsonData.data.addresses.length > 0) {",
+                  "        pm.environment.set('addressId', jsonData.data.addresses[0]._id);",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Customer Name\",\n  \"address\": {\n    \"line1\": \"123 Main St\",\n    \"city\": \"Bengaluru\",\n    \"state\": \"Karnataka\",\n    \"postalCode\": \"560001\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "profile"
+              ]
+            },
+            "description": "Updates customer profile name and delivery address. Direct email updates require email-change OTP flow."
+          }
+        },
+        {
+          "name": "3. Save Multiple Addresses",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Addresses were saved', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.be.true;",
+                  "    pm.expect(jsonData.data.addresses).to.be.an('array');",
+                  "    if (jsonData.data.addresses.length > 0) {",
+                  "        pm.environment.set('addressId', jsonData.data.addresses[0]._id);",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"addresses\": [\n    {\n      \"_id\": \"{{addressId}}\",\n      \"label\": \"Home\",\n      \"line1\": \"123 Main St\",\n      \"line2\": \"\",\n      \"city\": \"Bengaluru\",\n      \"state\": \"Karnataka\",\n      \"postalCode\": \"560001\",\n      \"country\": \"India\",\n      \"phone\": \"{{customerPhone}}\",\n      \"isDefault\": true\n    },\n    {\n      \"label\": \"Office\",\n      \"line1\": \"456 Business Park\",\n      \"line2\": \"\",\n      \"city\": \"Bengaluru\",\n      \"state\": \"Karnataka\",\n      \"postalCode\": \"560002\",\n      \"country\": \"India\",\n      \"phone\": \"{{customerPhone}}\",\n      \"isDefault\": false\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "profile"
+              ]
+            },
+            "description": "Adds or edits multiple saved addresses. Include an existing _id to edit and omit _id to add. Send the complete addresses array; duplicate addresses are normalized by the API and only one address can be default."
+          }
+        },
+        {
+          "name": "4. Get Customer Session (Better Auth)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response contains valid session and user profile', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('user');",
+                  "    pm.expect(jsonData).to.have.property('session');",
+                  "    pm.expect(jsonData.user).to.have.property('id');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/customers/auth/get-session",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers",
+                "auth",
+                "get-session"
+              ]
+            },
+            "description": "Fetches currently authenticated customer's session and user details. Requires active session cookie."
+          }
+        },
+        {
+          "name": "4. Sign Out",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/customers/auth/sign-out",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers",
+                "auth",
+                "sign-out"
+              ]
+            },
+            "description": "Invalidates customer's active session cookie."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Customer Profile (profile.routes.js)",
+      "description": "Single-route endpoints GET and PUT /api/customers/profile for fetching and updating customer profile details (name, email, address, addresses).",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const origin = pm.environment.get('customerOrigin') || 'http://localhost:3000';",
+              "pm.request.headers.upsert({ key: 'Origin', value: origin });"
+            ]
+          }
+        }
+      ],
+      "item": [
+        {
+          "name": "1. Get Customer Profile",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response contains customer profile data', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.be.true;",
+                  "    pm.expect(jsonData.data).to.have.property('phoneNumber');",
+                  "    pm.expect(jsonData.data).to.have.property('addresses');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "profile"
+              ]
+            },
+            "description": "Fetches current customer profile and address details."
+          }
+        },
+        {
+          "name": "2. Update Customer Profile (name, email, address)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Profile updated successfully', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.be.true;",
+                  "    pm.expect(jsonData.data).to.have.property('name', 'Updated Customer Name');",
+                  "    pm.expect(jsonData.data).to.have.property('email', 'updated-customer@example.com');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Customer Name\",\n  \"email\": \"updated-customer@example.com\",\n  \"address\": {\n    \"line1\": \"123 Main St\",\n    \"city\": \"Bengaluru\",\n    \"state\": \"Karnataka\",\n    \"postalCode\": \"560001\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "profile"
+              ]
+            },
+            "description": "Updates customer profile details: name, email, address, or addresses array in a single request."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Cart (cart.routes.js)",
+      "description": "Endpoints for authenticated customer cart management (GET, add item, update quantity, remove item, clear cart).",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const origin = pm.environment.get('customerOrigin') || 'http://localhost:3000';",
+              "pm.request.headers.upsert({ key: 'Origin', value: origin });"
+            ]
+          }
+        }
+      ],
+      "item": [
+        {
+          "name": "1. Get Cart",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response returns cart object', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.be.true;",
+                  "    pm.expect(jsonData).to.have.property('data');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/cart",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "cart"
+              ]
+            },
+            "description": "Gets (or creates) the authenticated customer's cart."
+          }
+        },
+        {
+          "name": "2. Add Item to Cart",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Cart item added successfully', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.be.true;",
+                  "    pm.expect(jsonData.data).to.have.property('items');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"variantId\": \"{{variantId}}\",\n  \"quantity\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/cart/items",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "cart",
+                "items"
+              ]
+            },
+            "description": "Adds a product variant to the customer's cart."
+          }
+        },
+        {
+          "name": "3. Update Cart Item Quantity",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Cart item updated successfully', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.be.true;",
+                  "    pm.expect(jsonData.data).to.have.property('items');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"quantity\": 2\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/cart/items/{{variantId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "cart",
+                "items",
+                "{{variantId}}"
+              ]
+            },
+            "description": "Sets the quantity of a cart item directly (quantity <= 0 removes item, clamps to stock)."
+          }
+        },
+        {
+          "name": "4. Remove Cart Item",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Cart item removed successfully', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.be.true;",
+                  "    pm.expect(jsonData.data).to.have.property('items');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/cart/items/{{variantId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "cart",
+                "items",
+                "{{variantId}}"
+              ]
+            },
+            "description": "Removes a single line item from the cart."
+          }
+        },
+        {
+          "name": "5. Clear Entire Cart",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Cart cleared successfully', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.be.true;",
+                  "    pm.expect(jsonData.data.items).to.be.an('array').that.is.empty;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/cart",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "cart"
+              ]
+            },
+            "description": "Empties the entire cart for the authenticated customer."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Wishlist (wishlist.routes.js)",
+      "description": "Endpoints for authenticated customer wishlist management (GET, add product, remove product).",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const origin = pm.environment.get('customerOrigin') || 'http://localhost:3000';",
+              "pm.request.headers.upsert({ key: 'Origin', value: origin });"
+            ]
+          }
+        }
+      ],
+      "item": [
+        {
+          "name": "1. Get Wishlist",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response returns wishlist object', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.be.true;",
+                  "    pm.expect(jsonData).to.have.property('data');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/wishlist",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "wishlist"
+              ]
+            },
+            "description": "Gets (or creates) the authenticated customer's wishlist."
+          }
+        },
+        {
+          "name": "2. Add Item to Wishlist",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Wishlist item added successfully', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.be.true;",
+                  "    pm.expect(jsonData.data).to.have.property('products');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": \"{{productId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/wishlist/items",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "wishlist",
+                "items"
+              ]
+            },
+            "description": "Adds a product to the customer's wishlist."
+          }
+        },
+        {
+          "name": "3. Remove Item from Wishlist",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Wishlist item removed successfully', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.be.true;",
+                  "    pm.expect(jsonData.data).to.have.property('products');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/wishlist/items/{{productId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "wishlist",
+                "items",
+                "{{productId}}"
+              ]
+            },
+            "description": "Removes a product from the customer's wishlist."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reviews (review.routes.js)",
+      "description": "Endpoints for authenticated customer review operations (GET my review, create review, update review, delete review).",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const origin = pm.environment.get('customerOrigin') || 'http://localhost:3000';",
+              "pm.request.headers.upsert({ key: 'Origin', value: origin });"
+            ]
+          }
+        }
+      ],
+      "item": [
+        {
+          "name": "1. Get My Review",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response returns success', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.be.true;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/reviews/mine/{{productId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "reviews",
+                "mine",
+                "{{productId}}"
+              ]
+            },
+            "description": "Gets the authenticated customer's review for a product (returns null data if no review exists)."
+          }
+        },
+        {
+          "name": "2. Create Review",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Review created successfully', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.be.true;",
+                  "    pm.expect(jsonData.data).to.have.property('_id');",
+                  "    pm.environment.set('reviewId', jsonData.data._id);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rating\": 5,\n  \"title\": \"Great product!\",\n  \"body\": \"Really enjoyed using this product. Excellent quality and fast delivery.\",\n  \"images\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/reviews/{{productId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "reviews",
+                "{{productId}}"
+              ]
+            },
+            "description": "Creates a review for a product (one per customer per product). Auto-sets `reviewId` env var."
+          }
+        },
+        {
+          "name": "3. Update Review",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Review updated successfully', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.be.true;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rating\": 5,\n  \"title\": \"Updated: Amazing product!\",\n  \"body\": \"Updated my review — even better than I initially thought.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/reviews/{{reviewId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "reviews",
+                "{{reviewId}}"
+              ]
+            },
+            "description": "Updates the authenticated customer's own review. Uses `reviewId` set by Create Review."
+          }
+        },
+        {
+          "name": "4. Delete Review",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Review deleted successfully', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.be.true;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/reviews/{{reviewId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "reviews",
+                "{{reviewId}}"
+              ]
+            },
+            "description": "Deletes the authenticated customer's own review."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Customer Images (customerImage.routes.js)",
+      "description": "Endpoints for uploading customer images (used in reviews, profile avatar, etc.).",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const origin = pm.environment.get('customerOrigin') || 'http://localhost:3000';",
+              "pm.request.headers.upsert({ key: 'Origin', value: origin });"
+            ]
+          }
+        }
+      ],
+      "item": [
+        {
+          "name": "1. Upload Images",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Upload returns image URLs', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.be.true;",
+                  "    pm.expect(jsonData.data).to.be.an('array').that.is.not.empty;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "image",
+                  "type": "file",
+                  "src": "",
+                  "description": "Select up to 4 image files to upload."
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/images/upload",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "images",
+                "upload"
+              ]
+            },
+            "description": "Uploads images for customer use (reviews, etc.) — max 4 files. Use form-data with key `image`."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Public Storefront (public.routes.js)",
+      "description": "Public endpoints for store browsing and public product reviews (no authentication required).",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const origin = pm.environment.get('customerOrigin') || 'http://localhost:3000';",
+              "pm.request.headers.upsert({ key: 'Origin', value: origin });"
+            ]
+          }
+        }
+      ],
+      "item": [
+        {
+          "name": "1. Search Suggestions",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response returns success and data object', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.be.true;",
+                  "    pm.expect(jsonData.data).to.have.property('products');",
+                  "    pm.expect(jsonData.data).to.have.property('categories');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/public/search/suggestions?q=phone",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "public",
+                "search",
+                "suggestions"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "phone"
+                }
+              ]
+            },
+            "description": "Gets search auto-complete / suggestions."
+          }
+        },
+        {
+          "name": "2. Get Public Products",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response returns products', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.be.true;",
+                  "    pm.expect(jsonData.data).to.be.an('array');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/public/products",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "public",
+                "products"
+              ]
+            },
+            "description": "Fetches active published products for the storefront."
+          }
+        },
+        {
+          "name": "3. Get Product By Slug",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response returns product detail', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.be.true;",
+                  "    pm.expect(jsonData.data).to.have.property('slug');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/public/products/{{productSlug}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "public",
+                "products",
+                "{{productSlug}}"
+              ]
+            },
+            "description": "Gets detailed public product information by slug."
+          }
+        },
+        {
+          "name": "4. Get Public Categories",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response returns categories list', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.be.true;",
+                  "    pm.expect(jsonData.data).to.be.an('array');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/public/categories",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "public",
+                "categories"
+              ]
+            },
+            "description": "Gets active categories tree for storefront navigation."
+          }
+        },
+        {
+          "name": "5. Get Public Banners",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response returns banners list', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.be.true;",
+                  "    pm.expect(jsonData.data).to.be.an('array');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/public/banners",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "public",
+                "banners"
+              ]
+            },
+            "description": "Gets published promotional banners for the storefront homepage."
+          }
+        },
+        {
+          "name": "6. Get Product Reviews",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response returns reviews list and pagination', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.be.true;",
+                  "    pm.expect(jsonData.data).to.be.an('array');",
+                  "    pm.expect(jsonData).to.have.property('pagination');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/public/products/{{productId}}/reviews?page=1&limit=10&sort=most_recent",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "public",
+                "products",
+                "{{productId}}",
+                "reviews"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "sort",
+                  "value": "most_recent"
+                }
+              ]
+            },
+            "description": "Gets paginated public product reviews (sort options: most_recent, highest_rated, lowest_rated). No authentication required."
+          }
+        },
+        {
+          "name": "7. Get Product Review Summary",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response returns review summary statistics', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.be.true;",
+                  "    pm.expect(jsonData.data).to.have.property('averageRating');",
+                  "    pm.expect(jsonData.data).to.have.property('totalReviews');",
+                  "    pm.expect(jsonData.data).to.have.property('distribution');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/public/products/{{productId}}/reviews/summary",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "public",
+                "products",
+                "{{productId}}",
+                "reviews",
+                "summary"
+              ]
+            },
+            "description": "Gets public aggregated review summary (average rating, total count, star rating breakdown) for a product. No authentication required."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Payments & Orders",
+      "description": "Endpoints for Razorpay order creation, payment verification, and order history.\n\n**Requires an active customer session and items in cart**.",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const origin = pm.environment.get('customerOrigin') || 'http://localhost:3000';",
+              "pm.request.headers.upsert({ key: 'Origin', value: origin });"
+            ]
+          }
+        }
+      ],
+      "item": [
+        {
+          "name": "1. Create Payment Order",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 201 or 200', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "});",
+                  "",
+                  "pm.test('Response contains order and Razorpay order details', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.be.true;",
+                  "    pm.expect(jsonData.data).to.have.property('orderId');",
+                  "    pm.expect(jsonData.data).to.have.property('razorpayOrderId');",
+                  "    pm.expect(jsonData.data).to.have.property('amount');",
+                  "    pm.expect(jsonData.data).to.have.property('subtotal');",
+                  "    pm.expect(jsonData.data).to.have.property('deliveryCharge');",
+                  "    pm.expect(jsonData.data).to.have.property('total');",
+                  "    pm.expect(jsonData.data).to.have.property('currency');",
+                  "    pm.expect(jsonData.data).to.have.property('keyId');",
+                  "",
+                  "    pm.environment.set('orderId', jsonData.data.orderId);",
+                  "    pm.environment.set('razorpayOrderId', jsonData.data.razorpayOrderId);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"addressId\": \"{{addressId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/payments/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "payments",
+                "orders"
+              ]
+            },
+            "description": "Creates a cart payment order using the selected saved address. Requires an existing addressId from the customer profile."
+          }
+        },
+        {
+          "name": "1b. Create Buy Now Payment Order",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 201 or 200', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "});",
+                  "",
+                  "pm.test('Response contains Buy Now order details', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.be.true;",
+                  "    pm.expect(jsonData.data).to.have.property('orderId');",
+                  "    pm.expect(jsonData.data).to.have.property('razorpayOrderId');",
+                  "    pm.environment.set('orderId', jsonData.data.orderId);",
+                  "    pm.environment.set('razorpayOrderId', jsonData.data.razorpayOrderId);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"addressId\": \"{{addressId}}\",\n  \"variantId\": \"{{variantId}}\",\n  \"quantity\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/payments/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "payments",
+                "orders"
+              ]
+            },
+            "description": "Creates a direct Buy Now payment order for one variant and quantity. The server validates current stock and snapshots the selected saved address into the order."
+          }
+        },
+        {
+          "name": "2. Get Customer Orders",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response returns array of customer orders', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.be.true;",
+                  "    pm.expect(jsonData.data).to.be.an('array');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/payments/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "payments",
+                "orders"
+              ]
+            },
+            "description": "Fetches order history for the authenticated customer."
+          }
+        },
+        {
+          "name": "3. Verify Payment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 (verified) or 400 (invalid signature during test)', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 400]);",
+                  "});",
+                  "",
+                  "pm.test('Verification response structure', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    if (pm.response.code === 200) {",
+                  "        pm.expect(jsonData.success).to.be.true;",
+                  "        pm.expect(jsonData.data).to.have.property('status', 'paid');",
+                  "        pm.expect(jsonData.data).to.have.property('orderId');",
+                  "    } else {",
+                  "        pm.expect(jsonData).to.have.property('message');",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"razorpay_order_id\": \"{{razorpayOrderId}}\",\n  \"razorpay_payment_id\": \"{{razorpayPaymentId}}\",\n  \"razorpay_signature\": \"sample_signature_hash\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/payments/verify",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "payments",
+                "verify"
+              ]
+            },
+            "description": "Verifies the Razorpay payment HMAC SHA256 signature, reduces inventory stock, logs inventory movement, marks order as paid, and clears the customer's cart."
+          }
+        },
+        {
+          "name": "4. Reconcile Payment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Reconciliation response structure', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.be.true;",
+                  "    pm.expect(jsonData.data.status).to.be.oneOf(['pending', 'failed']);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"razorpayOrderId\": \"{{razorpayOrderId}}\",\n  \"razorpayPaymentId\": \"{{razorpayPaymentId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/payments/reconcile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "payments",
+                "reconcile"
+              ]
+            },
+            "description": "Reconciles a browser-interrupted Razorpay checkout using the gateway payment status. Failed payments remain pending for Checkout retries; captured payments complete the order."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Customer Reviews & Images",
+      "description": "Endpoints for uploading customer review images and managing product reviews.\n\n**Requires an active session**.",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const origin = pm.environment.get('customerOrigin') || 'http://localhost:3000';",
+              "pm.request.headers.upsert({ key: 'Origin', value: origin });"
+            ]
+          }
+        }
+      ],
+      "item": [
+        {
+          "name": "1. Upload Customer Images",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 201 or 400 (if no file attached)', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([201, 400]);",
+                  "});",
+                  "",
+                  "pm.test('Response returns uploaded image details if uploaded', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    if (pm.response.code === 201) {",
+                  "        pm.expect(jsonData.success).to.be.true;",
+                  "        pm.expect(jsonData.data).to.be.an('array');",
+                  "        if (jsonData.data.length > 0) {",
+                  "            pm.environment.set('uploadedImageUrl', jsonData.data[0].url);",
+                  "            pm.environment.set('uploadedImageFileId', jsonData.data[0].fileId);",
+                  "        }",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "image",
+                  "type": "file",
+                  "src": [],
+                  "description": "Attach 1 to 4 image files (JPEG, PNG, WebP)"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/images/upload",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "images",
+                "upload"
+              ]
+            },
+            "description": "Uploads up to 4 images to ImageKit for customer reviews or profile usage."
+          }
+        },
+        {
+          "name": "2. Get My Review for Product",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response returns customer review or null', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.be.true;",
+                  "    if (jsonData.data && jsonData.data._id) {",
+                  "        pm.environment.set('reviewId', jsonData.data._id);",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/reviews/mine/{{productId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "reviews",
+                "mine",
+                "{{productId}}"
+              ]
+            },
+            "description": "Fetches the authenticated customer's own review for a specific product, or null if not yet reviewed."
+          }
+        },
+        {
+          "name": "3. Create Product Review",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 201 or 409 (if already reviewed)', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([201, 409]);",
+                  "});",
+                  "",
+                  "pm.test('Review created successfully or indicates already reviewed', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    if (pm.response.code === 201) {",
+                  "        pm.expect(jsonData.success).to.be.true;",
+                  "        pm.expect(jsonData.data).to.have.property('_id');",
+                  "        pm.environment.set('reviewId', jsonData.data._id);",
+                  "    } else {",
+                  "        pm.expect(jsonData).to.have.property('message');",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rating\": 5,\n  \"title\": \"Great purchase!\",\n  \"body\": \"High quality material and fast delivery. Very satisfied.\",\n  \"images\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/reviews/{{productId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "reviews",
+                "{{productId}}"
+              ]
+            },
+            "description": "Creates a review for a product. A customer can submit at most one review per product."
+          }
+        },
+        {
+          "name": "4. Update Customer Review",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Review updated successfully', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.be.true;",
+                  "    pm.expect(jsonData.data).to.have.property('rating', 4);",
+                  "    pm.expect(jsonData.data).to.have.property('isEdited', true);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rating\": 4,\n  \"title\": \"Updated: Good experience overall\",\n  \"body\": \"Updating after a month of usage. Still holding up well.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/reviews/{{reviewId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "reviews",
+                "{{reviewId}}"
+              ]
+            },
+            "description": "Updates the authenticated customer's existing review."
+          }
+        },
+        {
+          "name": "5. Delete Customer Review",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Review deleted successfully', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.be.true;",
+                  "    pm.expect(jsonData).to.have.property('message');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/reviews/{{reviewId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "reviews",
+                "{{reviewId}}"
+              ]
+            },
+            "description": "Deletes the authenticated customer's review and cleans up any attached ImageKit images."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Negative & Regression Tests",
+      "description": "Confirms that disabled, removed, or constrained flows return expected rejections.",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const origin = pm.environment.get('customerOrigin') || 'http://localhost:3000';",
+              "pm.request.headers.upsert({ key: 'Origin', value: origin });"
+            ]
+          }
+        }
+      ],
+      "item": [
+        {
+          "name": "REG-1: POST /sign-up/email — must return 400 (disabled)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 400 — emailAndPassword sign-up is disabled', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Ghost User\",\n  \"email\": \"ghost@example.com\",\n  \"password\": \"Password123!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/customers/auth/sign-up/email",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers",
+                "auth",
+                "sign-up",
+                "email"
+              ]
+            },
+            "description": "Hits old email+password sign-up endpoint directly."
+          }
+        },
+        {
+          "name": "REG-2: POST /sign-in/email — must return 400 (disabled)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 400 — emailAndPassword sign-in is disabled', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"ghost@example.com\",\n  \"password\": \"Password123!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/customers/auth/sign-in/email",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers",
+                "auth",
+                "sign-in",
+                "email"
+              ]
+            },
+            "description": "Hits old email+password sign-in endpoint directly."
+          }
+        },
+        {
+          "name": "REG-3: Duplicate phone number send OTP",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Send OTP returns 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phoneNumber\": \"{{customerPhone}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/customers/auth/phone-number/send-otp",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers",
+                "auth",
+                "phone-number",
+                "send-otp"
+              ]
+            },
+            "description": "Confirms sending OTP to an already registered phone number works as expected (returns 200)."
+          }
+        }
+      ]
+    }
+  ]
+}

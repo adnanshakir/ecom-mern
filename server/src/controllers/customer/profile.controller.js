@@ -52,8 +52,7 @@ export const getCustomerProfile = async (req, res, next) => {
 };
 
 /**
- * Update customer profile details (name, address) in a single request.
- * Changing email requires verified email-change flow via OTP.
+ * Update customer profile details (name, email, address) in a single request.
  */
 export const updateCustomerProfile = async (req, res, next) => {
   try {
@@ -64,14 +63,8 @@ export const updateCustomerProfile = async (req, res, next) => {
 
     const { name, email, address, addresses } = req.body;
     const db = mongoose.connection.db;
-
     if (!db) {
       throw new ApiError(500, "Database connection unavailable");
-    }
-
-    // Require verified email-change flow for changing email
-    if (email !== undefined) {
-      throw new ApiError(400, "Email updates require the verified email-change flow");
     }
 
     const updatesToUser = {};
@@ -82,6 +75,34 @@ export const updateCustomerProfile = async (req, res, next) => {
         throw new ApiError(400, "Invalid name format");
       }
       updatesToUser.name = name.trim();
+    }
+
+    // Validate and handle email update
+    if (email !== undefined) {
+      if (typeof email !== "string") {
+        throw new ApiError(400, "Invalid email format");
+      }
+      const trimmedEmail = email.trim().toLowerCase();
+      if (trimmedEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+        throw new ApiError(400, "Please enter a valid email address");
+      }
+
+      if (trimmedEmail) {
+        const userOrConditions = [{ id: authUserId }, { _id: authUserId }];
+        if (mongoose.Types.ObjectId.isValid(authUserId)) {
+          userOrConditions.push({ _id: new mongoose.Types.ObjectId(authUserId) });
+        }
+        const existingWithEmail = await db.collection("customerUser").findOne({
+          email: trimmedEmail,
+          $nor: userOrConditions,
+        });
+
+        if (existingWithEmail) {
+          throw new ApiError(400, "This email address is already associated with another account");
+        }
+      }
+
+      updatesToUser.email = trimmedEmail;
     }
 
     const previousUserDoc = await findCustomerUserDoc(db, authUserId);
@@ -117,6 +138,32 @@ export const updateCustomerProfile = async (req, res, next) => {
       }
 
       // Handle Address updates in CustomerProfile
+      if (Array.isArray(addresses)) {
+        for (const addr of addresses) {
+          if (!addr || typeof addr !== "object" || Array.isArray(addr)) {
+            throw new ApiError(400, "Each address must be an object");
+          }
+
+          for (const field of [
+            "_id",
+            "label",
+            "line1",
+            "line2",
+            "city",
+            "state",
+            "postalCode",
+            "country",
+            "phone",
+          ]) {
+            if (addr[field] !== undefined && typeof addr[field] !== "string") {
+              throw new ApiError(400, `Address field "${field}" must be a string`);
+            }
+          }
+          if (addr.isDefault !== undefined && typeof addr.isDefault !== "boolean") {
+            throw new ApiError(400, 'Address field "isDefault" must be a boolean');
+          }
+        }
+      }
       profileDoc = await CustomerProfile.findOne({ authUserId }).session(
         inTransaction && session ? session : null
       );

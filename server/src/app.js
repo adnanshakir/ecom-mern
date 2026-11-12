@@ -32,6 +32,10 @@ import { errorHandler, notFound } from "./middleware/error.middleware.js";
 
 const app = express();
 
+// The API is deployed behind a single trusted reverse proxy (Vercel).
+// Use the original client address for rate-limit buckets instead of the proxy IP.
+app.set("trust proxy", 1);
+
 app.use(
   cors({
     origin: (origin, callback) => {
@@ -46,6 +50,7 @@ app.use(
         return callback(null, true);
       }
 
+      console.error(`[CORS Error] Blocked origin: "${origin}". Allowed origins:`, allowedOrigins);
       return callback(new Error("Not allowed by CORS"), false);
     },
     credentials: true,
