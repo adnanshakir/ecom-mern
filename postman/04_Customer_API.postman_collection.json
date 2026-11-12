@@ -24,20 +24,75 @@
   ],
   "item": [
     {
-      "name": "Customer — Auth",
-      "description": "Customer registration, login, session management, and profile.\n\n**Token separation:** Customer tokens carry `type: \"customer\"` and are **rejected** by admin endpoints (and vice versa).\n\nThe customer refresh token cookie is named `customerRefreshToken`.",
+      "name": "Customer — Auth & Profile",
+      "description": "Customer OTP authentication mounted at `/api/v1/customers/auth` (Better Auth) and customer profile endpoints mounted at `/api/customers/profile`.\n\nFirst-time Phone OTP verification automatically registers the customer account (`signUpOnVerification`), sets session cookies in Postman's cookie jar, and returns `token` in the verification response body (captured into `customerAccessToken`).",
       "item": [
         {
-          "name": "Register Customer",
+          "name": "Send Phone OTP (Sign-Up / Login Step 1)",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phoneNumber\": \"+919876543210\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/customers/auth/phone-number/send-otp",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers",
+                "auth",
+                "phone-number",
+                "send-otp"
+              ]
+            },
+            "description": "Sends a 6-digit OTP to an Indian phone number (`+91XXXXXXXXXX` or 10 digits starting with 6-9).\n\nIn development mode, check the server terminal for `[DEV OTP LOG - PHONE SMS]` to read the OTP code (or use `MASTER_OTP_CODE` if `ALLOW_MASTER_OTP=true`).\n\n**Rate limit:** 10 requests per 15-minute window."
+          },
+          "response": [
+            {
+              "name": "200 OTP Sent",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"message\": \"code sent\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Verify Phone OTP (Sign-Up / Login Step 2)",
           "event": [
             {
               "listen": "test",
               "script": {
                 "exec": [
                   "const json = pm.response.json();",
-                  "if (json.success && json.data && json.data.accessToken) {",
-                  "  pm.environment.set('customerAccessToken', json.data.accessToken);",
-                  "  pm.environment.set('customerId', json.data.user.id);",
+                  "if (json && json.token) {",
+                  "  pm.environment.set('customerAccessToken', json.token);",
+                  "}",
+                  "if (json && json.user && json.user.id) {",
+                  "  pm.environment.set('customerId', json.user.id);",
                   "}"
                 ],
                 "type": "text/javascript"
@@ -57,7 +112,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Jane Doe\",\n  \"email\": \"jane@example.com\",\n  \"password\": \"password123\",\n  \"phone\": \"+1-555-0100\"\n}",
+              "raw": "{\n  \"phoneNumber\": \"+919876543210\",\n  \"code\": \"123456\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -65,57 +120,102 @@
               }
             },
             "url": {
-              "raw": "{{baseUrl}}/api/customers/auth/register",
+              "raw": "{{baseUrl}}/api/v1/customers/auth/phone-number/verify",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
+                "v1",
                 "customers",
                 "auth",
-                "register"
+                "phone-number",
+                "verify"
               ]
             },
-            "description": "Registers a new customer and immediately logs them in.\n\n**Rate limit:** 10 requests per 15-minute window.\n\n**Required fields:**\n- `name` — string, min 2 chars\n- `email` — string, valid email\n- `password` — string, min 6 chars\n\n**Optional fields:**\n- `phone` — string\n\n**Error codes:**\n- `409` — Email already in use\n- `422` — Validation error"
+            "description": "Verifies the phone OTP code. Automatically creates a new customer account if the phone number is new (`signUpOnVerification`), or signs in an existing customer.\n\nSets the Better Auth session cookie and captures `token` into `customerAccessToken` and `user.id` into `customerId`.\n\n**Rate limit:** 10 requests per 15-minute window."
           },
           "response": [
             {
-              "name": "201 Created",
-              "status": "Created",
-              "code": 201,
+              "name": "200 Verified",
+              "status": "OK",
+              "code": 200,
               "header": [
                 {
                   "key": "Content-Type",
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"success\": true,\n  \"message\": \"Registration successful\",\n  \"data\": {\n    \"accessToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\",\n    \"user\": {\n      \"id\": \"60c72b2f9b1e8a001c8e4f90\",\n      \"name\": \"Jane Doe\",\n      \"email\": \"jane@example.com\"\n    }\n  }\n}"
-            },
-            {
-              "name": "409 Email Conflict",
-              "status": "Conflict",
-              "code": 409,
-              "header": [
-                {
-                  "key": "Content-Type",
-                  "value": "application/json"
-                }
-              ],
-              "body": "{\n  \"success\": false,\n  \"message\": \"Email already in use\"\n}"
+              "body": "{\n  \"status\": true,\n  \"token\": \"better-auth-session-token\",\n  \"user\": {\n    \"id\": \"60c72b2f9b1e8a001c8e4f90\",\n    \"phoneNumber\": \"+919876543210\",\n    \"phoneNumberVerified\": true\n  }\n}"
             }
           ]
         },
         {
-          "name": "Login Customer",
+          "name": "Send Email OTP",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"customer@example.com\",\n  \"type\": \"sign-in\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/customers/auth/email-otp/send-verification-otp",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers",
+                "auth",
+                "email-otp",
+                "send-verification-otp"
+              ]
+            },
+            "description": "Sends an email verification OTP (`type`: `sign-in`, `email-verification`, or `forget-password`). Email OTP sign-in applies only to existing customer accounts that already have that email attached.\n\n**Rate limit:** 10 requests per 15-minute window."
+          },
+          "response": [
+            {
+              "name": "200 OTP Sent",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true\n}"
+            }
+          ]
+        },
+        {
+          "name": "Verify Email OTP (Sign In)",
           "event": [
             {
               "listen": "test",
               "script": {
                 "exec": [
                   "const json = pm.response.json();",
-                  "if (json.success && json.data && json.data.accessToken) {",
-                  "  pm.environment.set('customerAccessToken', json.data.accessToken);",
-                  "  pm.environment.set('customerId', json.data.user.id);",
+                  "if (json && json.token) {",
+                  "  pm.environment.set('customerAccessToken', json.token);",
+                  "}",
+                  "if (json && json.user && json.user.id) {",
+                  "  pm.environment.set('customerId', json.user.id);",
                   "}"
                 ],
                 "type": "text/javascript"
@@ -135,7 +235,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"jane@example.com\",\n  \"password\": \"password123\"\n}",
+              "raw": "{\n  \"email\": \"customer@example.com\",\n  \"otp\": \"123456\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -143,22 +243,24 @@
               }
             },
             "url": {
-              "raw": "{{baseUrl}}/api/customers/auth/login",
+              "raw": "{{baseUrl}}/api/v1/customers/auth/sign-in/email-otp",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
+                "v1",
                 "customers",
                 "auth",
-                "login"
+                "sign-in",
+                "email-otp"
               ]
             },
-            "description": "Logs in a customer.\n\n**Rate limit:** 10 requests per 15-minute window.\n\n**Required fields:**\n- `email` — string, valid email\n- `password` — string\n\n**Error codes:**\n- `401` — Invalid credentials\n- `403` — Account deactivated"
+            "description": "Verifies an email sign-in OTP and starts a customer session. Captures `token` into `customerAccessToken` and `user.id` into `customerId`.\n\n**Rate limit:** 10 requests per 15-minute window."
           },
           "response": [
             {
-              "name": "200 Success",
+              "name": "200 Signed In",
               "status": "OK",
               "code": 200,
               "header": [
@@ -167,26 +269,50 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"success\": true,\n  \"message\": \"Login successful\",\n  \"data\": {\n    \"accessToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\",\n    \"user\": {\n      \"id\": \"60c72b2f9b1e8a001c8e4f90\",\n      \"name\": \"Jane Doe\",\n      \"email\": \"jane@example.com\"\n    }\n  }\n}"
+              "body": "{\n  \"token\": \"better-auth-session-token\",\n  \"user\": {\n    \"id\": \"60c72b2f9b1e8a001c8e4f90\",\n    \"email\": \"customer@example.com\",\n    \"name\": \"Jane Doe\"\n  }\n}"
             }
           ]
         },
         {
-          "name": "Refresh Customer Token",
-          "event": [
+          "name": "Get Customer Session",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/customers/auth/get-session",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers",
+                "auth",
+                "get-session"
+              ]
+            },
+            "description": "Retrieves the active customer session using the session cookie set by `/api/v1/customers/auth/phone-number/verify` or `/api/v1/customers/auth/sign-in/email-otp`."
+          },
+          "response": [
             {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "const json = pm.response.json();",
-                  "if (json.success && json.data && json.data.accessToken) {",
-                  "  pm.environment.set('customerAccessToken', json.data.accessToken);",
-                  "}"
-                ],
-                "type": "text/javascript"
-              }
+              "name": "200 Active Session",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"session\": { \"id\": \"...\", \"token\": \"...\" },\n  \"user\": { \"id\": \"60c72b2f9b1e8a001c8e4f90\", \"phoneNumber\": \"+919876543210\" }\n}"
             }
-          ],
+          ]
+        },
+        {
+          "name": "Logout Customer (Sign Out)",
           "request": {
             "auth": {
               "type": "noauth"
@@ -194,18 +320,19 @@
             "method": "POST",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/customers/auth/refresh",
+              "raw": "{{baseUrl}}/api/v1/customers/auth/sign-out",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
+                "v1",
                 "customers",
                 "auth",
-                "refresh"
+                "sign-out"
               ]
             },
-            "description": "Exchanges the `customerRefreshToken` HttpOnly cookie for a new access token.\n\n**Rate limit:** 30 requests per 15-minute window."
+            "description": "Signs out the customer and invalidates the active session cookie."
           },
           "response": [
             {
@@ -218,44 +345,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"accessToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\",\n    \"user\": { \"id\": \"60c72b2f9b1e8a001c8e4f90\", \"name\": \"Jane Doe\", \"email\": \"jane@example.com\" }\n  }\n}"
-            }
-          ]
-        },
-        {
-          "name": "Logout Customer",
-          "request": {
-            "auth": {
-              "type": "noauth"
-            },
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/customers/auth/logout",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "customers",
-                "auth",
-                "logout"
-              ]
-            },
-            "description": "Revokes the `customerRefreshToken` cookie."
-          },
-          "response": [
-            {
-              "name": "200 Success",
-              "status": "OK",
-              "code": 200,
-              "header": [
-                {
-                  "key": "Content-Type",
-                  "value": "application/json"
-                }
-              ],
-              "body": "{\n  \"success\": true,\n  \"message\": \"Logged out successfully\"\n}"
+              "body": "{\n  \"success\": true\n}"
             }
           ]
         },
@@ -275,18 +365,17 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/customers/auth/me",
+              "raw": "{{baseUrl}}/api/customers/profile",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
                 "customers",
-                "auth",
-                "me"
+                "profile"
               ]
             },
-            "description": "Returns the authenticated customer's full profile including addresses.\n\n**Auth:** `Authorization: Bearer {{customerAccessToken}}`"
+            "description": "Returns the authenticated customer's profile including addresses.\n\nUses the active customer session cookie (set upon OTP verification)."
           },
           "response": [
             {
@@ -299,7 +388,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"customer\": {\n      \"_id\": \"60c72b2f9b1e8a001c8e4f90\",\n      \"name\": \"Jane Doe\",\n      \"email\": \"jane@example.com\",\n      \"phone\": \"+1-555-0100\",\n      \"isActive\": true,\n      \"addresses\": [],\n      \"lastLogin\": \"2026-08-29T07:00:00.000Z\",\n      \"createdAt\": \"2026-08-29T06:00:00.000Z\"\n    }\n  }\n}"
+              "body": "{\n  \"success\": true,\n  \"message\": \"Customer profile retrieved successfully\",\n  \"data\": {\n    \"id\": \"60c72b2f9b1e8a001c8e4f90\",\n    \"phoneNumber\": \"+919876543210\",\n    \"name\": \"Jane Doe\",\n    \"email\": \"customer@example.com\",\n    \"addresses\": []\n  }\n}"
             }
           ]
         },
@@ -325,7 +414,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Jane Smith\",\n  \"phone\": \"+1-555-0199\",\n  \"addresses\": [\n    {\n      \"label\": \"Home\",\n      \"line1\": \"123 Main Street\",\n      \"line2\": \"Apt 4B\",\n      \"city\": \"New York\",\n      \"state\": \"NY\",\n      \"postalCode\": \"10001\",\n      \"country\": \"US\",\n      \"phone\": \"+1-555-0100\",\n      \"isDefault\": true\n    }\n  ]\n}",
+              "raw": "{\n  \"name\": \"Jane Smith\",\n  \"addresses\": [\n    {\n      \"label\": \"Home\",\n      \"line1\": \"123 Main Street\",\n      \"line2\": \"Apt 4B\",\n      \"city\": \"Mumbai\",\n      \"state\": \"MH\",\n      \"postalCode\": \"400001\",\n      \"country\": \"India\",\n      \"phone\": \"+919876543210\",\n      \"isDefault\": true\n    }\n  ]\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -333,18 +422,17 @@
               }
             },
             "url": {
-              "raw": "{{baseUrl}}/api/customers/auth/profile",
+              "raw": "{{baseUrl}}/api/customers/profile",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
                 "customers",
-                "auth",
                 "profile"
               ]
             },
-            "description": "Updates the customer's profile (name, phone) and/or replaces their addresses array.\n\n**Auth:** `Authorization: Bearer {{customerAccessToken}}`\n\n**All fields optional:**\n- `name` — string, min 2 chars\n- `phone` — string (nullable)\n- `addresses` — array; each address:\n  - `line1` *(required)* — string\n  - `city` *(required)* — string\n  - `postalCode` *(required)* — string\n  - `country` *(required)* — string\n  - `label`, `line2`, `state`, `phone`, `isDefault` — all optional"
+            "description": "Updates the customer's profile (`name`) and/or replaces their `addresses` array.\n\n**All fields optional:**\n- `name` — string\n- `addresses` — array; each address:\n  - `line1` *(required)* — string\n  - `city` *(required)* — string\n  - `postalCode` *(required)* — string\n  - `label`, `line2`, `state`, `country`, `phone`, `isDefault` — optional"
           },
           "response": [
             {
@@ -357,7 +445,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"success\": true,\n  \"message\": \"Profile updated successfully\",\n  \"data\": {\n    \"user\": {\n      \"id\": \"60c72b2f9b1e8a001c8e4f90\",\n      \"name\": \"Jane Smith\",\n      \"email\": \"jane@example.com\",\n      \"phone\": \"+1-555-0199\",\n      \"addresses\": [\n        {\n          \"_id\": \"60c72b2f9b1e8a001c8e4f91\",\n          \"label\": \"Home\",\n          \"line1\": \"123 Main Street\",\n          \"line2\": \"Apt 4B\",\n          \"city\": \"New York\",\n          \"state\": \"NY\",\n          \"postalCode\": \"10001\",\n          \"country\": \"US\",\n          \"isDefault\": true\n        }\n      ]\n    }\n  }\n}"
+              "body": "{\n  \"success\": true,\n  \"message\": \"Profile updated successfully\",\n  \"data\": {\n    \"id\": \"60c72b2f9b1e8a001c8e4f90\",\n    \"name\": \"Jane Smith\",\n    \"addresses\": [\n      {\n        \"_id\": \"60c72b2f9b1e8a001c8e4f91\",\n        \"label\": \"Home\",\n        \"line1\": \"123 Main Street\",\n        \"line2\": \"Apt 4B\",\n        \"city\": \"Mumbai\",\n        \"state\": \"MH\",\n        \"postalCode\": \"400001\",\n        \"country\": \"India\",\n        \"isDefault\": true\n      }\n    ]\n  }\n}"
             }
           ]
         }

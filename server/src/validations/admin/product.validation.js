@@ -149,7 +149,7 @@ export const updateVariantSchema = baseVariantSchema
 // ------- Product --------
 // Note: slug is auto-generated server-side from `name`, same as Brand/Category.
 
-export const createProductSchema = z.object({
+const baseProductSchema = z.object({
   name: z
     .string()
     .trim()
@@ -165,9 +165,9 @@ export const createProductSchema = z.object({
       { message: "Description cannot exceed 500 words" }
     ),
 
-  keyFeatures: z.string().trim().optional().default(""),
+  keyFeatures: z.string().trim().optional(),
 
-  productDimensions: z.string().trim().optional().default(""),
+  productDimensions: z.string().trim().optional(),
 
   category: objectId,
 
@@ -199,4 +199,9 @@ export const createProductSchema = z.object({
   variants: z.array(nestedCreateVariantSchema).min(1, "At least one variant is required"),
 });
 
-export const updateProductSchema = createProductSchema.partial();
+export const createProductSchema = baseProductSchema.extend({
+  keyFeatures: z.string().trim().optional().default(""),
+  productDimensions: z.string().trim().optional().default(""),
+});
+
+export const updateProductSchema = baseProductSchema.partial();

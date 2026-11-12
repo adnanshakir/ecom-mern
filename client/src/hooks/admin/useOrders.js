@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   getAdminOrder,
   getAdminOrderStats,
@@ -15,9 +15,20 @@ export function useOrders() {
   const [pagination, setPagination] = useState({ total: 0, page: 1, pages: 1 });
   const [filters, setFilters] = useState({ search: "", status: "", paymentStatus: "", page: 1, limit: 10 });
   const [selectedOrder, setSelectedOrder] = useState(null);
-  const [sheetOpen, setSheetOpen] = useState(false);
+  const [orderLoading, setOrderLoading] = useState(false);
+  const [sheetOpen, setSheetOpenState] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const latestOrderRequestRef = useRef(0);
+
+  const setSheetOpen = useCallback((open) => {
+    setSheetOpenState(open);
+    if (!open) {
+      latestOrderRequestRef.current += 1;
+      setSelectedOrder(null);
+      setOrderLoading(false);
+    }
+  }, []);
 
   const refresh = useCallback(async () => {
     setError("");
@@ -54,33 +65,72 @@ export function useOrders() {
   const setFilter = (name, value) => setFilters((current) => ({ ...current, [name]: value, page: name === "page" ? value : 1 }));
 
   const openOrder = async (id) => {
-    setSheetOpen(true);
+    const requestId = ++latestOrderRequestRef.current;
+    setSelectedOrder(null);
+    setOrderLoading(true);
+    setError("");
+    setSheetOpenState(true);
     try {
       const order = await getAdminOrder(id);
+      if (latestOrderRequestRef.current !== requestId) return;
       setSelectedOrder(order);
       if (orders.find((item) => item._id === id && !item.adminSeen)) {
-        await markAdminOrderSeen(id);
-        setOrders((current) => current.map((item) => item._id === id ? { ...item, adminSeen: true } : item));
-        setStats((current) => ({ ...current, newCount: Math.max(0, current.newCount - 1) }));
+        try {
+          await markAdminOrderSeen(id);
+          if (latestOrderRequestRef.current === requestId) {
+            setSelectedOrder((current) => (current?._id === id ? { ...current, adminSeen: true } : current));
+          }
+          setOrders((current) => current.map((item) => (item._id === id ? { ...item, adminSeen: true } : item)));
+          if (order?.payment?.status === "paid") {
+            setStats((current) => ({ ...current, newCount: Math.max(0, current.newCount - 1) }));
+          }
+        } catch {
+          // Staff accounts may view orders without permission to mark them seen
+        }
       }
     } catch (err) {
+      if (latestOrderRequestRef.current !== requestId) return;
       setError(err.response?.data?.message || "Failed to load order");
+    } finally {
+      if (latestOrderRequestRef.current === requestId) {
+        setOrderLoading(false);
+      }
     }
   };
 
   const changeStatus = async (status) => {
-    if (!selectedOrder) return;
+    if (orderLoading || !selectedOrder) return;
+    const targetId = selectedOrder._id;
     try {
-      const { data } = await updateAdminOrderStatus(selectedOrder._id, status);
-      setSelectedOrder((current) => ({ ...current, orderStatus: data.data.orderStatus }));
-      setOrders((current) => current.map((item) => item._id === selectedOrder._id ? { ...item, orderStatus: status } : item));
+      const { data } = await updateAdminOrderStatus(targetId, status);
+      const updatedOrder = data.data;
+      setSelectedOrder((current) =>
+        current?._id === targetId
+          ? {
+              ...current,
+              orderStatus: updatedOrder.orderStatus,
+              ...(updatedOrder.payment ? { payment: updatedOrder.payment } : {}),
+            }
+          : current
+      );
+      setOrders((current) =>
+        current.map((item) =>
+          item._id === targetId
+            ? {
+                ...item,
+                orderStatus: updatedOrder.orderStatus,
+                ...(updatedOrder.payment ? { payment: updatedOrder.payment } : {}),
+              }
+            : item
+        )
+      );
     } catch (err) {
       setError(err.response?.data?.message || "Failed to update order status");
     }
   };
 
   return {
-    orders, stats, pagination, filters, selectedOrder, sheetOpen, loading, error,
+    orders, stats, pagination, filters, selectedOrder, orderLoading, sheetOpen, loading, error,
     setSheetOpen, setFilter, refresh, openOrder, changeStatus,
   };
 }

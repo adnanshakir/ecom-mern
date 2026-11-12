@@ -172,7 +172,21 @@ describe("Categories API — Single Route & Empty State Handling", () => {
     const electronics = res.body.data.find((c) => c.slug === "electronics");
     expect(electronics).toBeDefined();
     expect(electronics.subcategories).toEqual([]);
-    expect(electronics.children).toEqual([]);
+    expect(electronics.children).toBeUndefined();
+  });
+
+  it("does not accept removed price_asc or price_desc sort options on GET /api/public/products", async () => {
+    const ascRes = await request(app).get("/api/public/products?sort=price_asc");
+    expect(ascRes.status).toBe(400);
+
+    const descRes = await request(app).get("/api/public/products?sort=price_desc");
+    expect(descRes.status).toBe(400);
+
+    const featuredRes = await request(app).get("/api/public/products?sort=featured");
+    expect(featuredRes.status).toBe(200);
+
+    const newestRes = await request(app).get("/api/public/products?sort=newest");
+    expect(newestRes.status).toBe(200);
   });
 
   it("handles missing image empty state cleanly: categories/subcategories without images return image.url = ''", async () => {
@@ -276,6 +290,22 @@ describe("Product Description & Detail Modules", () => {
     expect(res.body.data.keyFeatures).toBe("• ANC\n• 40h Battery");
     expect(res.body.data.productDimensions).toBe("20 x 18 x 8 cm, 250g");
   });
+
+  it("partial product update preserves existing keyFeatures and productDimensions when omitted", async () => {
+    const res = await request(app)
+      .put(`/api/products/${activeProductId}`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ name: "Wireless Headphones Pro" });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.name).toBe("Wireless Headphones Pro");
+    expect(res.body.data.keyFeatures).toBe("• ANC\n• 40h Battery");
+    expect(res.body.data.productDimensions).toBe("20 x 18 x 8 cm, 250g");
+
+    const persisted = await Product.findById(activeProductId);
+    expect(persisted.keyFeatures).toBe("• ANC\n• 40h Battery");
+    expect(persisted.productDimensions).toBe("20 x 18 x 8 cm, 250g");
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -362,8 +392,15 @@ describe("Guest Cart Merge Flow & Loophole Probing", () => {
     expect(item.quantity).toBe(5); // Clamped to 5
   });
 
-  it("LOOPHOLE: safely ignores inactive or non-existent variant IDs from stale localStorage without failing the batch", async () => {
+  it("LOOPHOLE: safely ignores inactive or non-existent variant IDs from stale localStorage without failing the batch and reports skippedItems", async () => {
     const fakeVariantId = new mongoose.Types.ObjectId().toString();
+    const outOfStockVariant = await ProductVariant.create({
+      product: activeProductId,
+      sku: "SONY-WH-OOS",
+      price: 1999,
+      stock: 0,
+      isActive: true,
+    });
 
     const res = await request(app)
       .post("/api/customers/cart/merge")
@@ -373,12 +410,92 @@ describe("Guest Cart Merge Flow & Loophole Probing", () => {
           { variantId, quantity: 2 }, // valid
           { variantId: fakeVariantId, quantity: 5 }, // non-existent
           { variantId: inactiveVariantId, quantity: 3 }, // inactive variant
+          { variantId: outOfStockVariant._id.toString(), quantity: 1 }, // out of stock
         ],
       });
 
     expect(res.status).toBe(200);
     expect(res.body.data.items).toHaveLength(1);
     expect(res.body.data.items[0].variant._id.toString()).toBe(variantId);
+    expect(res.body.data.skippedItems).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ variantId: fakeVariantId, reason: "not_found", requestedQuantity: 5 }),
+        expect.objectContaining({ variantId: inactiveVariantId, reason: "inactive", requestedQuantity: 3 }),
+        expect.objectContaining({ variantId: outOfStockVariant._id.toString(), reason: "out_of_stock", requestedQuantity: 1 }),
+      ])
+    );
+    expect(res.body.data.skippedItems).toHaveLength(3);
+  });
+
+  it("LOOPHOLE: deduplicates retried and concurrent cart merge requests using the same batchId", async () => {
+    const batchId = "retry-batch-001";
+    const fakeVariantId = new mongoose.Types.ObjectId().toString();
+
+    const [r1, r2] = await Promise.all([
+      request(app)
+        .post("/api/customers/cart/merge")
+        .set("Cookie", customerCookies)
+        .send({
+          batchId,
+          items: [
+            { variantId, quantity: 2 },
+            { variantId: fakeVariantId, quantity: 1 },
+          ],
+        }),
+      request(app)
+        .post("/api/customers/cart/merge")
+        .set("Cookie", customerCookies)
+        .send({
+          batchId,
+          items: [
+            { variantId, quantity: 2 },
+            { variantId: fakeVariantId, quantity: 1 },
+          ],
+        }),
+    ]);
+
+    expect(r1.status).toBe(200);
+    expect(r2.status).toBe(200);
+
+    // Sequential retry with same batchId also must not double-increment quantities
+    const r3 = await request(app)
+      .post("/api/customers/cart/merge")
+      .set("Cookie", customerCookies)
+      .send({
+        batchId,
+        items: [
+          { variantId, quantity: 2 },
+          { variantId: fakeVariantId, quantity: 1 },
+        ],
+      });
+
+    expect(r3.status).toBe(200);
+    expect(r3.body.data.items).toHaveLength(1);
+    expect(r3.body.data.items[0].quantity).toBe(2);
+    expect(r3.body.data.skippedItems).toEqual([
+      expect.objectContaining({ variantId: fakeVariantId, reason: "not_found" }),
+    ]);
+
+    // A genuinely new batchId DOES increment quantities normally
+    const r4 = await request(app)
+      .post("/api/customers/cart/merge")
+      .set("Cookie", customerCookies)
+      .send({
+        batchId: "retry-batch-002",
+        items: [{ variantId, quantity: 1 }],
+      });
+    expect(r4.status).toBe(200);
+    expect(r4.body.data.items[0].quantity).toBe(3);
+  });
+
+  it("rejects cart merge payloads exceeding the maximum item limit (Zod validation)", async () => {
+    const oversizedItems = Array.from({ length: 101 }, () => ({ variantId, quantity: 1 }));
+    const res = await request(app)
+      .post("/api/customers/cart/merge")
+      .set("Cookie", customerCookies)
+      .send({ items: oversizedItems });
+
+    expect(res.status).toBe(400);
   });
 
   it("rejects invalid payload with negative or non-numeric quantity (Zod validation)", async () => {
@@ -454,6 +571,16 @@ describe("Guest Wishlist Merge Flow & Loophole Probing", () => {
 
     expect(res.status).toBe(200);
     expect(res.body.data.products).toEqual([]);
+  });
+
+  it("rejects wishlist merge payloads exceeding the maximum productIds limit (Zod validation)", async () => {
+    const oversizedIds = Array.from({ length: 101 }, () => activeProductId);
+    const res = await request(app)
+      .post("/api/customers/wishlist/merge")
+      .set("Cookie", customerCookies)
+      .send({ productIds: oversizedIds });
+
+    expect(res.status).toBe(400);
   });
 });
 

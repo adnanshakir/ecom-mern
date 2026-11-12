@@ -1,4 +1,5 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
+import { toast } from "sonner";
 import {
   getCartRequest,
   addToCartRequest,
@@ -9,9 +10,83 @@ import {
 } from "@/services/storefront/cart";
 import {
   getGuestCart,
+  getGuestCartRevision,
   saveGuestCart,
   clearGuestCart as clearGuestCartStorage,
+  createMergeBatchId,
+  getPendingCartMergeBatch,
+  savePendingCartMergeBatch,
+  clearPendingCartMergeBatch,
+  reconcileGuestCartAfterMerge,
 } from "@/lib/guestStorage";
+
+const MAX_CART_MERGE_ITEMS = 100;
+
+const notifySkippedMergeItems = (skippedItems, localGuestItems) => {
+  if (!Array.isArray(skippedItems) || skippedItems.length === 0 || typeof window === "undefined") {
+    return;
+  }
+  const names = skippedItems
+    .map((skipped) => {
+      const localMatch = localGuestItems.find(
+        (g) => (g.variant?._id || g.variantId)?.toString() === skipped.variantId?.toString()
+      );
+      return localMatch?.variant?.product?.name || skipped.productName || skipped.sku || "An item";
+    })
+    .filter(Boolean);
+
+  const preview = names.slice(0, 2).join(", ");
+  const extra = names.length > 2 ? ` and ${names.length - 2} more` : "";
+  const label = skippedItems.length === 1 ? "guest cart item was" : "guest cart items were";
+  toast.warning(
+    `${skippedItems.length} ${label} skipped because they are unavailable or out of stock${preview ? ` (${preview}${extra})` : ""}.`
+  );
+};
+
+async function syncCustomerCart() {
+  let lastItems = null;
+
+  for (let pass = 0; pass < 3; pass += 1) {
+    let batch = getPendingCartMergeBatch();
+    if (!batch) {
+      const revision = getGuestCartRevision();
+      const guestItems = getGuestCart();
+      if (guestItems.length === 0) break;
+
+      const itemsPayload = guestItems.slice(0, MAX_CART_MERGE_ITEMS).map((i) => ({
+        variantId: (i.variant?._id || i.variantId).toString(),
+        quantity: i.quantity,
+      }));
+      batch = {
+        batchId: createMergeBatchId(),
+        items: itemsPayload,
+        revision,
+      };
+      savePendingCartMergeBatch(batch);
+    }
+
+    const revisionAtRequestStart = getGuestCartRevision();
+    const { data } = await mergeCartRequest(batch.items, batch.batchId);
+    lastItems = data.data.items;
+
+    const skippedItems = data?.data?.skippedItems || data?.skippedItems || [];
+    const localSnapshot = getGuestCart();
+    notifySkippedMergeItems(skippedItems, localSnapshot);
+
+    const remaining = reconcileGuestCartAfterMerge(batch.items, batch.revision);
+    clearPendingCartMergeBatch();
+
+    // Only chain another merge if extra local items already existed before this attempt started.
+    // Items added while this request was in-flight remain preserved in guest storage.
+    if (remaining.length === 0 || revisionAtRequestStart === batch.revision) {
+      return lastItems;
+    }
+  }
+
+  if (lastItems !== null) return lastItems;
+  const { data } = await getCartRequest();
+  return data.data.items;
+}
 
 const initialState = {
   items: [], // [{variant: {_id, sku, price, salePrice, stock, product:{_id, name,slug,images}}, quantity}]
@@ -23,24 +98,12 @@ const initialState = {
 // ── Thunks ────────────────────────────────────────────────────────────────────
 
 /**
- * Fetch customer cart. If guest items exist in localStorage, automatically
- * merges them into the customer's account on the server first.
+ * Fetch customer cart. If guest items or a persisted merge batch exist in localStorage,
+ * merges them idempotently into the customer's account on the server first.
  */
 export const fetchCart = createAsyncThunk("cart/fetch", async (_, { rejectWithValue }) => {
   try {
-    const guestItems = getGuestCart();
-    if (guestItems.length > 0) {
-      const payload = guestItems.map((i) => ({
-        variantId: i.variant?._id || i.variantId,
-        quantity: i.quantity,
-      }));
-      const { data } = await mergeCartRequest(payload);
-      clearGuestCartStorage();
-      return data.data.items;
-    }
-
-    const { data } = await getCartRequest();
-    return data.data.items;
+    return await syncCustomerCart();
   } catch (err) {
     return rejectWithValue(err.response?.data?.message || "Failed to load cart");
   }
@@ -95,18 +158,7 @@ export const mergeGuestCartThunk = createAsyncThunk(
   "cart/mergeGuest",
   async (_, { rejectWithValue }) => {
     try {
-      const guestItems = getGuestCart();
-      if (guestItems.length === 0) {
-        const { data } = await getCartRequest();
-        return data.data.items;
-      }
-      const payload = guestItems.map((i) => ({
-        variantId: i.variant?._id || i.variantId,
-        quantity: i.quantity,
-      }));
-      const { data } = await mergeCartRequest(payload);
-      clearGuestCartStorage();
-      return data.data.items;
+      return await syncCustomerCart();
     } catch (err) {
       return rejectWithValue(err.response?.data?.message || "Failed to merge cart");
     }
@@ -131,6 +183,8 @@ const cartSlice = createSlice({
     addGuestCartItem(state, action) {
       const { variant, quantity = 1 } = action.payload;
       if (!variant?._id) return;
+
+      state.items = getGuestCart();
 
       const variantId = variant._id.toString();
       const existingIndex = state.items.findIndex(
@@ -161,6 +215,8 @@ const cartSlice = createSlice({
     // Update quantity of guest cart item
     updateGuestCartItem(state, action) {
       const { variantId, quantity } = action.payload;
+      state.items = getGuestCart();
+
       const targetId = variantId?.toString();
       const existingIndex = state.items.findIndex(
         (i) => (i.variant?._id || i.variantId)?.toString() === targetId
@@ -181,6 +237,7 @@ const cartSlice = createSlice({
 
     // Remove item from guest cart
     removeGuestCartItem(state, action) {
+      state.items = getGuestCart();
       const targetId = action.payload?.toString();
       state.items = state.items.filter(
         (i) => (i.variant?._id || i.variantId)?.toString() !== targetId
@@ -191,6 +248,7 @@ const cartSlice = createSlice({
     // Clear guest cart
     clearGuestCartAction(state) {
       state.items = [];
+      clearPendingCartMergeBatch();
       clearGuestCartStorage();
     },
 
@@ -206,6 +264,7 @@ const cartSlice = createSlice({
     clearCartState(state) {
       state.items = [];
       state.error = null;
+      clearPendingCartMergeBatch();
       clearGuestCartStorage();
     },
   },

@@ -69,10 +69,11 @@ export const getPublicProducts = async (req, res, next) => {
     }
 
     // Sort mapping
+    if (sort && !["newest", "featured"].includes(sort)) {
+      throw new ApiError(400, "Invalid sort option. Supported options: newest, featured");
+    }
     let sortOption = { createdAt: -1 }; // default: newest
     if (sort === "featured") sortOption = { featured: -1, createdAt: -1 };
-    else if (sort === "price_asc") sortOption = { "variants.price": 1 };
-    else if (sort === "price_desc") sortOption = { "variants.price": -1 };
     // "newest" is already the default above
 
     const safeLimit = Math.min(Math.max(Number(limit) || 20, 1), 100);
@@ -232,7 +233,6 @@ export const getPublicCategories = async (req, res, next) => {
           },
           isActive: cat.isActive,
           subcategories: [],
-          children: [],
         }));
       return res.status(200).json({ success: true, data: topLevelOnly });
     }
@@ -262,7 +262,6 @@ function buildCategoryHierarchy(categories) {
       isActive: cat.isActive,
       parent: cat.parent ? { _id: cat.parent._id, name: cat.parent.name, slug: cat.parent.slug } : null,
       subcategories: [],
-      children: [], // alias
     });
   }
 
@@ -274,7 +273,6 @@ function buildCategoryHierarchy(categories) {
     if (parentId && categoryMap.has(parentId)) {
       const parent = categoryMap.get(parentId);
       parent.subcategories.push(node);
-      parent.children.push(node);
     } else {
       roots.push(node);
     }

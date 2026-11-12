@@ -13,5 +13,5 @@ export const removeCartItemRequest = (variantId) =>
 
 export const clearCartRequest = () => customerApi.delete("/customers/cart");
 
-export const mergeCartRequest = (items) =>
-  customerApi.post("/customers/cart/merge", { items });
+export const mergeCartRequest = (items, batchId) =>
+  customerApi.post("/customers/cart/merge", batchId ? { items, batchId } : { items });

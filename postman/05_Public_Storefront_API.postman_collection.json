@@ -64,7 +64,7 @@
                 {
                   "key": "sort",
                   "value": "",
-                  "description": "Sort: newest (default) | featured | price_asc | price_desc",
+                  "description": "Sort: newest (default) | featured",
                   "disabled": true
                 },
                 {
@@ -81,7 +81,7 @@
                 }
               ]
             },
-            "description": "Returns a paginated list of **active** products only. Each product includes basic variant pricing (price, salePrice, stock).\n\n**Category filtering supports recursive subcategory inclusion.**\n\n**Query params:**\n- `category` — ObjectId or category slug (includes all subcategories)\n- `search` — product name substring\n- `sort` — `newest` (default) | `featured` | `price_asc` | `price_desc`\n- `minPrice` / `maxPrice` — filter by variant price range\n- `page`, `limit`"
+            "description": "Returns a paginated list of **active** products only. Each product includes basic variant pricing (price, salePrice, stock).\n\n**Category filtering supports recursive subcategory inclusion.**\n\n**Query params:**\n- `category` — ObjectId or category slug (includes all subcategories)\n- `search` — product name substring\n- `sort` — `newest` (default) | `featured`\n- `minPrice` / `maxPrice` — filter by variant price range\n- `page`, `limit`"
           },
           "response": [
             {
@@ -182,7 +182,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"success\": true,\n  \"data\": [\n    {\n      \"_id\": \"60c72b2f9b1e8a001c8e4f40\",\n      \"name\": \"Men's Fashion\",\n      \"slug\": \"mens-fashion\",\n      \"description\": \"Clothing and apparel for men\",\n      \"image\": {\n        \"url\": \"https://ik.imagekit.io/test/mens.jpg\"\n      },\n      \"isActive\": true,\n      \"parent\": null,\n      \"subcategories\": [\n        {\n          \"_id\": \"60c72b2f9b1e8a001c8e4f41\",\n          \"name\": \"T-Shirts\",\n          \"slug\": \"t-shirts\",\n          \"description\": \"Casual and graphic tees\",\n          \"image\": {\n            \"url\": \"https://ik.imagekit.io/test/tshirts.jpg\"\n          },\n          \"isActive\": true,\n          \"parent\": {\n            \"_id\": \"60c72b2f9b1e8a001c8e4f40\",\n            \"name\": \"Men's Fashion\",\n            \"slug\": \"mens-fashion\"\n          },\n          \"subcategories\": [],\n          \"children\": []\n        }\n      ],\n      \"children\": []\n    }\n  ]\n}"
+              "body": "{\n  \"success\": true,\n  \"data\": [\n    {\n      \"_id\": \"60c72b2f9b1e8a001c8e4f40\",\n      \"name\": \"Men's Fashion\",\n      \"slug\": \"mens-fashion\",\n      \"description\": \"Clothing and apparel for men\",\n      \"image\": {\n        \"url\": \"https://ik.imagekit.io/test/mens.jpg\"\n      },\n      \"isActive\": true,\n      \"parent\": null,\n      \"subcategories\": [\n        {\n          \"_id\": \"60c72b2f9b1e8a001c8e4f41\",\n          \"name\": \"T-Shirts\",\n          \"slug\": \"t-shirts\",\n          \"description\": \"Casual and graphic tees\",\n          \"image\": {\n            \"url\": \"https://ik.imagekit.io/test/tshirts.jpg\"\n          },\n          \"isActive\": true,\n          \"parent\": {\n            \"_id\": \"60c72b2f9b1e8a001c8e4f40\",\n            \"name\": \"Men's Fashion\",\n            \"slug\": \"mens-fashion\"\n          },\n          \"subcategories\": []\n        }\n      ]\n    }\n  ]\n}"
             }
           ]
         },

@@ -39,6 +39,7 @@ beforeEach(async () => {
     .set("Authorization", `Bearer ${adminToken}`)
     .send({
       name: "Test Shirt",
+      description: "Comfortable cotton shirt for testing.",
       category: category._id.toString(),
       brand: brand._id.toString(),
       variants: [{ sku: "SHIRT-001", price: 20, stock: 10 }],

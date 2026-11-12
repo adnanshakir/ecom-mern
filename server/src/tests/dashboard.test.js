@@ -50,6 +50,7 @@ describe("GET /api/dashboard/stats", () => {
       .set("Authorization", `Bearer ${adminToken}`)
       .send({
         name: "Low Stock Item",
+        description: "Item with low stock threshold for dashboard stats.",
         category: category._id.toString(),
         brand: brand._id.toString(),
         variants: [{ sku: "LOW-001", price: 10, stock: 3 }],

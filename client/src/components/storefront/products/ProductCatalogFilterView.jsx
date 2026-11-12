@@ -504,20 +504,12 @@ export function ProductCatalogFilterView({
                 <Select value={sort} onValueChange={setSort}>
                   <SelectTrigger className="w-44 text-xs h-9">
                     <SelectValue>
-                      {sort === "featured"
-                        ? "Featured Products"
-                        : sort === "price_asc"
-                        ? "Price: Low to High"
-                        : sort === "price_desc"
-                        ? "Price: High to Low"
-                        : "Newest First"}
+                      {sort === "featured" ? "Featured Products" : "Newest First"}
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="newest">Newest First</SelectItem>
                     <SelectItem value="featured">Featured Products</SelectItem>
-                    <SelectItem value="price_asc">Price: Low to High</SelectItem>
-                    <SelectItem value="price_desc">Price: High to Low</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -557,7 +549,7 @@ export function ProductCatalogFilterView({
 
               {sort !== "newest" && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-[#033936] px-3 py-1 text-white text-[11px] font-medium">
-                  Sort: {sort === "featured" ? "Featured Products" : sort === "price_asc" ? "Price: Low to High" : "Price: High to Low"}
+                  Sort: Featured Products
                   <button type="button" onClick={() => setSort("newest")}>
                     <X className="size-3 hover:opacity-75" />
                   </button>

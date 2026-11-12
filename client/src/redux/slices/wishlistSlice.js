@@ -7,12 +7,33 @@ import {
 } from "@/services/storefront/wishlist";
 import {
   getGuestWishlist,
+  getGuestWishlistRevision,
   saveGuestWishlist,
-  clearGuestWishlist as clearGuestWishlistStorage,
+  reconcileGuestWishlistAfterMerge,
 } from "@/lib/guestStorage";
+
+const MAX_WISHLIST_MERGE_ITEMS = 100;
 
 const extractIds = (products) =>
   (products || []).map((p) => (p?._id || p)?.toString()).filter(Boolean);
+
+async function syncCustomerWishlist() {
+  const submittedRevision = getGuestWishlistRevision();
+  const guestItems = getGuestWishlist();
+
+  if (guestItems.length === 0) {
+    const { data } = await getWishlistRequest();
+    return data.data.products; // array of populated product objects
+  }
+
+  const productIds = [...new Set(guestItems.map((p) => (p._id || p).toString()))].slice(
+    0,
+    MAX_WISHLIST_MERGE_ITEMS
+  );
+  const { data } = await mergeWishlistRequest(productIds);
+  reconcileGuestWishlistAfterMerge(productIds, submittedRevision);
+  return data.data.products;
+}
 
 const initialState = {
   productIds: [], // Set of product _id strings for O(1) membership checks
@@ -32,16 +53,7 @@ export const fetchWishlist = createAsyncThunk(
   "wishlist/fetch",
   async (_, { rejectWithValue }) => {
     try {
-      const guestItems = getGuestWishlist();
-      if (guestItems.length > 0) {
-        const productIds = guestItems.map((p) => (p._id || p).toString());
-        const { data } = await mergeWishlistRequest(productIds);
-        clearGuestWishlistStorage();
-        return data.data.products;
-      }
-
-      const { data } = await getWishlistRequest();
-      return data.data.products; // array of populated product objects
+      return await syncCustomerWishlist();
     } catch (err) {
       return rejectWithValue(err.response?.data?.message || "Failed to load wishlist");
     }
@@ -76,15 +88,7 @@ export const mergeGuestWishlistThunk = createAsyncThunk(
   "wishlist/mergeGuest",
   async (_, { rejectWithValue }) => {
     try {
-      const guestItems = getGuestWishlist();
-      if (guestItems.length === 0) {
-        const { data } = await getWishlistRequest();
-        return data.data.products;
-      }
-      const productIds = guestItems.map((p) => (p._id || p).toString());
-      const { data } = await mergeWishlistRequest(productIds);
-      clearGuestWishlistStorage();
-      return data.data.products;
+      return await syncCustomerWishlist();
     } catch (err) {
       return rejectWithValue(err.response?.data?.message || "Failed to merge wishlist");
     }
@@ -110,8 +114,12 @@ const wishlistSlice = createSlice({
     toggleGuestWishlist(state, action) {
       const product = action.payload;
       if (!product?._id) return;
-      const pid = product._id.toString();
 
+      const guestProducts = getGuestWishlist();
+      state.products = guestProducts;
+      state.productIds = extractIds(guestProducts);
+
+      const pid = product._id.toString();
       const exists = state.productIds.includes(pid);
       if (exists) {
         state.products = state.products.filter(
@@ -132,10 +140,11 @@ const wishlistSlice = createSlice({
       const pid = action.payload?.toString();
       if (!pid) return;
 
-      state.products = state.products.filter(
+      const guestProducts = getGuestWishlist();
+      state.products = guestProducts.filter(
         (p) => (p._id || p).toString() !== pid
       );
-      state.productIds = state.productIds.filter((id) => id !== pid);
+      state.productIds = extractIds(state.products);
       saveGuestWishlist(state.products);
     },
 

@@ -161,44 +161,144 @@ export const clearCart = async (req, res, next) => {
   }
 };
 
+const MAX_MERGE_OPTIMISTIC_RETRIES = 5;
+
+const findOrCreateCustomerCart = async (customerId) => {
+  let cart = await Cart.findOne({ customer: customerId }).select("+processedMergeBatches");
+  if (cart) return cart;
+  try {
+    await Cart.create({ customer: customerId, items: [] });
+  } catch (err) {
+    if (err?.code !== 11000) throw err;
+  }
+  return Cart.findOne({ customer: customerId }).select("+processedMergeBatches");
+};
+
+const computeMergedCartState = async (baseItems, incomingItems) => {
+  const nextItems = baseItems.map((ci) => ({
+    variant: ci.variant,
+    quantity: ci.quantity,
+  }));
+  const skippedItems = [];
+
+  if (!Array.isArray(incomingItems) || incomingItems.length === 0) {
+    return { nextItems, skippedItems };
+  }
+
+  for (const item of incomingItems) {
+    if (!item?.variantId) continue;
+    const requestedQuantity = Math.max(1, Number(item.quantity) || 1);
+    const variant = await ProductVariant.findById(item.variantId).populate("product", "name");
+    if (!variant || !variant.isActive || variant.stock <= 0) {
+      skippedItems.push({
+        variantId: item.variantId.toString(),
+        sku: variant?.sku || "",
+        productName: variant?.product?.name || "",
+        requestedQuantity,
+        reason: !variant ? "not_found" : !variant.isActive ? "inactive" : "out_of_stock",
+      });
+      continue;
+    }
+
+    const existingItem = nextItems.find(
+      (ci) => ci.variant.toString() === item.variantId.toString()
+    );
+
+    if (existingItem) {
+      const desired = existingItem.quantity + requestedQuantity;
+      existingItem.quantity = Math.min(desired, variant.stock);
+    } else {
+      const clamped = Math.min(requestedQuantity, variant.stock);
+      if (clamped > 0) {
+        nextItems.push({ variant: item.variantId, quantity: clamped });
+      }
+    }
+  }
+
+  return { nextItems, skippedItems };
+};
+
 // ---------------- POST /api/customers/cart/merge ----------------
 // Merges guest cart items (from localStorage) into the customer's authenticated cart
 export const mergeCart = async (req, res, next) => {
   try {
-    const { items = [] } = req.body;
+    const { items = [], batchId } = req.body;
+    let cart = await findOrCreateCustomerCart(req.customerProfile._id);
+    let finalSkippedItems = [];
 
-    let cart = await Cart.findOne({ customer: req.customerProfile._id });
-    if (!cart) {
-      cart = await Cart.create({ customer: req.customerProfile._id, items: [] });
-    }
-
-    if (Array.isArray(items) && items.length > 0) {
-      for (const item of items) {
-        if (!item?.variantId) continue;
-        const variant = await ProductVariant.findById(item.variantId);
-        if (!variant || !variant.isActive || variant.stock <= 0) continue;
-
-        const existingItem = cart.items.find(
-          (ci) => ci.variant.toString() === item.variantId.toString()
-        );
-
-        const qtyToAdd = Math.max(1, Number(item.quantity) || 1);
-
-        if (existingItem) {
-          const desired = existingItem.quantity + qtyToAdd;
-          existingItem.quantity = Math.min(desired, variant.stock);
-        } else {
-          const clamped = Math.min(qtyToAdd, variant.stock);
-          if (clamped > 0) {
-            cart.items.push({ variant: item.variantId, quantity: clamped });
-          }
+    for (let attempt = 0; attempt < MAX_MERGE_OPTIMISTIC_RETRIES; attempt += 1) {
+      if (batchId) {
+        const recorded = cart.processedMergeBatches?.find((b) => b.batchId === batchId);
+        if (recorded) {
+          finalSkippedItems = recorded.skippedItems || [];
+          break;
         }
       }
-      await cart.save();
+
+      const { nextItems, skippedItems } = await computeMergedCartState(cart.items, items);
+
+      // Nothing to change and no batchId to record
+      if (items.length === 0 && !batchId) {
+        finalSkippedItems = skippedItems;
+        break;
+      }
+
+      const filter = {
+        _id: cart._id,
+        __v: cart.__v,
+        ...(batchId ? { "processedMergeBatches.batchId": { $ne: batchId } } : {}),
+      };
+
+      const update = {
+        $set: { items: nextItems },
+        $inc: { __v: 1 },
+        ...(batchId
+          ? {
+              $push: {
+                processedMergeBatches: {
+                  $each: [{ batchId, skippedItems }],
+                  $slice: -50,
+                },
+              },
+            }
+          : {}),
+      };
+
+      const updated = await Cart.findOneAndUpdate(filter, update, { new: true });
+      if (updated) {
+        finalSkippedItems = skippedItems;
+        break;
+      }
+
+      // Reload after concurrent modification or duplicate batchId race
+      cart = await Cart.findById(cart._id).select("+processedMergeBatches");
+      if (!cart) {
+        cart = await findOrCreateCustomerCart(req.customerProfile._id);
+      }
+
+      if (attempt === MAX_MERGE_OPTIMISTIC_RETRIES - 1) {
+        if (batchId) {
+          const recorded = cart.processedMergeBatches?.find((b) => b.batchId === batchId);
+          if (recorded) {
+            finalSkippedItems = recorded.skippedItems || [];
+            break;
+          }
+        }
+        throw new ApiError(409, "Cart was modified concurrently during merge; please retry");
+      }
     }
 
     const populated = await populateCart(cart._id);
-    res.status(200).json({ success: true, data: populated });
+    const dataObj = populated?.toObject ? populated.toObject() : populated;
+
+    res.status(200).json({
+      success: true,
+      data: {
+        ...dataObj,
+        skippedItems: finalSkippedItems,
+      },
+      skippedItems: finalSkippedItems,
+    });
   } catch (err) {
     next(err);
   }

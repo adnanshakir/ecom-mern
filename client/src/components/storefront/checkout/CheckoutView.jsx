@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useDispatch, useSelector } from "react-redux";
 import { Loader2, MapPin, Pencil, Plus, ShieldCheck, Trash2 } from "lucide-react";
@@ -56,6 +56,7 @@ export function CheckoutView() {
   const [addressForm, setAddressForm] = useState(null);
   const [addressLoading, setAddressLoading] = useState(true);
   const [paymentReconciliation, setPaymentReconciliation] = useState(null);
+  const idempotencyKeyRef = useRef("");
 
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get("buyNow") !== "1") return;
@@ -73,7 +74,10 @@ export function CheckoutView() {
 
   useEffect(() => {
     if (authReady && authStatus !== "authenticated") {
-      router.replace("/sign-in?from=/checkout");
+      const params = new URLSearchParams(window.location.search);
+      const returnPath =
+        params.get("buyNow") === "1" ? "/checkout?buyNow=1" : "/checkout";
+      router.replace(`/sign-in?from=${encodeURIComponent(returnPath)}`);
     }
   }, [authReady, authStatus, router]);
 
@@ -96,6 +100,11 @@ export function CheckoutView() {
     return sum + price * item.quantity;
   }, 0);
   const total = subtotal + DELIVERY_CHARGE;
+  const cartSignature = checkoutItems.map((item) => `${item.variant?._id || ""}:${item.quantity}`).join("|");
+
+  useEffect(() => {
+    idempotencyKeyRef.current = "";
+  }, [selectedAddressId, cartSignature]);
 
   /** Save an address against the profile version currently displayed in this tab. */
   const saveAddress = async (event) => {
@@ -153,7 +162,17 @@ export function CheckoutView() {
       const checkoutItem = directCheckoutItem
         ? { variantId: directCheckoutItem.variant._id, quantity: directCheckoutItem.quantity }
         : undefined;
-      const { data: orderResponse } = await createPaymentOrderRequest(selectedAddressId, checkoutItem);
+      if (!idempotencyKeyRef.current) {
+        idempotencyKeyRef.current =
+          typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+            ? crypto.randomUUID()
+            : `chk_${Date.now()}_${Math.random().toString(36).slice(2, 12)}`;
+      }
+      const { data: orderResponse } = await createPaymentOrderRequest(
+        selectedAddressId,
+        checkoutItem,
+        idempotencyKeyRef.current
+      );
       const order = orderResponse.data;
       const razorpay = new Razorpay({
         key: order.keyId,
@@ -166,11 +185,36 @@ export function CheckoutView() {
         theme: { color: "#033936" },
         handler: async (payment) => {
           try {
-            await verifyPaymentRequest(payment);
-            if (!directCheckoutItem) dispatch(clearCartState());
-            sessionStorage.removeItem("fibio:buy-now");
-            toast.success("Payment successful");
-            router.replace(`/order?orderId=${order.orderId}`);
+            const { data: verifyResponse } = await verifyPaymentRequest(payment);
+            const verifiedStatus = verifyResponse.data?.status;
+            if (verifiedStatus === "paid") {
+              idempotencyKeyRef.current = "";
+              if (!directCheckoutItem) dispatch(clearCartState());
+              sessionStorage.removeItem("fibio:buy-now");
+              toast.success("Payment successful");
+              router.replace(`/order?orderId=${verifyResponse.data?.orderId || order.orderId}`);
+              return;
+            }
+            if (verifiedStatus === "refunded" || verifiedStatus === "refund_pending") {
+              idempotencyKeyRef.current = "";
+              setPaymentReconciliation(null);
+              toast.error(
+                verifyResponse.message ||
+                  "An item went out of stock after checkout began. A refund has been initiated."
+              );
+              return;
+            }
+            if (verifiedStatus === "failed") {
+              idempotencyKeyRef.current = "";
+              setPaymentReconciliation(null);
+              toast.error("Payment was unsuccessful. You can try again.");
+              return;
+            }
+            setPaymentReconciliation({
+              razorpayOrderId: payment.razorpay_order_id,
+              razorpayPaymentId: payment.razorpay_payment_id,
+            });
+            toast.error("Payment is still being confirmed. Please do not retry yet.");
           } catch (error) {
             setPaymentReconciliation({
               razorpayOrderId: payment.razorpay_order_id,
@@ -182,13 +226,24 @@ export function CheckoutView() {
                 razorpayPaymentId: payment.razorpay_payment_id,
               });
               if (reconciliation.data?.status === "paid") {
+                idempotencyKeyRef.current = "";
                 if (!directCheckoutItem) dispatch(clearCartState());
                 sessionStorage.removeItem("fibio:buy-now");
                 toast.success("Payment successful");
                 router.replace(`/order?orderId=${reconciliation.data.orderId}`);
                 return;
               }
+              if (reconciliation.data?.status === "refunded" || reconciliation.data?.status === "refund_pending") {
+                idempotencyKeyRef.current = "";
+                setPaymentReconciliation(null);
+                toast.error(
+                  reconciliation.message ||
+                    "An item went out of stock after checkout began. A refund has been initiated."
+                );
+                return;
+              }
               if (reconciliation.data?.status === "failed") {
+                idempotencyKeyRef.current = "";
                 setPaymentReconciliation(null);
                 toast.error("Payment was unsuccessful. You can try again.");
                 return;
@@ -212,6 +267,7 @@ export function CheckoutView() {
         const paymentId = response.error?.metadata?.payment_id;
         const paymentOrderId = response.error?.metadata?.order_id || order.razorpayOrderId;
         if (!paymentId) {
+          idempotencyKeyRef.current = "";
           toast.error(response.error?.description || "Payment failed");
           setPaymentReconciliation(null);
           return;
@@ -227,8 +283,26 @@ export function CheckoutView() {
         })
           .then(({ data: reconciliation }) => {
             if (reconciliation.data?.status === "failed") {
+              idempotencyKeyRef.current = "";
               toast.error(response.error?.description || "Payment failed");
               setPaymentReconciliation(null);
+              return;
+            }
+            if (reconciliation.data?.status === "paid") {
+              idempotencyKeyRef.current = "";
+              if (!directCheckoutItem) dispatch(clearCartState());
+              sessionStorage.removeItem("fibio:buy-now");
+              toast.success("Payment successful");
+              router.replace(`/order?orderId=${reconciliation.data.orderId}`);
+              return;
+            }
+            if (reconciliation.data?.status === "refunded" || reconciliation.data?.status === "refund_pending") {
+              idempotencyKeyRef.current = "";
+              setPaymentReconciliation(null);
+              toast.error(
+                reconciliation.message ||
+                  "An item went out of stock after checkout began. A refund has been initiated."
+              );
               return;
             }
             toast.error("Payment outcome is still being confirmed. Please do not retry yet.");
@@ -354,7 +428,7 @@ export function CheckoutView() {
           <div className="mt-6 grid gap-3 border-b pb-4 text-sm">
             <div className="flex justify-between">
               <span className="text-muted-foreground">
-                {count} item{count === 1 ? "" : "s"}
+                {checkoutCount} item{checkoutCount === 1 ? "" : "s"}
               </span>
               <span>{formatPrice(subtotal)}</span>
             </div>

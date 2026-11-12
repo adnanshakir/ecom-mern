@@ -30,6 +30,7 @@ const addressSchema = new mongoose.Schema(
 const orderSchema = new mongoose.Schema(
   {
     orderNumber: { type: String, required: true, unique: true, index: true },
+    idempotencyKey: { type: String, trim: true },
     customer: { type: mongoose.Schema.Types.ObjectId, ref: "CustomerProfile", required: true, index: true },
     items: { type: [orderItemSchema], required: true },
     shippingAddress: { type: addressSchema, required: true },
@@ -40,10 +41,28 @@ const orderSchema = new mongoose.Schema(
     total: { type: Number, required: true, min: 0 },
     payment: {
       method: { type: String, default: "razorpay" },
-      status: { type: String, enum: ["pending", "paid", "failed"], default: "pending" },
+      status: {
+        type: String,
+        enum: ["pending", "paid", "failed", "refund_pending", "refunded"],
+        default: "pending",
+      },
+      currency: { type: String, default: "INR" },
       razorpayOrderId: { type: String, index: true },
       razorpayPaymentId: { type: String },
+      paidAt: { type: Date, index: true },
+      refundId: { type: String },
+      refundStatus: {
+        type: String,
+        enum: ["none", "pending", "processed", "failed"],
+        default: "none",
+      },
+      refundedAt: { type: Date },
+      refundError: { type: String, default: "" },
     },
+    stockDeducted: { type: Boolean, default: false },
+    stockRestored: { type: Boolean, default: false },
+    fulfillmentRecoveryNeeded: { type: Boolean, default: false },
+    fulfillmentFailureReason: { type: String, default: "" },
     orderStatus: {
       type: String,
       enum: ["placed", "packed", "shipped", "delivered", "cancelled"],
@@ -55,7 +74,12 @@ const orderSchema = new mongoose.Schema(
 );
 
 orderSchema.index({ "payment.status": 1, createdAt: -1 });
+orderSchema.index({ "payment.status": 1, "payment.paidAt": -1 });
 orderSchema.index({ orderStatus: 1, adminSeen: 1 });
+orderSchema.index(
+  { customer: 1, idempotencyKey: 1 },
+  { unique: true, partialFilterExpression: { idempotencyKey: { $type: "string" } } }
+);
 
 const Order = mongoose.model("Order", orderSchema);
 export default Order;

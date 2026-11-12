@@ -1,7 +1,11 @@
 import customerApi from "@/services/storefront/customerAxios";
 
-export const createPaymentOrderRequest = (addressId, checkoutItem) =>
-  customerApi.post("/customers/payments/orders", { addressId, ...checkoutItem });
+export const createPaymentOrderRequest = (addressId, checkoutItem, idempotencyKey) =>
+  customerApi.post(
+    "/customers/payments/orders",
+    { addressId, ...checkoutItem, ...(idempotencyKey ? { idempotencyKey } : {}) },
+    idempotencyKey ? { headers: { "Idempotency-Key": idempotencyKey } } : undefined
+  );
 
 export const getCustomerOrdersRequest = () => customerApi.get("/customers/payments/orders");
 

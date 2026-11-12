@@ -18,14 +18,14 @@ function StatusBadge({ children }) {
 }
 
 export default function OrdersPage() {
-  const { orders, stats, pagination, filters, selectedOrder, sheetOpen, loading, error, setSheetOpen, setFilter, openOrder, changeStatus } = useOrders();
+  const { orders, stats, pagination, filters, selectedOrder, orderLoading, sheetOpen, loading, error, setSheetOpen, setFilter, openOrder, changeStatus } = useOrders();
   return (
     <div className="grid gap-4">
       <div className="flex items-center justify-between"><div><h1 className="text-xl font-semibold">Orders</h1><p className="text-sm text-muted-foreground">{stats.newCount} new · {stats.pendingCount} pending</p></div></div>
       <Card><CardContent className="flex flex-wrap gap-2 p-4">
         <Input className="w-full max-w-sm" placeholder="Search order, customer, phone..." value={filters.search} onChange={(event) => setFilter("search", event.target.value)} />
         <OrderSelect value={filters.status} placeholder="All statuses" options={statuses} onChange={(value) => setFilter("status", value)} />
-        <OrderSelect value={filters.paymentStatus} placeholder="All payments" options={["paid", "pending", "failed"]} onChange={(value) => setFilter("paymentStatus", value)} />
+        <OrderSelect value={filters.paymentStatus} placeholder="All payments" options={["paid", "pending", "failed", "refund_pending", "refunded"]} onChange={(value) => setFilter("paymentStatus", value)} />
       </CardContent></Card>
       {error && <p className="text-sm text-destructive">{error}</p>}
       <div className="w-full overflow-x-auto rounded-lg border bg-card">
@@ -37,7 +37,7 @@ export default function OrdersPage() {
         </Table>
       </div>
       <div className="flex items-center justify-between text-sm text-muted-foreground"><span>Page {pagination.page} of {pagination.pages || 1} ({pagination.total})</span><div className="flex gap-2"><Button variant="outline" size="sm" disabled={pagination.page <= 1} onClick={() => setFilter("page", pagination.page - 1)}>Previous</Button><Button variant="outline" size="sm" disabled={pagination.page >= pagination.pages} onClick={() => setFilter("page", pagination.page + 1)}>Next</Button></div></div>
-      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}><SheetContent className="w-full overflow-y-auto sm:max-w-xl"><SheetHeader><SheetTitle>{selectedOrder?.orderNumber || "Order details"}</SheetTitle></SheetHeader>{selectedOrder && <OrderDetails order={selectedOrder} onStatusChange={changeStatus} />}</SheetContent></Sheet>
+      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}><SheetContent className="w-full overflow-y-auto sm:max-w-xl"><SheetHeader><SheetTitle>{orderLoading ? "Loading order..." : selectedOrder?.orderNumber || "Order details"}</SheetTitle></SheetHeader>{orderLoading ? <div className="flex items-center justify-center py-12"><Loader2 className="size-6 animate-spin text-muted-foreground" /></div> : selectedOrder && <OrderDetails order={selectedOrder} onStatusChange={changeStatus} />}</SheetContent></Sheet>
     </div>
   );
 }
