@@ -63,6 +63,7 @@ describe("Customer Profile Single-Route API (/api/customers/profile)", () => {
     const updatePayload = {
       name: "Adnan Shakir",
       address: {
+        fullName: "Adnan Shakir",
         line1: "123 Tech Park",
         city: "Bengaluru",
         state: "Karnataka",
@@ -80,6 +81,7 @@ describe("Customer Profile Single-Route API (/api/customers/profile)", () => {
     expect(updateRes.body.success).toBe(true);
     expect(updateRes.body.data.name).toBe("Adnan Shakir");
     expect(updateRes.body.data.addresses.length).toBe(1);
+    expect(updateRes.body.data.addresses[0].fullName).toBe("Adnan Shakir");
     expect(updateRes.body.data.addresses[0].line1).toBe("123 Tech Park");
     expect(updateRes.body.data.addresses[0].city).toBe("Bengaluru");
 

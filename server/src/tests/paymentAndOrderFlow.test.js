@@ -245,6 +245,45 @@ describe("Checkout Idempotency, Receipt Uniqueness & Capture Guarantees", () => 
     expect(res.body.data.razorpayOrderId).toBe("order_rzp_retry_ok");
   });
 
+  it("recovers from legacy unique razorpayOrderId_1 index on orders and stores address.fullName", async () => {
+    await mongoose.connection.db
+      .collection("orders")
+      .createIndex({ razorpayOrderId: 1 }, { name: "razorpayOrderId_1", unique: true });
+
+    await CustomerProfile.updateOne(
+      { _id: customerProfile._id, "addresses._id": addressId },
+      { $set: { "addresses.$.fullName": "Adnan Buyer" } }
+    );
+
+    let callNum = 0;
+    global.fetch = jest.fn(async (url, opts) => {
+      if (url === "https://api.razorpay.com/v1/orders") {
+        callNum += 1;
+        const body = JSON.parse(opts.body);
+        return {
+          ok: true,
+          json: async () => ({ id: `order_rzp_legacy_${callNum}`, amount: body.amount, currency: "INR" }),
+        };
+      }
+      throw new Error(`Unexpected fetch: ${url}`);
+    });
+
+    const firstRes = await request(app)
+      .post("/api/customers/payments/orders")
+      .set("Cookie", customerCookies)
+      .send({ addressId });
+    expect(firstRes.status).toBe(201);
+
+    const secondRes = await request(app)
+      .post("/api/customers/payments/orders")
+      .set("Cookie", customerCookies)
+      .send({ addressId });
+    expect(secondRes.status).toBe(201);
+
+    const orderDoc = await Order.findById(secondRes.body.data.orderId);
+    expect(orderDoc.shippingAddress.fullName).toBe("Adnan Buyer");
+  });
+
   it("verifyPayment and reconcilePayment refuse to mark authorized (non-captured) payments as paid", async () => {
     const rzpOrderId = "order_auth_only_1";
     const rzpPaymentId = "pay_auth_only_1";

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   getProductReviews,
   getReviewSummary,
@@ -25,7 +25,7 @@ export function useReviews(productId, isAuthenticated = false) {
     distribution: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 },
   });
   const [myReview, setMyReview] = useState(null); // the current customer's review (or null)
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(Boolean(productId));
   const [error, setError] = useState(null);
   const [page, setPage] = useState(1);
   const [sort, setSort] = useState("most_recent");
@@ -37,7 +37,7 @@ export function useReviews(productId, isAuthenticated = false) {
   // ─── Fetch reviews list ─────────────────────────────────────────────
 
   const fetchReviews = useCallback(
-    async (fetchPage = 1, fetchSort = sort) => {
+    async (fetchPage = 1, fetchSort = "most_recent") => {
       if (!productId) return;
       try {
         const { data } = await getProductReviews(productId, {
@@ -52,7 +52,7 @@ export function useReviews(productId, isAuthenticated = false) {
         setError(err.response?.data?.message || "Failed to load reviews");
       }
     },
-    [productId, sort]
+    [productId]
   );
 
   // ─── Fetch summary ─────────────────────────────────────────────────
@@ -82,30 +82,52 @@ export function useReviews(productId, isAuthenticated = false) {
     }
   }, [productId, isAuthenticated]);
 
-  // ─── Refetch when productId or isAuthenticated changes ──────────────
-
-  const fetchKey = `${productId}_${isAuthenticated}`;
-  const lastFetchKey = useRef(null);
+  // ─── Load public reviews and summary when productId changes ─────────
 
   useEffect(() => {
-    if (!productId || fetchKey === lastFetchKey.current) return;
-    lastFetchKey.current = fetchKey;
+    if (!productId) return;
 
     let cancelled = false;
 
-    const loadAll = async () => {
+    const loadPublic = async () => {
       setLoading(true);
       setPage(1);
       setSort("most_recent");
-      await Promise.all([fetchReviews(1, "most_recent"), fetchSummary(), fetchMyReview()]);
+      await Promise.allSettled([fetchReviews(1, "most_recent"), fetchSummary()]);
       if (!cancelled) setLoading(false);
     };
-    loadAll();
+    loadPublic();
 
     return () => {
       cancelled = true;
     };
-  }, [fetchKey, productId, fetchReviews, fetchSummary, fetchMyReview]);
+  }, [productId, fetchReviews, fetchSummary]);
+
+  // ─── Load customer's own review independently of public loading state ──
+
+  useEffect(() => {
+    if (!productId) return;
+
+    let cancelled = false;
+
+    const loadMyReview = async () => {
+      if (!isAuthenticated) {
+        if (!cancelled) setMyReview(null);
+        return;
+      }
+      try {
+        const { data } = await getMyReview(productId);
+        if (!cancelled) setMyReview(data.data || null);
+      } catch {
+        if (!cancelled) setMyReview(null);
+      }
+    };
+    loadMyReview();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [productId, isAuthenticated]);
 
   // ─── Refetch when page or sort changes (user-driven) ────────────────
 
@@ -191,7 +213,7 @@ export function useReviews(productId, isAuthenticated = false) {
     reviews,
     summary,
     myReview,
-    loading,
+    loading: productId ? loading : false,
     error,
     page,
     sort,

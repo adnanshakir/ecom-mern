@@ -128,6 +128,7 @@ export const updateCustomerProfile = async (req, res, next) => {
         // Direct replace of addresses array
         profileDoc.addresses = addresses.map((addr) => ({
           label: addr.label || "Home",
+          fullName: (addr.fullName || "").trim(),
           line1: (addr.line1 || "").trim(),
           line2: (addr.line2 || "").trim(),
           city: (addr.city || "").trim(),
@@ -142,6 +143,7 @@ export const updateCustomerProfile = async (req, res, next) => {
         // Single address passed - update or append primary address
         const formattedAddress = {
           label: address.label || "Home",
+          fullName: (address.fullName || "").trim(),
           line1: (address.line1 || "").trim(),
           line2: (address.line2 || "").trim(),
           city: (address.city || "").trim(),

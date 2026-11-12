@@ -15,6 +15,7 @@ const customerProfileSchema = new mongoose.Schema(
     addresses: [
       {
         label: { type: String, trim: true },
+        fullName: { type: String, trim: true },
         line1: { type: String, required: true, trim: true },
         line2: { type: String, trim: true },
         city: { type: String, required: true, trim: true },
