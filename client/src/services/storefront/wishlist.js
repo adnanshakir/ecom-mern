@@ -7,3 +7,6 @@ export const addToWishlistRequest = (productId) =>
 
 export const removeFromWishlistRequest = (productId) =>
   customerApi.delete(`/customers/wishlist/items/${productId}`);
+
+export const mergeWishlistRequest = (productIds) =>
+  customerApi.post("/customers/wishlist/merge", { productIds });

@@ -6,13 +6,12 @@ import { useSelector, useDispatch } from "react-redux";
 import Link from "next/link";
 import { Loader2, Heart, Trash2 } from "lucide-react";
 
-import { removeFromWishlist, selectWishlistPending } from "@/redux/slices/wishlistSlice";
+import { removeFromWishlist, removeGuestWishlist, selectWishlistPending } from "@/redux/slices/wishlistSlice";
 import { getDisplayPrice, isInStock } from "@/lib/productPrice";
 import { formatPrice } from "@/lib/formatCurrency";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { addToCart } from "@/redux/slices/cartSlice";
-import { selectCartPendingVariants } from "@/redux/slices/cartSlice";
+import { useCart } from "@/hooks/storefront/useCart";
 import { toast } from "sonner";
 
 export function WishlistView() {
@@ -24,13 +23,9 @@ export function WishlistView() {
   const products = useSelector((state) => state.wishlist.products);
   const wishlistStatus = useSelector((state) => state.wishlist.status);
   const pendingWishlist = useSelector(selectWishlistPending);
-  const pendingCart = useSelector(selectCartPendingVariants);
+  const { addItem, isPending: isCartPendingCheck } = useCart();
 
-  useEffect(() => {
-    if (authReady && authStatus !== "authenticated") {
-      router.replace("/sign-in");
-    }
-  }, [authReady, authStatus, router]);
+  const isAuthenticated = authStatus === "authenticated";
 
   if (!authReady || authStatus === "loading") {
     return (
@@ -40,20 +35,36 @@ export function WishlistView() {
     );
   }
 
-  if (authStatus !== "authenticated") return null;
-
   const handleAddToCart = async (product) => {
     const variants = product.variants || [];
-    const candidate = variants.find((v) => v.stock > 0);
+    const candidate = variants.find((v) => v.stock > 0) || variants[0];
     if (!candidate?._id) {
       toast.error("No in-stock variant available.");
       return;
     }
-    const result = await dispatch(addToCart({ variantId: candidate._id, quantity: 1 }));
+    const result = await addItem(candidate._id, 1, {
+      variant: {
+        ...candidate,
+        product: {
+          _id: product._id,
+          name: product.name,
+          slug: product.slug,
+          images: product.images,
+        },
+      },
+    });
     if (result?.payload?.message) {
       toast.warning(result.payload.message);
     } else if (!result?.error) {
-      toast.success("Added to cart!");
+      toast.success(`${product.name} added to cart`);
+    }
+  };
+
+  const handleRemoveFromWishlist = (productId) => {
+    if (isAuthenticated) {
+      dispatch(removeFromWishlist(productId));
+    } else {
+      dispatch(removeGuestWishlist(productId));
     }
   };
 
@@ -90,7 +101,7 @@ export function WishlistView() {
             );
             const isRemovePending = pendingWishlist.includes(product._id?.toString());
             const inStockVariant = product.variants?.find((v) => v.stock > 0);
-            const isCartPending = inStockVariant && pendingCart.includes(inStockVariant._id?.toString());
+            const isCartPending = inStockVariant && isCartPendingCheck(inStockVariant._id?.toString());
 
             return (
               <div
@@ -161,7 +172,7 @@ export function WishlistView() {
                       size="sm"
                       className="shrink-0 px-2"
                       disabled={isRemovePending}
-                      onClick={() => dispatch(removeFromWishlist(product._id?.toString()))}
+                      onClick={() => handleRemoveFromWishlist(product._id?.toString())}
                       title="Remove from wishlist"
                     >
                       <Trash2 className="size-3.5 text-destructive" />

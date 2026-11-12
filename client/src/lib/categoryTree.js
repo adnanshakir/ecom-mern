@@ -53,18 +53,50 @@ export function getDescendantIds(categories, id) {
   return descendants;
 }
 
+// Helper to flatten nested categories tree into a single array
+export function flattenCategories(categories) {
+  const result = [];
+  const seen = new Set();
+
+  function walk(list) {
+    if (!Array.isArray(list)) return;
+    for (const c of list) {
+      if (!c || seen.has(c._id)) continue;
+      seen.add(c._id);
+      result.push(c);
+      if (c.subcategories && c.subcategories.length > 0) {
+        walk(c.subcategories);
+      }
+    }
+  }
+
+  walk(categories);
+  return result;
+}
+
 // Groups categories by their direct parent id (null = top-level). Used for
 // collapsible rendering — unlike buildCategoryTree, this doesn't flatten
 // everything up front, so children can be rendered only when expanded.
 export function buildChildrenMap(categories) {
-  const validIds = new Set(categories.map((c) => c._id));
+  const allList = flattenCategories(categories);
+  const validIds = new Set(allList.map((c) => c._id));
   const map = new Map();
 
-  categories.forEach((c) => {
+  allList.forEach((c) => {
     const rawParentId = c.parent?._id || c.parent || null;
     const parentId = rawParentId && validIds.has(rawParentId) ? rawParentId : null;
     if (!map.has(parentId)) map.set(parentId, []);
     map.get(parentId).push(c);
+
+    // Also link subcategories if attached directly
+    if (Array.isArray(c.subcategories) && c.subcategories.length > 0) {
+      if (!map.has(c._id)) map.set(c._id, []);
+      for (const sub of c.subcategories) {
+        if (!map.get(c._id).some((existing) => existing._id === sub._id)) {
+          map.get(c._id).push(sub);
+        }
+      }
+    }
   });
 
   map.forEach((list) => list.sort((a, b) => a.name.localeCompare(b.name)));

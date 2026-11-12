@@ -18,11 +18,7 @@ export function CartView() {
 
   const { items, count, status, updateItem, removeItem, clear, isPending } = useCart();
 
-  useEffect(() => {
-    if (authReady && authStatus !== "authenticated") {
-      router.replace("/sign-in");
-    }
-  }, [authReady, authStatus, router]);
+  const isAuthenticated = authStatus === "authenticated";
 
   if (!authReady || authStatus === "loading") {
     return (
@@ -32,11 +28,9 @@ export function CartView() {
     );
   }
 
-  if (authStatus !== "authenticated") return null;
-
   const subtotal = items.reduce((sum, item) => {
     const unitPrice = item.variant?.salePrice ?? item.variant?.price ?? 0;
-    return sum + unitPrice * item.quantity;
+    return sum + unitPrice * (item.quantity || 1);
   }, 0);
 
   return (
@@ -176,7 +170,9 @@ export function CartView() {
             </div>
 
             <Button className="w-full bg-[#033936] text-white hover:bg-[#022826]" size="lg" asChild>
-              <Link href="/checkout">Proceed to checkout</Link>
+              <Link href={isAuthenticated ? "/checkout" : "/sign-in?from=/checkout"}>
+                Proceed to checkout
+              </Link>
             </Button>
 
             <Button variant="outline" className="w-full" asChild>

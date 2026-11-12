@@ -17,6 +17,17 @@ const productSchema = new mongoose.Schema(
     description: {
       type: String,
       trim: true,
+      default: "",
+    },
+    keyFeatures: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    productDimensions: {
+      type: String,
+      trim: true,
+      default: "",
     },
     category: {
       type: mongoose.Schema.Types.ObjectId,

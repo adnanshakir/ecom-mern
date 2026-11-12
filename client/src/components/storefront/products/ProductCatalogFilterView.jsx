@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { usePublicProducts } from "@/hooks/storefront/usePublicProducts";
 import { usePublicCategories } from "@/hooks/storefront/usePublicCategories";
-import { buildChildrenMap } from "@/lib/categoryTree";
+import { buildChildrenMap, flattenCategories } from "@/lib/categoryTree";
 import { ProductCard } from "@/components/storefront/products/ProductCard";
 import { Breadcrumbs } from "@/components/storefront/layout/Breadcrumbs";
 import { Button } from "@/components/ui/button";
@@ -190,10 +190,11 @@ export function ProductCatalogFilterView({
     router.push("/category/all");
   };
 
+  const flatCategoryList = flattenCategories(categories || []);
   const childrenMap = buildChildrenMap(categories || []);
   const topCategories = (categories || []).filter((c) => !c.parent);
 
-  const currentCategoryObj = (categories || []).find(
+  const currentCategoryObj = flatCategoryList.find(
     (c) => c.slug === selectedCategory || c._id === selectedCategory
   );
 
@@ -248,70 +249,67 @@ export function ProductCatalogFilterView({
               {!selectedCategory && <Check className="size-3.5" />}
             </button>
 
-            {topCategories.map((cat) => {
-              const subcats = childrenMap.get(cat._id) || [];
-              const isSelected =
-                selectedCategory === cat.slug || selectedCategory === cat._id;
-              const isParentExpanded = expandedParents[cat._id] !== false;
+            {(() => {
+              const renderCategoryNode = (cat, depth = 0, visited = new Set()) => {
+                if (!cat?._id || visited.has(cat._id)) return null;
+                const nextVisited = new Set(visited);
+                nextVisited.add(cat._id);
 
-              return (
-                <div key={cat._id} className="space-y-0.5">
-                  <div className="flex items-center justify-between gap-1">
-                    <button
-                      type="button"
-                      onClick={() => handleCategorySelect(cat.slug || cat._id)}
-                      className={`flex flex-1 items-center justify-between rounded-md px-2.5 py-1.5 text-left font-medium transition-colors ${
-                        isSelected
-                          ? "bg-[#033936] text-white"
-                          : "text-muted-foreground hover:bg-accent hover:text-foreground"
-                      }`}
-                    >
-                      <span className="truncate">{cat.name}</span>
-                      {subcats.length > 0 && (
-                        <span className="text-[10px] opacity-75">({subcats.length})</span>
-                      )}
-                    </button>
+                const subcats = childrenMap.get(cat._id) || [];
+                const isSelected =
+                  selectedCategory === cat.slug || selectedCategory === cat._id;
+                const isExpanded = expandedParents[cat._id] !== false;
 
-                    {subcats.length > 0 && (
+                return (
+                  <div key={cat._id} className="space-y-0.5">
+                    <div className="flex items-center justify-between gap-1">
                       <button
                         type="button"
-                        onClick={() => toggleParent(cat._id)}
-                        className="p-1.5 text-muted-foreground hover:text-foreground transition-transform"
+                        onClick={() => handleCategorySelect(cat.slug || cat._id)}
+                        className={`flex flex-1 items-center justify-between rounded-md px-2.5 text-left transition-colors ${
+                          depth === 0 ? "py-1.5 font-medium" : "py-1 text-xs"
+                        } ${
+                          isSelected
+                            ? depth === 0
+                              ? "bg-[#033936] text-white"
+                              : "font-bold text-[#033936] bg-[#033936]/10"
+                            : depth === 0
+                            ? "text-muted-foreground hover:bg-accent hover:text-foreground"
+                            : "text-muted-foreground hover:text-foreground"
+                        }`}
                       >
-                        <ChevronDown
-                          className={`size-3.5 transition-transform duration-200 ${
-                            !isParentExpanded ? "-rotate-90" : ""
-                          }`}
-                        />
+                        <span className="truncate">{cat.name}</span>
+                        {subcats.length > 0 && (
+                          <span className="text-[10px] opacity-75">({subcats.length})</span>
+                        )}
                       </button>
+
+                      {subcats.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => toggleParent(cat._id)}
+                          className="p-1.5 text-muted-foreground hover:text-foreground transition-transform"
+                        >
+                          <ChevronDown
+                            className={`size-3.5 transition-transform duration-200 ${
+                              !isExpanded ? "-rotate-90" : ""
+                            }`}
+                          />
+                        </button>
+                      )}
+                    </div>
+
+                    {subcats.length > 0 && isExpanded && (
+                      <div className="ml-3 pl-2 border-l border-border/60 space-y-0.5 pt-0.5">
+                        {subcats.map((sub) => renderCategoryNode(sub, depth + 1, nextVisited))}
+                      </div>
                     )}
                   </div>
+                );
+              };
 
-                  {subcats.length > 0 && isParentExpanded && (
-                    <div className="ml-3 pl-2 border-l border-border/60 space-y-0.5 pt-0.5">
-                      {subcats.map((sub) => {
-                        const isSubSelected =
-                          selectedCategory === sub.slug || selectedCategory === sub._id;
-                        return (
-                          <button
-                            key={sub._id}
-                            type="button"
-                            onClick={() => handleCategorySelect(sub.slug || sub._id)}
-                            className={`flex w-full items-center justify-between rounded-md px-2.5 py-1 text-left text-xs transition-colors ${
-                              isSubSelected
-                                ? "font-bold text-[#033936] bg-[#033936]/10"
-                                : "text-muted-foreground hover:text-foreground"
-                            }`}
-                          >
-                            <span className="truncate">{sub.name}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+              return topCategories.map((cat) => renderCategoryNode(cat));
+            })()}
           </div>
         )}
       </div>
@@ -503,20 +501,12 @@ export function ProductCatalogFilterView({
                 <Select value={sort} onValueChange={setSort}>
                   <SelectTrigger className="w-44 text-xs h-9">
                     <SelectValue>
-                      {sort === "featured"
-                        ? "Featured Products"
-                        : sort === "price_asc"
-                        ? "Price: Low to High"
-                        : sort === "price_desc"
-                        ? "Price: High to Low"
-                        : "Newest First"}
+                      {sort === "featured" ? "Featured Products" : "Newest First"}
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="newest">Newest First</SelectItem>
                     <SelectItem value="featured">Featured Products</SelectItem>
-                    <SelectItem value="price_asc">Price: Low to High</SelectItem>
-                    <SelectItem value="price_desc">Price: High to Low</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -556,7 +546,7 @@ export function ProductCatalogFilterView({
 
               {sort !== "newest" && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-[#033936] px-3 py-1 text-white text-[11px] font-medium">
-                  Sort: {sort === "featured" ? "Featured Products" : sort === "price_asc" ? "Price: Low to High" : "Price: High to Low"}
+                  Sort: Featured Products
                   <button type="button" onClick={() => setSort("newest")}>
                     <X className="size-3 hover:opacity-75" />
                   </button>

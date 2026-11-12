@@ -69,10 +69,11 @@ export const getPublicProducts = async (req, res, next) => {
     }
 
     // Sort mapping
+    if (sort && !["newest", "featured"].includes(sort)) {
+      throw new ApiError(400, "Invalid sort option. Supported options: newest, featured");
+    }
     let sortOption = { createdAt: -1 }; // default: newest
     if (sort === "featured") sortOption = { featured: -1, createdAt: -1 };
-    else if (sort === "price_asc") sortOption = { "variants.price": 1 };
-    else if (sort === "price_desc") sortOption = { "variants.price": -1 };
     // "newest" is already the default above
 
     const safeLimit = Math.min(Math.max(Number(limit) || 20, 1), 100);
@@ -176,6 +177,8 @@ export const getPublicProductBySlug = async (req, res, next) => {
       name: obj.name,
       slug: obj.slug,
       description: obj.description,
+      keyFeatures: obj.keyFeatures || "",
+      productDimensions: obj.productDimensions || "",
       images: (obj.images || []).map((img) => ({ url: img.url })),
       brand: obj.brand ? { name: obj.brand.name } : null,
       category: obj.category ? { _id: obj.category._id, name: obj.category.name } : null,
@@ -191,26 +194,92 @@ export const getPublicProductBySlug = async (req, res, next) => {
 };
 
 // ---------------- GET /api/public/categories ----------------
-// All active categories as a flat array with parent populated as { _id, name }.
-// Supports optional parentOnly=true query param to return top-level categories only.
+// Returns active categories with subcategories nested inside each parent category,
+// including subcategory images (url) for mobile apps and storefronts.
 export const getPublicCategories = async (req, res, next) => {
   try {
-    const { parentOnly } = req.query;
-    const filter = { isActive: true };
+    const { parentOnly, flat } = req.query;
 
-    if (parentOnly === "true") {
-      filter.parent = null;
+    const allCategories = await Category.find({ isActive: true })
+      .populate("parent", "_id name slug")
+      .sort({ name: 1 })
+      .lean();
+
+    if (flat === "true") {
+      const formattedFlat = allCategories.map((cat) => ({
+        _id: cat._id,
+        name: cat.name,
+        slug: cat.slug,
+        description: cat.description || "",
+        image: {
+          url: cat.image?.url || "",
+        },
+        isActive: cat.isActive,
+        parent: cat.parent ? { _id: cat.parent._id, name: cat.parent.name, slug: cat.parent.slug } : null,
+      }));
+      return res.status(200).json({ success: true, data: formattedFlat });
     }
 
-    const categories = await Category.find(filter)
-      .populate("parent", "_id name")
-      .sort({ name: 1 });
+    if (parentOnly === "true") {
+      const topLevelOnly = allCategories
+        .filter((c) => !c.parent)
+        .map((cat) => ({
+          _id: cat._id,
+          name: cat.name,
+          slug: cat.slug,
+          description: cat.description || "",
+          image: {
+            url: cat.image?.url || "",
+          },
+          isActive: cat.isActive,
+          subcategories: [],
+        }));
+      return res.status(200).json({ success: true, data: topLevelOnly });
+    }
 
-    res.status(200).json({ success: true, data: categories });
+    // Default: Return hierarchy of categories with populated subcategories and subcategory images
+    const treeData = buildCategoryHierarchy(allCategories);
+    res.status(200).json({ success: true, data: treeData });
   } catch (err) {
     next(err);
   }
 };
+
+// Helper: build recursive category tree with subcategories and subcategory images
+function buildCategoryHierarchy(categories) {
+  const categoryMap = new Map();
+  const roots = [];
+
+  for (const cat of categories) {
+    categoryMap.set(cat._id.toString(), {
+      _id: cat._id,
+      name: cat.name,
+      slug: cat.slug,
+      description: cat.description || "",
+      image: {
+        url: cat.image?.url || "",
+      },
+      isActive: cat.isActive,
+      parent: cat.parent ? { _id: cat.parent._id, name: cat.parent.name, slug: cat.parent.slug } : null,
+      subcategories: [],
+    });
+  }
+
+  for (const cat of categories) {
+    const node = categoryMap.get(cat._id.toString());
+    const rawParent = cat.parent?._id || cat.parent;
+    const parentId = rawParent ? rawParent.toString() : null;
+
+    if (parentId && categoryMap.has(parentId)) {
+      const parent = categoryMap.get(parentId);
+      parent.subcategories.push(node);
+    } else {
+      roots.push(node);
+    }
+  }
+
+  return roots;
+}
 
 // ---------------- GET /api/public/search/suggestions ----------------
 // Fast autocomplete suggestions for product names and category names

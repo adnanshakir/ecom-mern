@@ -13,6 +13,8 @@ const EMPTY_VARIANT = { sku: "", price: "", stock: "", salePrice: "", costPrice:
 const DETAILS_FIELDS = [
   "name",
   "description",
+  "keyFeatures",
+  "productDimensions",
   "category",
   "brand",
   "status",
@@ -23,6 +25,8 @@ const DETAILS_FIELDS = [
 const DEFAULTS = {
   name: "",
   description: "",
+  keyFeatures: "",
+  productDimensions: "",
   seo: {
     metaTitle: "",
     metaDescription: "",

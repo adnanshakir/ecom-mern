@@ -1,0 +1,836 @@
+{
+  "info": {
+    "_postman_id": "ecom-customer-api",
+    "name": "ecom-mern — 04 Customer API",
+    "description": "Customer phone OTP authentication, customer profile, Cart (including Guest Cart Merge), and Wishlist (including Guest Wishlist Merge).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "noauth"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Customer — Auth & Profile",
+      "description": "Customer OTP authentication mounted at `/api/v1/customers/auth` (Better Auth) and customer profile endpoints mounted at `/api/customers/profile`.\n\nFirst-time Phone OTP verification automatically registers the customer account (`signUpOnVerification`) and sets an HTTP-only session cookie in Postman's Cookie Jar. Subsequent customer requests (profile, cart, wishlist, orders, payments) authenticate via that session cookie automatically—no `Authorization: Bearer` header is used or accepted by customer middleware.",
+      "item": [
+        {
+          "name": "Send Phone OTP (Sign-Up / Login Step 1)",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phoneNumber\": \"+919876543210\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/customers/auth/phone-number/send-otp",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers",
+                "auth",
+                "phone-number",
+                "send-otp"
+              ]
+            },
+            "description": "Sends a 6-digit OTP to an Indian phone number (`+91XXXXXXXXXX` or 10 digits starting with 6-9).\n\nIn development mode, check the server terminal for `[DEV OTP LOG - PHONE SMS]` to read the OTP code (or use `MASTER_OTP_CODE` if `ALLOW_MASTER_OTP=true`).\n\n**Rate limit:** 10 requests per 15-minute window."
+          },
+          "response": [
+            {
+              "name": "200 OTP Sent",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"message\": \"code sent\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Verify Phone OTP (Sign-Up / Login Step 2)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Customer auth uses Better Auth HTTP-only session cookies (stored automatically in Postman's Cookie Jar).",
+                  "const json = pm.response.json();",
+                  "if (json && json.user && json.user.id) {",
+                  "  pm.environment.set('customerId', json.user.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phoneNumber\": \"+919876543210\",\n  \"code\": \"123456\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/customers/auth/phone-number/verify",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers",
+                "auth",
+                "phone-number",
+                "verify"
+              ]
+            },
+            "description": "Verifies the phone OTP code. Automatically creates a new customer account if the phone number is new (`signUpOnVerification`), or signs in an existing customer.\n\nSets the Better Auth HTTP-only session cookie in Postman's Cookie Jar and captures `user.id` into `customerId`.\n\n**Rate limit:** 10 requests per 15-minute window."
+          },
+          "response": [
+            {
+              "name": "200 Verified",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": true,\n  \"token\": \"better-auth-session-token\",\n  \"user\": {\n    \"id\": \"60c72b2f9b1e8a001c8e4f90\",\n    \"phoneNumber\": \"+919876543210\",\n    \"phoneNumberVerified\": true\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Send Email OTP",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"customer@example.com\",\n  \"type\": \"sign-in\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/customers/auth/email-otp/send-verification-otp",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers",
+                "auth",
+                "email-otp",
+                "send-verification-otp"
+              ]
+            },
+            "description": "Sends an email verification OTP (`type`: `sign-in`, `email-verification`, or `forget-password`). Email OTP sign-in applies only to existing customer accounts that already have that email attached.\n\n**Rate limit:** 10 requests per 15-minute window."
+          },
+          "response": [
+            {
+              "name": "200 OTP Sent",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true\n}"
+            }
+          ]
+        },
+        {
+          "name": "Verify Email OTP (Sign In)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Customer auth uses Better Auth HTTP-only session cookies (stored automatically in Postman's Cookie Jar).",
+                  "const json = pm.response.json();",
+                  "if (json && json.user && json.user.id) {",
+                  "  pm.environment.set('customerId', json.user.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"customer@example.com\",\n  \"otp\": \"123456\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/customers/auth/sign-in/email-otp",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers",
+                "auth",
+                "sign-in",
+                "email-otp"
+              ]
+            },
+            "description": "Verifies an email sign-in OTP and starts a customer session via HTTP-only session cookie (stored automatically in Postman's Cookie Jar). Captures `user.id` into `customerId`.\n\n**Rate limit:** 10 requests per 15-minute window."
+          },
+          "response": [
+            {
+              "name": "200 Signed In",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"token\": \"better-auth-session-token\",\n  \"user\": {\n    \"id\": \"60c72b2f9b1e8a001c8e4f90\",\n    \"email\": \"customer@example.com\",\n    \"name\": \"Jane Doe\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Customer Session",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/customers/auth/get-session",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers",
+                "auth",
+                "get-session"
+              ]
+            },
+            "description": "Retrieves the active customer session using the session cookie set by `/api/v1/customers/auth/phone-number/verify` or `/api/v1/customers/auth/sign-in/email-otp`."
+          },
+          "response": [
+            {
+              "name": "200 Active Session",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"session\": { \"id\": \"...\", \"token\": \"...\" },\n  \"user\": { \"id\": \"60c72b2f9b1e8a001c8e4f90\", \"phoneNumber\": \"+919876543210\" }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Logout Customer (Sign Out)",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/customers/auth/sign-out",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers",
+                "auth",
+                "sign-out"
+              ]
+            },
+            "description": "Signs out the customer and invalidates the active session cookie."
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get My Profile (Customer)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "profile"
+              ]
+            },
+            "description": "Returns the authenticated customer's profile including addresses.\n\nUses the active customer session cookie (set upon OTP verification)."
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Customer profile retrieved successfully\",\n  \"data\": {\n    \"id\": \"60c72b2f9b1e8a001c8e4f90\",\n    \"phoneNumber\": \"+919876543210\",\n    \"name\": \"Jane Doe\",\n    \"email\": \"customer@example.com\",\n    \"addresses\": []\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update Customer Profile",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Jane Smith\",\n  \"addresses\": [\n    {\n      \"label\": \"Home\",\n      \"line1\": \"123 Main Street\",\n      \"line2\": \"Apt 4B\",\n      \"city\": \"Mumbai\",\n      \"state\": \"MH\",\n      \"postalCode\": \"400001\",\n      \"country\": \"India\",\n      \"phone\": \"+919876543210\",\n      \"isDefault\": true\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "profile"
+              ]
+            },
+            "description": "Updates the customer's profile (`name`) and/or replaces their `addresses` array.\n\n**All fields optional:**\n- `name` — string\n- `addresses` — array; each address:\n  - `line1` *(required)* — string\n  - `city` *(required)* — string\n  - `postalCode` *(required)* — string\n  - `label`, `line2`, `state`, `country`, `phone`, `isDefault` — optional"
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Profile updated successfully\",\n  \"data\": {\n    \"id\": \"60c72b2f9b1e8a001c8e4f90\",\n    \"name\": \"Jane Smith\",\n    \"addresses\": [\n      {\n        \"_id\": \"60c72b2f9b1e8a001c8e4f91\",\n        \"label\": \"Home\",\n        \"line1\": \"123 Main Street\",\n        \"line2\": \"Apt 4B\",\n        \"city\": \"Mumbai\",\n        \"state\": \"MH\",\n        \"postalCode\": \"400001\",\n        \"country\": \"India\",\n        \"isDefault\": true\n      }\n    ]\n  }\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Customer — Cart",
+      "description": "Shopping cart management.\n\n**Auth:** Active Better Auth customer session cookie (automatically stored in Postman's Cookie Jar after OTP verification).\n\nThe cart is auto-created on first access (find-or-create). Quantity is automatically clamped to available stock.",
+      "item": [
+        {
+          "name": "Get Cart",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/cart",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "cart"
+              ]
+            },
+            "description": "Returns the customer's cart. Creates an empty cart if one doesn't exist. Cart items are populated with variant details (sku, price, salePrice, stock, images) and product details (name, slug)."
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"_id\": \"60c72b2f9b1e8a001c8e4fa0\",\n    \"customer\": \"60c72b2f9b1e8a001c8e4f90\",\n    \"items\": [\n      {\n        \"variant\": {\n          \"_id\": \"60c72b2f9b1e8a001c8e4f60\",\n          \"sku\": \"MBP14-512GB\",\n          \"price\": 1999.99,\n          \"salePrice\": 1799.99,\n          \"stock\": 25,\n          \"images\": [],\n          \"product\": { \"_id\": \"60c72b2f9b1e8a001c8e4f50\", \"name\": \"MacBook Pro 14\", \"slug\": \"macbook-pro-14\", \"images\": [] }\n        },\n        \"quantity\": 2\n      }\n    ]\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Add Item to Cart",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"variantId\": \"{{variantId}}\",\n  \"quantity\": 2\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/cart/items",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "cart",
+                "items"
+              ]
+            },
+            "description": "Adds a variant to the cart. If already present, **increments** the quantity. Quantity is clamped to available stock.\n\n**Required fields:**\n- `variantId` — MongoDB ObjectId\n- `quantity` — positive integer\n\n**Error codes:**\n- `400` — Variant is inactive\n- `404` — Variant not found"
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"data\": { \"_id\": \"60c72b2f9b1e8a001c8e4fa0\", \"items\": [ { \"variant\": { \"_id\": \"...\" }, \"quantity\": 2 } ] },\n  \"message\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update Cart Item Quantity",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"quantity\": 3\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/cart/items/{{variantId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "cart",
+                "items",
+                "{{variantId}}"
+              ]
+            },
+            "description": "Sets the quantity of a cart item to the specified value. Quantity is clamped to available stock.\n\n**Passing `quantity: 0` (or negative) removes the item** from the cart.\n\n**Path params:**\n- `variantId` — MongoDB ObjectId of the variant\n\n**Required fields:**\n- `quantity` — integer ≥ 0\n\n**Error codes:**\n- `404` — Cart or item not found"
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"data\": { \"items\": [ { \"variant\": {}, \"quantity\": 3 } ] }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Remove Item from Cart",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/cart/items/{{variantId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "cart",
+                "items",
+                "{{variantId}}"
+              ]
+            },
+            "description": "Removes a single line item from the cart.\n\n**Path params:**\n- `variantId` — MongoDB ObjectId of the variant to remove\n\n**Error codes:** `404` — Cart not found"
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"data\": { \"items\": [] }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Clear Entire Cart",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/cart",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "cart"
+              ]
+            },
+            "description": "Removes all items from the cart.\n\n**Error codes:** `404` — Cart not found"
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"data\": { \"_id\": \"60c72b2f9b1e8a001c8e4fa0\", \"items\": [] }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Merge Guest Cart",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"batchId\": \"optional-idempotency-uuid\",\n  \"items\": [\n    {\n      \"variantId\": \"{{variantId}}\",\n      \"quantity\": 2\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/cart/merge",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "cart",
+                "merge"
+              ]
+            },
+            "description": "Merges guest cart items (from local storage) into the customer's authenticated cart upon login.\n\n- Accepts up to 100 items per batch and an optional `batchId` for idempotent retry deduplication.\n- Clamps quantities to available variant stock.\n- Safely skips inactive/out-of-stock variants and returns `skippedItems` alongside the populated cart."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"_id\": \"60c72b2f9b1e8a001c8e4f60\",\n    \"customer\": \"60c72b2f9b1e8a001c8e4f01\",\n    \"items\": [\n      {\n        \"variant\": {\n          \"_id\": \"60c72b2f9b1e8a001c8e4f55\",\n          \"sku\": \"TEE-BLK-M\",\n          \"price\": 499,\n          \"stock\": 20,\n          \"product\": {\n            \"_id\": \"60c72b2f9b1e8a001c8e4f50\",\n            \"name\": \"Oversized Tee\",\n            \"slug\": \"oversized-tee\"\n          }\n        },\n        \"quantity\": 2\n      }\n    ]\n  }\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Customer — Wishlist",
+      "description": "Wishlist management.\n\n**Auth:** Active Better Auth customer session cookie (automatically stored in Postman's Cookie Jar after OTP verification).\n\nThe wishlist is auto-created on first access.",
+      "item": [
+        {
+          "name": "Get Wishlist",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/wishlist",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "wishlist"
+              ]
+            },
+            "description": "Returns the customer's wishlist with populated products (name, slug, images, brand, category, status) and lightweight variant pricing data."
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"_id\": \"60c72b2f9b1e8a001c8e4fb0\",\n    \"customer\": \"60c72b2f9b1e8a001c8e4f90\",\n    \"products\": [\n      {\n        \"_id\": \"60c72b2f9b1e8a001c8e4f50\",\n        \"name\": \"MacBook Pro 14\",\n        \"slug\": \"macbook-pro-14\",\n        \"images\": [],\n        \"brand\": \"60c72b2f9b1e8a001c8e4f30\",\n        \"category\": \"60c72b2f9b1e8a001c8e4f41\",\n        \"status\": \"active\",\n        \"variants\": [\n          { \"_id\": \"60c72b2f9b1e8a001c8e4f60\", \"price\": 1999.99, \"salePrice\": 1799.99, \"stock\": 25 }\n        ]\n      }\n    ]\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Add Product to Wishlist",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": \"{{productId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/wishlist/items",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "wishlist",
+                "items"
+              ]
+            },
+            "description": "Adds a product to the wishlist. No-op if already present.\n\n**Required fields:**\n- `productId` — MongoDB ObjectId\n\n**Error codes:**\n- `400` — Product is not active (status must be `active`)\n- `404` — Product not found"
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"data\": { \"products\": [ { \"_id\": \"...\", \"name\": \"MacBook Pro 14\" } ] }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Remove Product from Wishlist",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/wishlist/items/{{productId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "wishlist",
+                "items",
+                "{{productId}}"
+              ]
+            },
+            "description": "Removes a product from the wishlist.\n\n**Path params:**\n- `productId` — MongoDB ObjectId of the product\n\n**Error codes:** `404` — Wishlist not found"
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"data\": { \"products\": [] }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Merge Guest Wishlist",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productIds\": [\n    \"{{productId}}\"\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/wishlist/merge",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "wishlist",
+                "merge"
+              ]
+            },
+            "description": "Merges guest wishlist product IDs (from local storage) into the customer's account upon login.\n\n- Deduplicates existing items.\n- Filters out deleted/inactive products.\n- Returns the full populated customer wishlist with variant pricing."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"_id\": \"60c72b2f9b1e8a001c8e4f70\",\n    \"customer\": \"60c72b2f9b1e8a001c8e4f01\",\n    \"products\": [\n      {\n        \"_id\": \"60c72b2f9b1e8a001c8e4f50\",\n        \"name\": \"Oversized Tee\",\n        \"slug\": \"oversized-tee\",\n        \"images\": [\n          {\n            \"url\": \"https://ik.imagekit.io/test/tee1.jpg\"\n          }\n        ],\n        \"variants\": [\n          {\n            \"_id\": \"60c72b2f9b1e8a001c8e4f55\",\n            \"price\": 499,\n            \"stock\": 20\n          }\n        ]\n      }\n    ]\n  }\n}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

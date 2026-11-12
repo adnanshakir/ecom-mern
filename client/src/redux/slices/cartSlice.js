@@ -1,27 +1,97 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
+import { toast } from "sonner";
 import {
   getCartRequest,
   addToCartRequest,
   updateCartItemRequest,
   removeCartItemRequest,
   clearCartRequest,
+  mergeCartRequest,
 } from "@/services/storefront/cart";
+import {
+  readGuestCart,
+  getGuestCart,
+  saveGuestCart,
+  clearGuestCart as clearGuestCartStorage,
+  getOrCreatePendingCartMergeBatch,
+  claimAndReconcilePendingCartBatch,
+  clearPendingCartMergeBatch,
+} from "@/lib/guestStorage";
+
+const MAX_CART_MERGE_ITEMS = 100;
+const MAX_CART_MERGE_PASSES = 50;
+
+const notifySkippedMergeItems = (skippedItems, localGuestItems) => {
+  if (!Array.isArray(skippedItems) || skippedItems.length === 0 || typeof window === "undefined") {
+    return;
+  }
+  const names = skippedItems
+    .map((skipped) => {
+      const localMatch = localGuestItems.find(
+        (g) => (g.variant?._id || g.variantId)?.toString() === skipped.variantId?.toString()
+      );
+      return localMatch?.variant?.product?.name || skipped.productName || skipped.sku || "An item";
+    })
+    .filter(Boolean);
+
+  const preview = names.slice(0, 2).join(", ");
+  const extra = names.length > 2 ? ` and ${names.length - 2} more` : "";
+  const label = skippedItems.length === 1 ? "guest cart item was" : "guest cart items were";
+  toast.warning(
+    `${skippedItems.length} ${label} skipped because they are unavailable or out of stock${preview ? ` (${preview}${extra})` : ""}.`
+  );
+};
+
+async function syncCustomerCart() {
+  let lastItems = null;
+
+  for (let pass = 0; pass < MAX_CART_MERGE_PASSES; pass += 1) {
+    const { batch, revisionAtStart, totalGuestCount } =
+      await getOrCreatePendingCartMergeBatch(MAX_CART_MERGE_ITEMS);
+
+    if (!batch) break;
+
+    const { data } = await mergeCartRequest(batch.items, batch.batchId);
+    lastItems = data.data.items;
+
+    const skippedItems = data?.data?.skippedItems || data?.skippedItems || [];
+    const { remaining } = await claimAndReconcilePendingCartBatch(
+      batch.batchId,
+      (localSnapshot) => notifySkippedMergeItems(skippedItems, localSnapshot)
+    );
+
+    // Continue draining only if additional entries already existed before this attempt started
+    // (either >100 items or items queued after an earlier failed batch's revision).
+    const hasMorePreExistingItems =
+      remaining.length > 0 &&
+      (totalGuestCount > MAX_CART_MERGE_ITEMS || revisionAtStart !== batch.revision);
+
+    if (!hasMorePreExistingItems) {
+      return lastItems;
+    }
+  }
+
+  if (lastItems !== null) return lastItems;
+  const { data } = await getCartRequest();
+  return data.data.items;
+}
 
 const initialState = {
-  items: [],       // [{variant: {_id, sku, price, salePrice, stock, product:{name,slug,images}}, quantity}]
-  status: "idle",  // idle | loading | succeeded | failed
+  items: [], // [{variant: {_id, sku, price, salePrice, stock, product:{_id, name,slug,images}}, quantity}]
+  status: "idle", // idle | loading | succeeded | failed
   error: null,
-  // Optimistic: track which variantIds are currently being mutated so buttons
-  // can show a spinner without blocking the whole cart
   pendingVariants: [],
 };
 
 // ── Thunks ────────────────────────────────────────────────────────────────────
 
+/**
+ * Fetch customer cart. If guest items or a persisted merge batch exist in localStorage,
+ * merges them idempotently into the customer's account on the server first.
+ */
 export const fetchCart = createAsyncThunk("cart/fetch", async (_, { rejectWithValue }) => {
   try {
-    const { data } = await getCartRequest();
-    return data.data.items;
+    return await syncCustomerCart();
   } catch (err) {
     return rejectWithValue(err.response?.data?.message || "Failed to load cart");
   }
@@ -72,23 +142,129 @@ export const clearCart = createAsyncThunk("cart/clear", async (_, { rejectWithVa
   }
 });
 
+export const mergeGuestCartThunk = createAsyncThunk(
+  "cart/mergeGuest",
+  async (_, { rejectWithValue }) => {
+    try {
+      return await syncCustomerCart();
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || "Failed to merge cart");
+    }
+  }
+);
+
 // ── Slice ─────────────────────────────────────────────────────────────────────
 
 const cartSlice = createSlice({
   name: "cart",
   initialState,
   reducers: {
-    // Called on customer logout to reset local state immediately
-    resetCart(state) {
+    // Load unauthenticated cart from localStorage
+    loadGuestCart(state) {
+      const readResult = readGuestCart();
+      if (readResult.ok) {
+        state.items = readResult.items;
+      }
+      state.status = "succeeded";
+      state.error = null;
+    },
+
+    // Add item to guest cart in localStorage
+    addGuestCartItem(state, action) {
+      const { variant, quantity = 1 } = action.payload;
+      if (!variant?._id) return;
+
+      const readResult = readGuestCart();
+      if (readResult.ok) {
+        state.items = readResult.items;
+      }
+
+      const variantId = variant._id.toString();
+      const existingIndex = state.items.findIndex(
+        (i) => (i.variant?._id || i.variantId)?.toString() === variantId
+      );
+
+      const maxStock = variant.stock ?? 999;
+
+      if (existingIndex !== -1) {
+        const desired = state.items[existingIndex].quantity + quantity;
+        state.items[existingIndex].quantity = Math.min(desired, maxStock);
+      } else {
+        const clamped = Math.min(quantity, maxStock);
+        if (clamped > 0) {
+          state.items.push({
+            variantId,
+            variant,
+            quantity: clamped,
+          });
+        }
+      }
+
+      saveGuestCart(state.items);
+      state.status = "succeeded";
+      state.error = null;
+    },
+
+    // Update quantity of guest cart item
+    updateGuestCartItem(state, action) {
+      const { variantId, quantity } = action.payload;
+      const readResult = readGuestCart();
+      if (readResult.ok) {
+        state.items = readResult.items;
+      }
+
+      const targetId = variantId?.toString();
+      const existingIndex = state.items.findIndex(
+        (i) => (i.variant?._id || i.variantId)?.toString() === targetId
+      );
+
+      if (existingIndex === -1) return;
+
+      if (quantity <= 0) {
+        state.items.splice(existingIndex, 1);
+      } else {
+        const item = state.items[existingIndex];
+        const maxStock = item.variant?.stock ?? 999;
+        item.quantity = Math.min(quantity, maxStock);
+      }
+
+      saveGuestCart(state.items);
+    },
+
+    // Remove item from guest cart
+    removeGuestCartItem(state, action) {
+      const readResult = readGuestCart();
+      if (readResult.ok) {
+        state.items = readResult.items;
+      }
+      const targetId = action.payload?.toString();
+      state.items = state.items.filter(
+        (i) => (i.variant?._id || i.variantId)?.toString() !== targetId
+      );
+      saveGuestCart(state.items);
+    },
+
+    // Clear guest cart
+    clearGuestCartAction(state) {
       state.items = [];
+      clearPendingCartMergeBatch();
+      clearGuestCartStorage();
+    },
+
+    // Called on customer logout to reset local state immediately and load any guest cart
+    resetCart(state) {
+      state.items = getGuestCart();
       state.status = "idle";
       state.error = null;
       state.pendingVariants = [];
     },
+
     // Used after a successful payment because the server clears the persisted cart.
     clearCartState(state) {
       state.items = [];
       state.error = null;
+      clearPendingCartMergeBatch();
+      clearGuestCartStorage();
     },
   },
   extraReducers: (builder) => {
@@ -161,20 +337,37 @@ const cartSlice = createSlice({
       });
 
     // clearCart
+    builder.addCase(clearCart.fulfilled, (state) => {
+      state.items = [];
+    });
+
+    // mergeGuestCartThunk
     builder
-      .addCase(clearCart.fulfilled, (state) => {
-        state.items = [];
+      .addCase(mergeGuestCartThunk.fulfilled, (state, action) => {
+        state.items = action.payload;
+        state.status = "succeeded";
+      })
+      .addCase(mergeGuestCartThunk.rejected, (state, action) => {
+        state.error = action.payload;
       });
   },
 });
 
-export const { resetCart, clearCartState } = cartSlice.actions;
+export const {
+  loadGuestCart,
+  addGuestCartItem,
+  updateGuestCartItem,
+  removeGuestCartItem,
+  clearGuestCartAction,
+  resetCart,
+  clearCartState,
+} = cartSlice.actions;
 
 // ── Selectors ─────────────────────────────────────────────────────────────────
 
 /** Total number of line items (used for the navbar badge) */
 export const selectCartCount = (state) =>
-  state.cart.items.reduce((sum, item) => sum + item.quantity, 0);
+  state.cart.items.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
 
 export const selectCartItems = (state) => state.cart.items;
 export const selectCartStatus = (state) => state.cart.status;

@@ -20,6 +20,8 @@ export function useEditProduct(productId) {
     defaultValues: {
       name: "",
       description: "",
+      keyFeatures: "",
+      productDimensions: "",
       seo: {
         metaTitle: "",
         metaDescription: "",
@@ -44,6 +46,8 @@ export function useEditProduct(productId) {
         form.reset({
           name: product.name || "",
           description: product.description || "",
+          keyFeatures: product.keyFeatures || "",
+          productDimensions: product.productDimensions || "",
           seo: {
             metaTitle: product.seo?.metaTitle || "",
             metaDescription: product.seo?.metaDescription || "",
@@ -81,6 +85,8 @@ export function useEditProduct(productId) {
 
     const payload = {
       ...values,
+      keyFeatures: values.keyFeatures || "",
+      productDimensions: values.productDimensions || "",
       seo: {
         metaTitle: values.seo?.metaTitle || "",
         metaDescription: values.seo?.metaDescription || "",

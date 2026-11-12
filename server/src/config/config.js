@@ -1,4 +1,6 @@
 import dotenv from "dotenv";
+import path from "path";
+import { fileURLToPath } from "url";
 
 dotenv.config({
   path: path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..", ".env"),
@@ -64,7 +66,7 @@ export const loadConfig = (envSource = process.env) => {
       }
     } catch (err) {
       if (err.message.includes("BETTER_AUTH_URL")) throw err;
-      throw new Error(`Invalid BETTER_AUTH_URL in production: ${url}`);
+      throw new Error(`Invalid BETTER_AUTH_URL in production: ${url}`, { cause: err });
     }
   };
 

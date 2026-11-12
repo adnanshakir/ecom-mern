@@ -18,6 +18,7 @@ import {
   PanelLeftOpen,
   Menu,
   X,
+  ShoppingBag,
   Sun,
   Moon,
   Loader2,
@@ -28,6 +29,7 @@ import { PageContainer } from "@/components/layout/PageContainer";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { useOrders } from "@/hooks/admin/useOrders";
 
 import { useTheme } from "next-themes";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -41,6 +43,7 @@ const NAV_ITEMS = [
   { href: "/admin/inventory", label: "Inventory", icon: Warehouse, allow: ["super_admin", "admin", "staff"] },
   { href: "/admin/csv-import", label: "CSV Import", icon: FileUp, allow: ["super_admin", "admin"] },
   { href: "/admin/users", label: "Users", icon: Users, allow: ["super_admin"] },
+  { href: "/admin/orders", label: "Orders", icon: ShoppingBag, allow: ["super_admin", "admin", "staff"] },
 ];
 
 const COLLAPSE_KEY = "admin-sidebar-collapsed";
@@ -59,6 +62,7 @@ function AdminLayoutContent({ children }) {
   const router = useRouter();
   const { user, status, authReady } = useSelector((state) => state.auth);
   const { theme, setTheme } = useTheme();
+  const { stats: orderStats } = useOrders();
 
   const [mounted, setMounted] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
@@ -228,6 +232,9 @@ function AdminLayoutContent({ children }) {
                   >
                     <Icon className="size-4 shrink-0" />
                     {(!effectiveCollapsed || mobileOpen) && <span className="truncate">{item.label}</span>}
+                    {item.href === "/admin/orders" && orderStats.newCount > 0 && (!effectiveCollapsed || mobileOpen) && (
+                      <span className="ml-auto rounded-full bg-emerald-500 px-1.5 py-0.5 text-[10px] font-bold text-white">{orderStats.newCount}</span>
+                    )}
                   </Link>
                 );
 

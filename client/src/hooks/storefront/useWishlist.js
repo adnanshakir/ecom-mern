@@ -4,31 +4,47 @@ import { useDispatch, useSelector } from "react-redux";
 import {
   addToWishlist,
   removeFromWishlist,
+  toggleGuestWishlist,
   selectIsInWishlist,
   selectWishlistPending,
 } from "@/redux/slices/wishlistSlice";
 
 /**
- * useWishlist — provides wishlist state and toggle action for a single product.
+ * useWishlist — provides wishlist state and toggle action for a single product
+ * for both authenticated and guest customers.
  *
  * Usage:
  *   const { isWishlisted, toggle, isPending } = useWishlist(productId);
- *
- * Calling toggle() adds the product if not yet wishlisted, removes it otherwise.
  */
 export function useWishlist(productId) {
   const dispatch = useDispatch();
   const isWishlisted = useSelector(selectIsInWishlist(productId));
   const pendingProducts = useSelector(selectWishlistPending);
 
+  const authStatus = useSelector((state) => state.customerAuth.status);
+  const isAuthenticated = authStatus === "authenticated";
+
   const isPending = pendingProducts.includes(productId?.toString());
 
-  const toggle = () => {
+  const toggle = (productSnapshot = null) => {
     if (!productId) return;
-    if (isWishlisted) {
-      dispatch(removeFromWishlist(productId.toString()));
+
+    if (isAuthenticated) {
+      if (isWishlisted) {
+        dispatch(removeFromWishlist(productId.toString()));
+      } else {
+        dispatch(addToWishlist(productId.toString()));
+      }
     } else {
-      dispatch(addToWishlist(productId.toString()));
+      // Guest mode
+      const product = productSnapshot || {
+        _id: productId.toString(),
+        name: "Product",
+        slug: "",
+        images: [],
+        variants: [],
+      };
+      dispatch(toggleGuestWishlist(product));
     }
   };
 

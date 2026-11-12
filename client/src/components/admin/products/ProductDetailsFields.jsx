@@ -1,8 +1,10 @@
+import { useState } from "react";
+import { ChevronDown, Plus, Minus } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-import { FormField, FormItem, FormLabel, FormControl } from "@/components/ui/form";
+import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { createCategory } from "@/services/admin/categories";
 import { createBrand } from "@/services/admin/brands";
 import { QuickCreateEntityDialog } from "@/components/admin/products/QuickCreateEntityDialog";
@@ -10,6 +12,12 @@ import { ImageUploader } from "@/components/admin/products/ImageUploader";
 import { OptionTypesEditor } from "@/components/admin/products/OptionTypesEditor";
 
 export function ProductDetailsFields({ form, categories, brands, refetchCategories, refetchBrands }) {
+  const [detailsBucketOpen, setDetailsBucketOpen] = useState(false);
+
+  const descriptionValue = form.watch("description") || "";
+  const wordCount = descriptionValue.trim().split(/\s+/).filter(Boolean).length;
+  const isOverWordLimit = wordCount > 500;
+
   return (
     <div className="grid gap-4">
       <FormField
@@ -21,6 +29,7 @@ export function ProductDetailsFields({ form, categories, brands, refetchCategori
             <FormControl>
               <Input placeholder="Classic Cotton Tee" {...field} />
             </FormControl>
+            <FormMessage />
           </FormItem>
         )}
       />
@@ -30,18 +39,97 @@ export function ProductDetailsFields({ form, categories, brands, refetchCategori
         name="description"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Description (optional)</FormLabel>
+            <div className="flex items-center justify-between">
+              <FormLabel>Description <span className="text-destructive">*</span></FormLabel>
+              <span
+                className={`text-xs ${
+                  isOverWordLimit
+                    ? "text-destructive font-bold"
+                    : wordCount > 400
+                    ? "text-amber-500 font-medium"
+                    : "text-muted-foreground"
+                }`}
+              >
+                {wordCount} / 500 words
+              </span>
+            </div>
             <FormControl>
               <Textarea
-                rows={3}
-                placeholder="Product description..."
-                className="min-h-[90px] max-h-[180px] overflow-y-auto resize-none"
+                rows={5}
+                placeholder="Write a comprehensive product description (up to 500 words)..."
+                className="min-h-[120px] max-h-[260px] overflow-y-auto resize-y"
                 {...field}
               />
             </FormControl>
+            <FormMessage />
           </FormItem>
         )}
       />
+
+      {/* Additional Details Buckets (Key Features & Product Dimensions) */}
+      <div className="rounded-lg border border-border/70 bg-muted/15 p-3.5 space-y-3">
+        <button
+          type="button"
+          onClick={() => setDetailsBucketOpen((prev) => !prev)}
+          className="flex w-full items-center justify-between text-left transition-colors hover:text-foreground"
+        >
+          <div>
+            <span className="text-sm font-semibold text-foreground">
+              Additional Details (Optional)
+            </span>
+            <p className="text-xs text-muted-foreground">
+              Key features, product dimensions & extra detail sections
+            </p>
+          </div>
+          <span className="flex size-7 items-center justify-center rounded-md border bg-background text-muted-foreground">
+            {detailsBucketOpen ? <Minus className="size-4" /> : <Plus className="size-4" />}
+          </span>
+        </button>
+
+        {detailsBucketOpen && (
+          <div className="space-y-4 border-t border-border/50 pt-3">
+            <FormField
+              control={form.control}
+              name="keyFeatures"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-xs font-semibold">Key Features (Optional)</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      rows={3}
+                      placeholder="e.g.&#10;• 100% combed ring-spun cotton&#10;• Reinforced double stitching&#10;• Pre-shrunk fabric"
+                      className="resize-y min-h-[80px]"
+                      {...field}
+                      value={field.value || ""}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="productDimensions"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-xs font-semibold">Product Dimensions (Optional)</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      rows={2}
+                      placeholder="e.g. Dimensions: 30cm x 20cm x 5cm | Weight: 250g | Standard fit"
+                      className="resize-y min-h-[60px]"
+                      {...field}
+                      value={field.value || ""}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        )}
+      </div>
 
       <OptionTypesEditor form={form} />
 
