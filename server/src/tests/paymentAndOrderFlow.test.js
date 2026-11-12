@@ -13,6 +13,7 @@ import CustomerProfile from "../models/customer/customer.model.js";
 import Order from "../models/customer/order.model.js";
 import Cart from "../models/customer/cart.model.js";
 import { createCustomerAuth } from "../config/customerAuth.js";
+import { cleanupLegacyOrderIndexes } from "../config/db.js";
 import { generateAccessToken } from "../utils/token.js";
 import { connectTestDB, closeTestDB, clearTestDB } from "./setup.js";
 
@@ -282,6 +283,66 @@ describe("Checkout Idempotency, Receipt Uniqueness & Capture Guarantees", () => 
 
     const orderDoc = await Order.findById(secondRes.body.data.orderId);
     expect(orderDoc.shippingAddress.fullName).toBe("Adnan Buyer");
+  });
+
+  it("cleanupLegacyOrderIndexes ignores concurrent IndexNotFound while continuing and rethrows other errors", async () => {
+    const ordersCol = mongoose.connection.db.collection("orders");
+    await ordersCol.createIndex({ razorpayOrderId: 1 }, { name: "razorpayOrderId_1" });
+    await ordersCol.createIndex({ status: 1 }, { name: "status_1" });
+
+    const origDropIndex = ordersCol.dropIndex.bind(ordersCol);
+    const origCollection = mongoose.connection.db.collection.bind(mongoose.connection.db);
+    let droppedStatus = false;
+
+    jest.spyOn(mongoose.connection.db, "collection").mockImplementation((name) => {
+      const col = origCollection(name);
+      if (name !== "orders") return col;
+      return new Proxy(col, {
+        get(target, prop) {
+          if (prop === "dropIndex") {
+            return async (indexName) => {
+              if (indexName === "razorpayOrderId_1") {
+                const err = new Error("index not found with name [razorpayOrderId_1]");
+                err.code = 27;
+                err.codeName = "IndexNotFound";
+                throw err;
+              }
+              if (indexName === "status_1") {
+                droppedStatus = true;
+              }
+              return origDropIndex(indexName);
+            };
+          }
+          const value = target[prop];
+          return typeof value === "function" ? value.bind(target) : value;
+        },
+      });
+    });
+
+    await expect(cleanupLegacyOrderIndexes()).resolves.toBeUndefined();
+    expect(droppedStatus).toBe(true);
+
+    jest.restoreAllMocks();
+    await ordersCol.dropIndex("razorpayOrderId_1");
+
+    await ordersCol.createIndex({ status: 1 }, { name: "status_1" });
+    jest.spyOn(mongoose.connection.db, "collection").mockImplementation((name) => {
+      const col = origCollection(name);
+      if (name !== "orders") return col;
+      return new Proxy(col, {
+        get(target, prop) {
+          if (prop === "dropIndex") {
+            return async () => {
+              throw new Error("Simulated dropIndex failure");
+            };
+          }
+          const value = target[prop];
+          return typeof value === "function" ? value.bind(target) : value;
+        },
+      });
+    });
+
+    await expect(cleanupLegacyOrderIndexes()).rejects.toThrow("Simulated dropIndex failure");
   });
 
   it("verifyPayment and reconcilePayment refuse to mark authorized (non-captured) payments as paid", async () => {
