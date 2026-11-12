@@ -6,8 +6,8 @@ import {
   mergeWishlistRequest,
 } from "@/services/storefront/wishlist";
 import {
+  readGuestWishlist,
   getGuestWishlist,
-  getGuestWishlistRevision,
   saveGuestWishlist,
   reconcileGuestWishlistAfterMerge,
 } from "@/lib/guestStorage";
@@ -18,7 +18,6 @@ const extractIds = (products) =>
   (products || []).map((p) => (p?._id || p)?.toString()).filter(Boolean);
 
 async function syncCustomerWishlist() {
-  const submittedRevision = getGuestWishlistRevision();
   const guestItems = getGuestWishlist();
 
   if (guestItems.length === 0) {
@@ -26,13 +25,24 @@ async function syncCustomerWishlist() {
     return data.data.products; // array of populated product objects
   }
 
-  const productIds = [...new Set(guestItems.map((p) => (p._id || p).toString()))].slice(
-    0,
-    MAX_WISHLIST_MERGE_ITEMS
-  );
-  const { data } = await mergeWishlistRequest(productIds);
-  reconcileGuestWishlistAfterMerge(productIds, submittedRevision);
-  return data.data.products;
+  const uniqueProductIds = [
+    ...new Set(guestItems.map((p) => (p?._id || p)?.toString()).filter(Boolean)),
+  ];
+
+  if (uniqueProductIds.length === 0) {
+    const { data } = await getWishlistRequest();
+    return data.data.products;
+  }
+
+  let latestProducts = null;
+  for (let i = 0; i < uniqueProductIds.length; i += MAX_WISHLIST_MERGE_ITEMS) {
+    const batchIds = uniqueProductIds.slice(i, i + MAX_WISHLIST_MERGE_ITEMS);
+    const { data } = await mergeWishlistRequest(batchIds);
+    latestProducts = data.data.products;
+    reconcileGuestWishlistAfterMerge(batchIds);
+  }
+
+  return latestProducts;
 }
 
 const initialState = {
@@ -103,9 +113,11 @@ const wishlistSlice = createSlice({
   reducers: {
     // Load unauthenticated wishlist from localStorage
     loadGuestWishlist(state) {
-      const guestProducts = getGuestWishlist();
-      state.products = guestProducts;
-      state.productIds = extractIds(guestProducts);
+      const readResult = readGuestWishlist();
+      if (readResult.ok) {
+        state.products = readResult.items;
+        state.productIds = extractIds(readResult.items);
+      }
       state.status = "succeeded";
       state.error = null;
     },
@@ -115,9 +127,11 @@ const wishlistSlice = createSlice({
       const product = action.payload;
       if (!product?._id) return;
 
-      const guestProducts = getGuestWishlist();
-      state.products = guestProducts;
-      state.productIds = extractIds(guestProducts);
+      const readResult = readGuestWishlist();
+      if (readResult.ok) {
+        state.products = readResult.items;
+        state.productIds = extractIds(readResult.items);
+      }
 
       const pid = product._id.toString();
       const exists = state.productIds.includes(pid);
@@ -140,8 +154,11 @@ const wishlistSlice = createSlice({
       const pid = action.payload?.toString();
       if (!pid) return;
 
-      const guestProducts = getGuestWishlist();
-      state.products = guestProducts.filter(
+      const readResult = readGuestWishlist();
+      if (readResult.ok) {
+        state.products = readResult.items;
+      }
+      state.products = state.products.filter(
         (p) => (p._id || p).toString() !== pid
       );
       state.productIds = extractIds(state.products);

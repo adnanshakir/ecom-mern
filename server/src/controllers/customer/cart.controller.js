@@ -65,6 +65,7 @@ export const addToCart = async (req, res, next) => {
       }
     }
 
+    cart.increment();
     await cart.save();
 
     const populated = await populateCart(cart._id);
@@ -96,6 +97,7 @@ export const updateCartItem = async (req, res, next) => {
     // If quantity <= 0, remove the item instead of setting zero/negative
     if (quantity <= 0) {
       cart.items.splice(itemIndex, 1);
+      cart.increment();
       await cart.save();
       const populated = await populateCart(cart._id);
       return res.status(200).json({ success: true, data: populated });
@@ -111,6 +113,7 @@ export const updateCartItem = async (req, res, next) => {
     }
 
     cart.items[itemIndex].quantity = clamped;
+    cart.increment();
     await cart.save();
 
     const populated = await populateCart(cart._id);

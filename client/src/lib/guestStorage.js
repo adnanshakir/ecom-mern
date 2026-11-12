@@ -3,10 +3,13 @@
 export const GUEST_CART_STORAGE_KEY = "ecommerce_guest_cart";
 export const GUEST_CART_REVISION_KEY = "ecommerce_guest_cart_revision";
 export const GUEST_CART_PENDING_BATCH_KEY = "ecommerce_guest_cart_pending_batch";
+export const GUEST_CART_LOCK_KEY = "ecommerce_guest_cart_lock";
 export const GUEST_WISHLIST_STORAGE_KEY = "ecommerce_guest_wishlist";
 export const GUEST_WISHLIST_REVISION_KEY = "ecommerce_guest_wishlist_revision";
 
 const OBJECT_ID_REGEX = /^[0-9a-fA-F]{24}$/;
+const CROSS_TAB_LOCK_TTL_MS = 5000;
+let inProcessLockChain = Promise.resolve();
 
 function isValidObjectId(value) {
   return typeof value === "string" && OBJECT_ID_REGEX.test(value.trim());
@@ -84,17 +87,21 @@ export function createMergeBatchId() {
 
 // ── Cart Storage ─────────────────────────────────────────────────────────────
 
-export function getGuestCart() {
-  if (typeof window === "undefined") return [];
+export function readGuestCart() {
+  if (typeof window === "undefined") return { ok: false, items: [] };
   try {
     const raw = localStorage.getItem(GUEST_CART_STORAGE_KEY);
-    if (!raw) return [];
+    if (!raw) return { ok: true, items: [] };
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed.filter(isValidGuestCartEntry) : [];
+    return { ok: true, items: Array.isArray(parsed) ? parsed.filter(isValidGuestCartEntry) : [] };
   } catch (err) {
     console.error("Failed to read guest cart from localStorage:", err);
-    return [];
+    return { ok: false, items: [] };
   }
+}
+
+export function getGuestCart() {
+  return readGuestCart().items;
 }
 
 export function getGuestCartRevision() {
@@ -171,16 +178,92 @@ export function clearPendingCartMergeBatch() {
 }
 
 /**
- * Reconciles guest cart localStorage after a merge batch succeeds.
- * If storage did not change while the request was pending, clears everything;
- * otherwise removes only the merged items/quantities so concurrent additions remain intact.
+ * Serializes guest cart batch read-check-save and claim-reconcile operations across tabs
+ * using Web Locks when available, falling back to an in-process queue + localStorage lease mutex.
  */
-export function reconcileGuestCartAfterMerge(submittedItems, submittedRevision) {
+export async function withGuestCartLock(task) {
+  const runSerialized = async () => {
+    if (typeof navigator !== "undefined" && navigator.locks?.request) {
+      return navigator.locks.request(GUEST_CART_LOCK_KEY, () => task());
+    }
+    if (typeof window === "undefined" || typeof localStorage === "undefined") {
+      return task();
+    }
+
+    const owner = createMergeBatchId();
+    const waitDeadline = Date.now() + CROSS_TAB_LOCK_TTL_MS;
+    let acquired = false;
+
+    while (Date.now() < waitDeadline) {
+      try {
+        const now = Date.now();
+        const existingRaw = localStorage.getItem(GUEST_CART_LOCK_KEY);
+        const existing = existingRaw ? JSON.parse(existingRaw) : null;
+        if (!existing || !existing.expiresAt || existing.expiresAt <= now) {
+          localStorage.setItem(
+            GUEST_CART_LOCK_KEY,
+            JSON.stringify({ owner, expiresAt: now + CROSS_TAB_LOCK_TTL_MS })
+          );
+          const verify = JSON.parse(localStorage.getItem(GUEST_CART_LOCK_KEY) || "null");
+          if (verify?.owner === owner) {
+            acquired = true;
+            break;
+          }
+        }
+      } catch {
+        acquired = true;
+        break;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 15));
+    }
+
+    if (!acquired) {
+      // Stale lock recovery fallback if previous owner crashed right before verify
+      try {
+        localStorage.setItem(
+          GUEST_CART_LOCK_KEY,
+          JSON.stringify({ owner, expiresAt: Date.now() + CROSS_TAB_LOCK_TTL_MS })
+        );
+        acquired = true;
+      } catch {
+        acquired = false;
+      }
+    }
+
+    try {
+      return await task();
+    } finally {
+      if (acquired) {
+        try {
+          const current = JSON.parse(localStorage.getItem(GUEST_CART_LOCK_KEY) || "null");
+          if (current?.owner === owner) {
+            localStorage.removeItem(GUEST_CART_LOCK_KEY);
+          }
+        } catch {
+          // ignore cleanup failure
+        }
+      }
+    }
+  };
+
+  const execution = inProcessLockChain.then(runSerialized, runSerialized);
+  inProcessLockChain = execution.then(
+    () => undefined,
+    () => undefined
+  );
+  return execution;
+}
+
+/**
+ * Reconciles guest cart localStorage after a merge batch succeeds.
+ * Always subtracts only the submitted IDs and quantities, preserving both concurrent edits
+ * and any overflow items (> max batch size) not included in this batch.
+ */
+export function reconcileGuestCartAfterMerge(submittedItems) {
   if (typeof window === "undefined") return [];
-  if (getGuestCartRevision() === submittedRevision) {
-    clearGuestCart();
-    return [];
-  }
+
+  const readResult = readGuestCart();
+  if (!readResult.ok) return [];
 
   const submittedQtyMap = new Map();
   for (const item of submittedItems || []) {
@@ -192,7 +275,7 @@ export function reconcileGuestCartAfterMerge(submittedItems, submittedRevision) 
   }
 
   const remaining = [];
-  for (const entry of getGuestCart()) {
+  for (const entry of readResult.items) {
     const vid = (entry.variant?._id || entry.variantId)?.toString();
     const mergedQty = submittedQtyMap.get(vid) || 0;
     if (mergedQty > 0) {
@@ -214,19 +297,74 @@ export function reconcileGuestCartAfterMerge(submittedItems, submittedRevision) 
   return remaining;
 }
 
+export async function getOrCreatePendingCartMergeBatch(maxBatchItems = 100) {
+  return withGuestCartLock(() => {
+    const revisionAtStart = getGuestCartRevision();
+    const readResult = readGuestCart();
+    const totalGuestCount = readResult.ok ? readResult.items.length : 0;
+
+    let batch = getPendingCartMergeBatch();
+    if (batch) {
+      return { batch, revisionAtStart, totalGuestCount };
+    }
+
+    if (!readResult.ok || readResult.items.length === 0) {
+      return { batch: null, revisionAtStart, totalGuestCount };
+    }
+
+    const itemsPayload = readResult.items.slice(0, maxBatchItems).map((i) => ({
+      variantId: (i.variant?._id || i.variantId).toString(),
+      quantity: i.quantity,
+    }));
+
+    batch = {
+      batchId: createMergeBatchId(),
+      items: itemsPayload,
+      revision: revisionAtStart,
+    };
+    savePendingCartMergeBatch(batch);
+
+    return { batch, revisionAtStart, totalGuestCount };
+  });
+}
+
+export async function claimAndReconcilePendingCartBatch(expectedBatchId, onBeforeClear) {
+  return withGuestCartLock(() => {
+    const currentPending = getPendingCartMergeBatch();
+    if (!currentPending || currentPending.batchId !== expectedBatchId) {
+      return { claimed: false, remaining: getGuestCart() };
+    }
+
+    if (typeof onBeforeClear === "function") {
+      onBeforeClear(getGuestCart());
+    }
+
+    const remaining = reconcileGuestCartAfterMerge(currentPending.items);
+    clearPendingCartMergeBatch();
+    return { claimed: true, remaining };
+  });
+}
+
 // ── Wishlist Storage ──────────────────────────────────────────────────────────
 
-export function getGuestWishlist() {
-  if (typeof window === "undefined") return [];
+export function readGuestWishlist() {
+  if (typeof window === "undefined") return { ok: false, items: [] };
   try {
     const raw = localStorage.getItem(GUEST_WISHLIST_STORAGE_KEY);
-    if (!raw) return [];
+    if (!raw) return { ok: true, items: [] };
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed.filter(isValidGuestWishlistEntry) : [];
+    return {
+      ok: true,
+      items: Array.isArray(parsed) ? parsed.filter(isValidGuestWishlistEntry) : [],
+    };
   } catch (err) {
     console.error("Failed to read guest wishlist from localStorage:", err);
-    return [];
+    return { ok: false, items: [] };
   }
+}
+
+export function getGuestWishlist() {
+  return readGuestWishlist().items;
 }
 
 export function getGuestWishlistRevision() {
@@ -256,18 +394,18 @@ export function clearGuestWishlist() {
 }
 
 /**
- * Reconciles guest wishlist localStorage after a merge succeeds.
- * Preserves items added while the merge request was in-flight.
+ * Reconciles guest wishlist localStorage after a merge batch succeeds.
+ * Always filters out only the submitted product IDs so both concurrent additions
+ * and unsubmitted overflow items (> max batch size) remain intact.
  */
-export function reconcileGuestWishlistAfterMerge(submittedProductIds, submittedRevision) {
+export function reconcileGuestWishlistAfterMerge(submittedProductIds) {
   if (typeof window === "undefined") return [];
-  if (getGuestWishlistRevision() === submittedRevision) {
-    clearGuestWishlist();
-    return [];
-  }
+
+  const readResult = readGuestWishlist();
+  if (!readResult.ok) return [];
 
   const mergedIds = new Set((submittedProductIds || []).map((id) => id.toString()));
-  const remaining = getGuestWishlist().filter((p) => !mergedIds.has((p._id || p).toString()));
+  const remaining = readResult.items.filter((p) => !mergedIds.has((p._id || p).toString()));
 
   if (remaining.length === 0) {
     clearGuestWishlist();

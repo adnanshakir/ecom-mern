@@ -19,6 +19,16 @@ function StatusBadge({ children }) {
 
 export default function OrdersPage() {
   const { orders, stats, pagination, filters, selectedOrder, orderLoading, sheetOpen, loading, error, setSheetOpen, setFilter, openOrder, changeStatus } = useOrders();
+  const handleStatusChange = (nextStatus) => {
+    if (nextStatus === "cancelled") {
+      const confirmed = window.confirm(
+        "Are you sure you want to cancel this order? The payment will be refunded to the customer and stock will be restored."
+      );
+      if (!confirmed) return;
+    }
+    changeStatus(nextStatus);
+  };
+
   return (
     <div className="grid gap-4">
       <div className="flex items-center justify-between"><div><h1 className="text-xl font-semibold">Orders</h1><p className="text-sm text-muted-foreground">{stats.newCount} new · {stats.pendingCount} pending</p></div></div>
@@ -37,7 +47,7 @@ export default function OrdersPage() {
         </Table>
       </div>
       <div className="flex items-center justify-between text-sm text-muted-foreground"><span>Page {pagination.page} of {pagination.pages || 1} ({pagination.total})</span><div className="flex gap-2"><Button variant="outline" size="sm" disabled={pagination.page <= 1} onClick={() => setFilter("page", pagination.page - 1)}>Previous</Button><Button variant="outline" size="sm" disabled={pagination.page >= pagination.pages} onClick={() => setFilter("page", pagination.page + 1)}>Next</Button></div></div>
-      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}><SheetContent className="w-full overflow-y-auto sm:max-w-xl"><SheetHeader><SheetTitle>{orderLoading ? "Loading order..." : selectedOrder?.orderNumber || "Order details"}</SheetTitle></SheetHeader>{orderLoading ? <div className="flex items-center justify-center py-12"><Loader2 className="size-6 animate-spin text-muted-foreground" /></div> : selectedOrder && <OrderDetails order={selectedOrder} onStatusChange={changeStatus} />}</SheetContent></Sheet>
+      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}><SheetContent className="w-full overflow-y-auto sm:max-w-xl"><SheetHeader><SheetTitle>{orderLoading ? "Loading order..." : selectedOrder?.orderNumber || "Order details"}</SheetTitle></SheetHeader>{orderLoading ? <div className="flex items-center justify-center py-12"><Loader2 className="size-6 animate-spin text-muted-foreground" /></div> : selectedOrder && <OrderDetails order={selectedOrder} onStatusChange={handleStatusChange} />}</SheetContent></Sheet>
     </div>
   );
 }

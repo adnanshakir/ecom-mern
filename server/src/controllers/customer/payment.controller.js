@@ -91,18 +91,41 @@ const recoverRefundForOrder = async (order, reason = "insufficient_stock_after_p
     return order;
   }
 
+  // Atomically claim eligible refund_pending order before calling Razorpay
+  const claimed = await Order.findOneAndUpdate(
+    {
+      _id: order._id,
+      "payment.status": "refund_pending",
+      "payment.refundStatus": { $in: ["none", "pending", "failed", null] },
+    },
+    {
+      $set: {
+        "payment.refundStatus": "processing",
+        "payment.refundClaimedAt": new Date(),
+      },
+    },
+    { new: true }
+  );
+  if (!claimed) {
+    return (await Order.findById(order._id)) || order;
+  }
+
   try {
     const refund = await createRazorpayRefund(
-      order.payment.razorpayPaymentId,
-      Math.round(order.total * 100),
+      claimed.payment.razorpayPaymentId,
+      Math.round(claimed.total * 100),
       {
-        orderId: String(order._id),
-        orderNumber: order.orderNumber,
+        orderId: String(claimed._id),
+        orderNumber: claimed.orderNumber,
         reason,
       }
     );
-    return await Order.findByIdAndUpdate(
-      order._id,
+    const updated = await Order.findOneAndUpdate(
+      {
+        _id: claimed._id,
+        "payment.status": "refund_pending",
+        "payment.refundStatus": "processing",
+      },
       {
         $set: {
           "payment.status": "refunded",
@@ -110,25 +133,32 @@ const recoverRefundForOrder = async (order, reason = "insufficient_stock_after_p
           "payment.refundStatus": "processed",
           "payment.refundedAt": new Date(),
           "payment.refundError": "",
+          "payment.refundClaimedAt": null,
           orderStatus: "cancelled",
           fulfillmentRecoveryNeeded: false,
         },
       },
       { new: true }
     );
+    return updated || (await Order.findById(claimed._id)) || claimed;
   } catch (refundError) {
-    return await Order.findByIdAndUpdate(
-      order._id,
+    const updated = await Order.findOneAndUpdate(
+      {
+        _id: claimed._id,
+        "payment.status": "refund_pending",
+        "payment.refundStatus": "processing",
+      },
       {
         $set: {
-          "payment.status": "refund_pending",
           "payment.refundStatus": "failed",
           "payment.refundError": refundError.message || "Refund initiation failed",
+          "payment.refundClaimedAt": null,
           fulfillmentRecoveryNeeded: true,
         },
       },
       { new: true }
     );
+    return updated || (await Order.findById(claimed._id)) || claimed;
   }
 };
 

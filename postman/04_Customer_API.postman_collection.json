@@ -6,14 +6,7 @@
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
-    "type": "bearer",
-    "bearer": [
-      {
-        "key": "token",
-        "value": "{{customerAccessToken}}",
-        "type": "string"
-      }
-    ]
+    "type": "noauth"
   },
   "variable": [
     {
@@ -25,7 +18,7 @@
   "item": [
     {
       "name": "Customer — Auth & Profile",
-      "description": "Customer OTP authentication mounted at `/api/v1/customers/auth` (Better Auth) and customer profile endpoints mounted at `/api/customers/profile`.\n\nFirst-time Phone OTP verification automatically registers the customer account (`signUpOnVerification`), sets session cookies in Postman's cookie jar, and returns `token` in the verification response body (captured into `customerAccessToken`).",
+      "description": "Customer OTP authentication mounted at `/api/v1/customers/auth` (Better Auth) and customer profile endpoints mounted at `/api/customers/profile`.\n\nFirst-time Phone OTP verification automatically registers the customer account (`signUpOnVerification`) and sets an HTTP-only session cookie in Postman's Cookie Jar. Subsequent customer requests (profile, cart, wishlist, orders, payments) authenticate via that session cookie automatically—no `Authorization: Bearer` header is used or accepted by customer middleware.",
       "item": [
         {
           "name": "Send Phone OTP (Sign-Up / Login Step 1)",
@@ -87,10 +80,8 @@
               "listen": "test",
               "script": {
                 "exec": [
+                  "// Customer auth uses Better Auth HTTP-only session cookies (stored automatically in Postman's Cookie Jar).",
                   "const json = pm.response.json();",
-                  "if (json && json.token) {",
-                  "  pm.environment.set('customerAccessToken', json.token);",
-                  "}",
                   "if (json && json.user && json.user.id) {",
                   "  pm.environment.set('customerId', json.user.id);",
                   "}"
@@ -133,7 +124,7 @@
                 "verify"
               ]
             },
-            "description": "Verifies the phone OTP code. Automatically creates a new customer account if the phone number is new (`signUpOnVerification`), or signs in an existing customer.\n\nSets the Better Auth session cookie and captures `token` into `customerAccessToken` and `user.id` into `customerId`.\n\n**Rate limit:** 10 requests per 15-minute window."
+            "description": "Verifies the phone OTP code. Automatically creates a new customer account if the phone number is new (`signUpOnVerification`), or signs in an existing customer.\n\nSets the Better Auth HTTP-only session cookie in Postman's Cookie Jar and captures `user.id` into `customerId`.\n\n**Rate limit:** 10 requests per 15-minute window."
           },
           "response": [
             {
@@ -210,10 +201,8 @@
               "listen": "test",
               "script": {
                 "exec": [
+                  "// Customer auth uses Better Auth HTTP-only session cookies (stored automatically in Postman's Cookie Jar).",
                   "const json = pm.response.json();",
-                  "if (json && json.token) {",
-                  "  pm.environment.set('customerAccessToken', json.token);",
-                  "}",
                   "if (json && json.user && json.user.id) {",
                   "  pm.environment.set('customerId', json.user.id);",
                   "}"
@@ -256,7 +245,7 @@
                 "email-otp"
               ]
             },
-            "description": "Verifies an email sign-in OTP and starts a customer session. Captures `token` into `customerAccessToken` and `user.id` into `customerId`.\n\n**Rate limit:** 10 requests per 15-minute window."
+            "description": "Verifies an email sign-in OTP and starts a customer session via HTTP-only session cookie (stored automatically in Postman's Cookie Jar). Captures `user.id` into `customerId`.\n\n**Rate limit:** 10 requests per 15-minute window."
           },
           "response": [
             {
@@ -352,16 +341,6 @@
         {
           "name": "Get My Profile (Customer)",
           "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{customerAccessToken}}",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "GET",
             "header": [],
             "url": {
@@ -395,16 +374,6 @@
         {
           "name": "Update Customer Profile",
           "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{customerAccessToken}}",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "PUT",
             "header": [
               {
@@ -453,21 +422,11 @@
     },
     {
       "name": "Customer — Cart",
-      "description": "Shopping cart management.\n\n**Auth:** `Authorization: Bearer {{customerAccessToken}}`\n\nThe cart is auto-created on first access (find-or-create). Quantity is automatically clamped to available stock.",
+      "description": "Shopping cart management.\n\n**Auth:** Active Better Auth customer session cookie (automatically stored in Postman's Cookie Jar after OTP verification).\n\nThe cart is auto-created on first access (find-or-create). Quantity is automatically clamped to available stock.",
       "item": [
         {
           "name": "Get Cart",
           "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{customerAccessToken}}",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "GET",
             "header": [],
             "url": {
@@ -501,16 +460,6 @@
         {
           "name": "Add Item to Cart",
           "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{customerAccessToken}}",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "POST",
             "header": [
               {
@@ -559,16 +508,6 @@
         {
           "name": "Update Cart Item Quantity",
           "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{customerAccessToken}}",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "PUT",
             "header": [
               {
@@ -618,16 +557,6 @@
         {
           "name": "Remove Item from Cart",
           "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{customerAccessToken}}",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "DELETE",
             "header": [],
             "url": {
@@ -663,16 +592,6 @@
         {
           "name": "Clear Entire Cart",
           "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{customerAccessToken}}",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "DELETE",
             "header": [],
             "url": {
@@ -706,16 +625,6 @@
         {
           "name": "Merge Guest Cart",
           "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{customerAccessToken}}",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "POST",
             "header": [
               {
@@ -725,7 +634,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"items\": [\n    {\n      \"variantId\": \"{{variantId}}\",\n      \"quantity\": 2\n    }\n  ]\n}"
+              "raw": "{\n  \"batchId\": \"optional-idempotency-uuid\",\n  \"items\": [\n    {\n      \"variantId\": \"{{variantId}}\",\n      \"quantity\": 2\n    }\n  ]\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/customers/cart/merge",
@@ -739,7 +648,7 @@
                 "merge"
               ]
             },
-            "description": "Merges guest cart items (from local storage) into the customer's authenticated cart upon login.\n\n- Clamps quantities to available variant stock.\n- Safely skips inactive/deleted variant IDs.\n- Returns the full populated customer cart."
+            "description": "Merges guest cart items (from local storage) into the customer's authenticated cart upon login.\n\n- Accepts up to 100 items per batch and an optional `batchId` for idempotent retry deduplication.\n- Clamps quantities to available variant stock.\n- Safely skips inactive/out-of-stock variants and returns `skippedItems` alongside the populated cart."
           },
           "response": [
             {
@@ -760,21 +669,11 @@
     },
     {
       "name": "Customer — Wishlist",
-      "description": "Wishlist management.\n\n**Auth:** `Authorization: Bearer {{customerAccessToken}}`\n\nThe wishlist is auto-created on first access.",
+      "description": "Wishlist management.\n\n**Auth:** Active Better Auth customer session cookie (automatically stored in Postman's Cookie Jar after OTP verification).\n\nThe wishlist is auto-created on first access.",
       "item": [
         {
           "name": "Get Wishlist",
           "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{customerAccessToken}}",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "GET",
             "header": [],
             "url": {
@@ -808,16 +707,6 @@
         {
           "name": "Add Product to Wishlist",
           "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{customerAccessToken}}",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "POST",
             "header": [
               {
@@ -866,16 +755,6 @@
         {
           "name": "Remove Product from Wishlist",
           "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{customerAccessToken}}",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "DELETE",
             "header": [],
             "url": {
@@ -911,16 +790,6 @@
         {
           "name": "Merge Guest Wishlist",
           "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{customerAccessToken}}",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "POST",
             "header": [
               {

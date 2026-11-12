@@ -631,10 +631,18 @@ describe("Admin Orders RBAC, Stats paidAt, Visibility, Lookup & Cancel Refund/Re
     expect(refundCalls).toBe(1);
     current = await Order.findById(order._id);
     expect(current.orderStatus).toBe("placed");
+    expect(current.payment.status).toBe("refunded");
     expect(current.payment.refundId).toBe("rfnd_cancel_1");
     expect(current.payment.refundStatus).toBe("processed");
     // variantA must NOT have been partially restored due to transaction abort
     expect((await ProductVariant.findById(variantA._id)).stock).toBe(8);
+
+    // Successfully refunded order MUST be blocked from advancing to fulfillment
+    const packAfterRefundRes = await request(app)
+      .patch(`/api/orders/${order._id}/status`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ orderStatus: "packed" });
+    expect(packAfterRefundRes.status).toBe(409);
 
     // 3. Recreate missing variant with original pre-restock _id and retry cancellation ->
     //    does NOT call Razorpay refund a second time; restores stock via adjustStock & marks cancelled + refunded!
@@ -664,6 +672,82 @@ describe("Admin Orders RBAC, Stats paidAt, Visibility, Lookup & Cancel Refund/Re
     const movements = await InventoryMovement.find({ reason: `Order cancelled: ${order.orderNumber}` });
     expect(movements).toHaveLength(2);
     expect(movements.every((m) => m.type === "return")).toBe(true);
+  });
+
+  it("reclaims stale pending refund claims only after lease expires and reconciles existing Razorpay refunds without duplicating them", async () => {
+    const order = await seedPaidOrder({ orderNumber: "ORD-LEASE-1" });
+    const payId = order.payment.razorpayPaymentId;
+
+    // Fresh pending claim must reject concurrent cancel with 409
+    await Order.updateOne(
+      { _id: order._id },
+      { $set: { "payment.refundStatus": "pending", "payment.refundClaimedAt": new Date() } }
+    );
+    const freshRes = await request(app)
+      .patch(`/api/orders/${order._id}/status`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ orderStatus: "cancelled" });
+    expect(freshRes.status).toBe(409);
+
+    // Also block fulfillment while refund is in progress
+    const freshPackRes = await request(app)
+      .patch(`/api/orders/${order._id}/status`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ orderStatus: "packed" });
+    expect(freshPackRes.status).toBe(409);
+
+    // Expire lease and mock Razorpay returning an existing processed refund
+    await Order.updateOne(
+      { _id: order._id },
+      { $set: { "payment.refundClaimedAt": new Date(Date.now() - 10 * 60 * 1000) } }
+    );
+
+    let refundCreateCalls = 0;
+    global.fetch = jest.fn(async (url) => {
+      if (url === `https://api.razorpay.com/v1/payments/${payId}/refunds`) {
+        return {
+          ok: true,
+          json: async () => ({
+            items: [{ id: "rfnd_existing_lease", status: "processed", created_at: 1730000000 }],
+          }),
+        };
+      }
+      if (url === `https://api.razorpay.com/v1/payments/${payId}/refund`) {
+        refundCreateCalls += 1;
+        return { ok: true, json: async () => ({ id: "rfnd_dup" }) };
+      }
+      throw new Error(`Unexpected fetch: ${url}`);
+    });
+
+    const reclaimedRes = await request(app)
+      .patch(`/api/orders/${order._id}/status`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ orderStatus: "cancelled" });
+
+    expect(reclaimedRes.status).toBe(200);
+    expect(refundCreateCalls).toBe(0);
+    expect(reclaimedRes.body.data.payment.refundId).toBe("rfnd_existing_lease");
+    expect(reclaimedRes.body.data.payment.status).toBe("refunded");
+    expect(reclaimedRes.body.data.orderStatus).toBe("cancelled");
+  });
+
+  it("converts Razorpay fetch abort timeouts to 504 and resets refundStatus to failed so it is not stuck pending", async () => {
+    const order = await seedPaidOrder({ orderNumber: "ORD-TIMEOUT-1" });
+    global.fetch = jest.fn(async () => {
+      const abortErr = new Error("The operation was aborted");
+      abortErr.name = "AbortError";
+      throw abortErr;
+    });
+
+    const timeoutRes = await request(app)
+      .patch(`/api/orders/${order._id}/status`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ orderStatus: "cancelled" });
+
+    expect(timeoutRes.status).toBe(504);
+    const updated = await Order.findById(order._id);
+    expect(updated.payment.refundStatus).toBe("failed");
+    expect(updated.orderStatus).toBe("placed");
   });
 });
 

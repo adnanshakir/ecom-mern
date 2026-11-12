@@ -9,18 +9,17 @@ import {
   mergeCartRequest,
 } from "@/services/storefront/cart";
 import {
+  readGuestCart,
   getGuestCart,
-  getGuestCartRevision,
   saveGuestCart,
   clearGuestCart as clearGuestCartStorage,
-  createMergeBatchId,
-  getPendingCartMergeBatch,
-  savePendingCartMergeBatch,
+  getOrCreatePendingCartMergeBatch,
+  claimAndReconcilePendingCartBatch,
   clearPendingCartMergeBatch,
-  reconcileGuestCartAfterMerge,
 } from "@/lib/guestStorage";
 
 const MAX_CART_MERGE_ITEMS = 100;
+const MAX_CART_MERGE_PASSES = 50;
 
 const notifySkippedMergeItems = (skippedItems, localGuestItems) => {
   if (!Array.isArray(skippedItems) || skippedItems.length === 0 || typeof window === "undefined") {
@@ -46,39 +45,28 @@ const notifySkippedMergeItems = (skippedItems, localGuestItems) => {
 async function syncCustomerCart() {
   let lastItems = null;
 
-  for (let pass = 0; pass < 3; pass += 1) {
-    let batch = getPendingCartMergeBatch();
-    if (!batch) {
-      const revision = getGuestCartRevision();
-      const guestItems = getGuestCart();
-      if (guestItems.length === 0) break;
+  for (let pass = 0; pass < MAX_CART_MERGE_PASSES; pass += 1) {
+    const { batch, revisionAtStart, totalGuestCount } =
+      await getOrCreatePendingCartMergeBatch(MAX_CART_MERGE_ITEMS);
 
-      const itemsPayload = guestItems.slice(0, MAX_CART_MERGE_ITEMS).map((i) => ({
-        variantId: (i.variant?._id || i.variantId).toString(),
-        quantity: i.quantity,
-      }));
-      batch = {
-        batchId: createMergeBatchId(),
-        items: itemsPayload,
-        revision,
-      };
-      savePendingCartMergeBatch(batch);
-    }
+    if (!batch) break;
 
-    const revisionAtRequestStart = getGuestCartRevision();
     const { data } = await mergeCartRequest(batch.items, batch.batchId);
     lastItems = data.data.items;
 
     const skippedItems = data?.data?.skippedItems || data?.skippedItems || [];
-    const localSnapshot = getGuestCart();
-    notifySkippedMergeItems(skippedItems, localSnapshot);
+    const { remaining } = await claimAndReconcilePendingCartBatch(
+      batch.batchId,
+      (localSnapshot) => notifySkippedMergeItems(skippedItems, localSnapshot)
+    );
 
-    const remaining = reconcileGuestCartAfterMerge(batch.items, batch.revision);
-    clearPendingCartMergeBatch();
+    // Continue draining only if additional entries already existed before this attempt started
+    // (either >100 items or items queued after an earlier failed batch's revision).
+    const hasMorePreExistingItems =
+      remaining.length > 0 &&
+      (totalGuestCount > MAX_CART_MERGE_ITEMS || revisionAtStart !== batch.revision);
 
-    // Only chain another merge if extra local items already existed before this attempt started.
-    // Items added while this request was in-flight remain preserved in guest storage.
-    if (remaining.length === 0 || revisionAtRequestStart === batch.revision) {
+    if (!hasMorePreExistingItems) {
       return lastItems;
     }
   }
@@ -173,8 +161,10 @@ const cartSlice = createSlice({
   reducers: {
     // Load unauthenticated cart from localStorage
     loadGuestCart(state) {
-      const items = getGuestCart();
-      state.items = items;
+      const readResult = readGuestCart();
+      if (readResult.ok) {
+        state.items = readResult.items;
+      }
       state.status = "succeeded";
       state.error = null;
     },
@@ -184,7 +174,10 @@ const cartSlice = createSlice({
       const { variant, quantity = 1 } = action.payload;
       if (!variant?._id) return;
 
-      state.items = getGuestCart();
+      const readResult = readGuestCart();
+      if (readResult.ok) {
+        state.items = readResult.items;
+      }
 
       const variantId = variant._id.toString();
       const existingIndex = state.items.findIndex(
@@ -215,7 +208,10 @@ const cartSlice = createSlice({
     // Update quantity of guest cart item
     updateGuestCartItem(state, action) {
       const { variantId, quantity } = action.payload;
-      state.items = getGuestCart();
+      const readResult = readGuestCart();
+      if (readResult.ok) {
+        state.items = readResult.items;
+      }
 
       const targetId = variantId?.toString();
       const existingIndex = state.items.findIndex(
@@ -237,7 +233,10 @@ const cartSlice = createSlice({
 
     // Remove item from guest cart
     removeGuestCartItem(state, action) {
-      state.items = getGuestCart();
+      const readResult = readGuestCart();
+      if (readResult.ok) {
+        state.items = readResult.items;
+      }
       const targetId = action.payload?.toString();
       state.items = state.items.filter(
         (i) => (i.variant?._id || i.variantId)?.toString() !== targetId

@@ -18,6 +18,8 @@ import { formatPrice } from "@/lib/formatCurrency";
 import { Button } from "@/components/ui/button";
 
 const RAZORPAY_SCRIPT = "https://checkout.razorpay.com/v1/checkout.js";
+const RECONCILIATION_STORAGE_KEY = "fibio:pending-reconciliation";
+const RECONCILIATION_POLL_MS = 4000;
 const DELIVERY_CHARGE = 100;
 const EMPTY_ADDRESS = {
   label: "Home",
@@ -56,9 +58,44 @@ export function CheckoutView() {
   const [addressForm, setAddressForm] = useState(null);
   const [addressLoading, setAddressLoading] = useState(true);
   const [paymentReconciliation, setPaymentReconciliation] = useState(null);
+  const [isReconciling, setIsReconciling] = useState(false);
   const idempotencyKeyRef = useRef("");
+  const reconcilingRef = useRef(false);
+
+  const persistPendingReconciliation = (recoveryState) => {
+    if (!recoveryState) {
+      sessionStorage.removeItem(RECONCILIATION_STORAGE_KEY);
+      setPaymentReconciliation(null);
+      return;
+    }
+    const payload = {
+      razorpayOrderId: recoveryState.razorpayOrderId,
+      razorpayPaymentId: recoveryState.razorpayPaymentId,
+      status: recoveryState.status || "pending",
+      idempotencyKey: recoveryState.idempotencyKey || idempotencyKeyRef.current || "",
+    };
+    sessionStorage.setItem(RECONCILIATION_STORAGE_KEY, JSON.stringify(payload));
+    setPaymentReconciliation(payload);
+  };
 
   useEffect(() => {
+    const storedReconciliation = sessionStorage.getItem(RECONCILIATION_STORAGE_KEY);
+    if (storedReconciliation) {
+      try {
+        const parsed = JSON.parse(storedReconciliation);
+        if (parsed?.razorpayOrderId && parsed?.razorpayPaymentId) {
+          if (parsed.idempotencyKey) {
+            idempotencyKeyRef.current = parsed.idempotencyKey;
+          }
+          queueMicrotask(() => setPaymentReconciliation(parsed));
+        } else {
+          sessionStorage.removeItem(RECONCILIATION_STORAGE_KEY);
+        }
+      } catch {
+        sessionStorage.removeItem(RECONCILIATION_STORAGE_KEY);
+      }
+    }
+
     if (new URLSearchParams(window.location.search).get("buyNow") !== "1") return;
     const storedItem = sessionStorage.getItem("fibio:buy-now");
     if (!storedItem) return;
@@ -103,8 +140,119 @@ export function CheckoutView() {
   const cartSignature = checkoutItems.map((item) => `${item.variant?._id || ""}:${item.quantity}`).join("|");
 
   useEffect(() => {
-    idempotencyKeyRef.current = "";
-  }, [selectedAddressId, cartSignature]);
+    if (!paymentReconciliation && !sessionStorage.getItem(RECONCILIATION_STORAGE_KEY)) {
+      idempotencyKeyRef.current = "";
+    }
+  }, [selectedAddressId, cartSignature, paymentReconciliation]);
+
+  const applyPaymentOutcome = ({
+    outcomeStatus,
+    orderId,
+    message,
+    razorpayOrderId,
+    razorpayPaymentId,
+    fallbackErrorMessage,
+    notifyPending = true,
+  }) => {
+    if (outcomeStatus === "paid") {
+      idempotencyKeyRef.current = "";
+      persistPendingReconciliation(null);
+      if (!directCheckoutItem) dispatch(clearCartState());
+      sessionStorage.removeItem("fibio:buy-now");
+      toast.success("Payment successful");
+      router.replace(`/order?orderId=${orderId}`);
+      return true;
+    }
+    if (outcomeStatus === "refunded") {
+      idempotencyKeyRef.current = "";
+      persistPendingReconciliation(null);
+      toast.error(
+        message || "An item went out of stock after checkout began. Your payment has been refunded."
+      );
+      return true;
+    }
+    if (outcomeStatus === "failed") {
+      idempotencyKeyRef.current = "";
+      persistPendingReconciliation(null);
+      toast.error(fallbackErrorMessage || "Payment was unsuccessful. You can try again.");
+      return true;
+    }
+    if (outcomeStatus === "refund_pending") {
+      persistPendingReconciliation({
+        razorpayOrderId,
+        razorpayPaymentId,
+        status: "refund_pending",
+        idempotencyKey: idempotencyKeyRef.current,
+      });
+      if (notifyPending) {
+        toast.error(
+          message || "Item went out of stock after checkout; confirming your refund before allowing a new order."
+        );
+      }
+      return false;
+    }
+
+    persistPendingReconciliation({
+      razorpayOrderId,
+      razorpayPaymentId,
+      status: "pending",
+      idempotencyKey: idempotencyKeyRef.current,
+    });
+    if (notifyPending) {
+      toast.error("Payment is still being confirmed. Please do not retry yet.");
+    }
+    return false;
+  };
+
+  const runSingleReconciliation = async (targetReconciliation, { notifyPending = false } = {}) => {
+    if (!targetReconciliation?.razorpayOrderId || !targetReconciliation?.razorpayPaymentId) return;
+    if (reconcilingRef.current) return;
+    reconcilingRef.current = true;
+    setIsReconciling(true);
+    try {
+      const { data: reconciliation } = await reconcilePaymentRequest({
+        razorpayOrderId: targetReconciliation.razorpayOrderId,
+        razorpayPaymentId: targetReconciliation.razorpayPaymentId,
+      });
+      applyPaymentOutcome({
+        outcomeStatus: reconciliation.data?.status,
+        orderId: reconciliation.data?.orderId,
+        message: reconciliation.message,
+        razorpayOrderId: targetReconciliation.razorpayOrderId,
+        razorpayPaymentId: targetReconciliation.razorpayPaymentId,
+        notifyPending,
+      });
+    } catch {
+      if (notifyPending) {
+        toast.error("Still waiting for payment gateway confirmation.");
+      }
+    } finally {
+      reconcilingRef.current = false;
+      setIsReconciling(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!authReady || authStatus !== "authenticated" || !paymentReconciliation) return;
+    let cancelled = false;
+    const immediateTimer = setTimeout(() => {
+      if (!cancelled) {
+        runSingleReconciliation(paymentReconciliation, { notifyPending: false });
+      }
+    }, 300);
+    const interval = setInterval(() => {
+      if (!cancelled) {
+        runSingleReconciliation(paymentReconciliation, { notifyPending: false });
+      }
+    }, RECONCILIATION_POLL_MS);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(immediateTimer);
+      clearInterval(interval);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authReady, authStatus, paymentReconciliation?.razorpayOrderId, paymentReconciliation?.razorpayPaymentId, paymentReconciliation?.status]);
 
   /** Save an address against the profile version currently displayed in this tab. */
   const saveAddress = async (event) => {
@@ -149,7 +297,11 @@ export function CheckoutView() {
   const pay = async () => {
     if (!selectedAddressId || paymentReconciliation) {
       if (paymentReconciliation) {
-        toast.error("Please wait while we confirm the previous payment");
+        toast.error(
+          paymentReconciliation.status === "refund_pending"
+            ? "Please wait while your refund is confirmed before starting a new checkout"
+            : "Please wait while we confirm the previous payment"
+        );
       }
       if (!selectedAddressId) toast.error("Select or add a delivery address first");
       return;
@@ -187,74 +339,41 @@ export function CheckoutView() {
           try {
             const { data: verifyResponse } = await verifyPaymentRequest(payment);
             const verifiedStatus = verifyResponse.data?.status;
-            if (verifiedStatus === "paid") {
-              idempotencyKeyRef.current = "";
-              if (!directCheckoutItem) dispatch(clearCartState());
-              sessionStorage.removeItem("fibio:buy-now");
-              toast.success("Payment successful");
-              router.replace(`/order?orderId=${verifyResponse.data?.orderId || order.orderId}`);
-              return;
-            }
-            if (verifiedStatus === "refunded" || verifiedStatus === "refund_pending") {
-              idempotencyKeyRef.current = "";
-              setPaymentReconciliation(null);
-              toast.error(
-                verifyResponse.message ||
-                  "An item went out of stock after checkout began. A refund has been initiated."
-              );
-              return;
-            }
-            if (verifiedStatus === "failed") {
-              idempotencyKeyRef.current = "";
-              setPaymentReconciliation(null);
-              toast.error("Payment was unsuccessful. You can try again.");
-              return;
-            }
-            setPaymentReconciliation({
+            applyPaymentOutcome({
+              outcomeStatus: verifiedStatus,
+              orderId: verifyResponse.data?.orderId || order.orderId,
+              message: verifyResponse.message,
               razorpayOrderId: payment.razorpay_order_id,
               razorpayPaymentId: payment.razorpay_payment_id,
             });
-            toast.error("Payment is still being confirmed. Please do not retry yet.");
           } catch (error) {
-            setPaymentReconciliation({
+            persistPendingReconciliation({
               razorpayOrderId: payment.razorpay_order_id,
               razorpayPaymentId: payment.razorpay_payment_id,
+              status: "pending",
+              idempotencyKey: idempotencyKeyRef.current,
             });
+            reconcilingRef.current = true;
             try {
               const { data: reconciliation } = await reconcilePaymentRequest({
                 razorpayOrderId: payment.razorpay_order_id,
                 razorpayPaymentId: payment.razorpay_payment_id,
               });
-              if (reconciliation.data?.status === "paid") {
-                idempotencyKeyRef.current = "";
-                if (!directCheckoutItem) dispatch(clearCartState());
-                sessionStorage.removeItem("fibio:buy-now");
-                toast.success("Payment successful");
-                router.replace(`/order?orderId=${reconciliation.data.orderId}`);
-                return;
-              }
-              if (reconciliation.data?.status === "refunded" || reconciliation.data?.status === "refund_pending") {
-                idempotencyKeyRef.current = "";
-                setPaymentReconciliation(null);
-                toast.error(
-                  reconciliation.message ||
-                    "An item went out of stock after checkout began. A refund has been initiated."
-                );
-                return;
-              }
-              if (reconciliation.data?.status === "failed") {
-                idempotencyKeyRef.current = "";
-                setPaymentReconciliation(null);
-                toast.error("Payment was unsuccessful. You can try again.");
-                return;
-              }
-              toast.error("Payment is still being confirmed. Please do not retry yet.");
+              applyPaymentOutcome({
+                outcomeStatus: reconciliation.data?.status,
+                orderId: reconciliation.data?.orderId,
+                message: reconciliation.message,
+                razorpayOrderId: payment.razorpay_order_id,
+                razorpayPaymentId: payment.razorpay_payment_id,
+              });
             } catch (reconciliationError) {
               toast.error(
                 reconciliationError.response?.data?.message ||
                   error.response?.data?.message ||
                   "Payment outcome is still being confirmed"
               );
+            } finally {
+              reconcilingRef.current = false;
             }
           } finally {
             setIsPaying(false);
@@ -268,47 +387,37 @@ export function CheckoutView() {
         const paymentOrderId = response.error?.metadata?.order_id || order.razorpayOrderId;
         if (!paymentId) {
           idempotencyKeyRef.current = "";
+          persistPendingReconciliation(null);
           toast.error(response.error?.description || "Payment failed");
-          setPaymentReconciliation(null);
           return;
         }
 
-        setPaymentReconciliation({
+        persistPendingReconciliation({
           razorpayOrderId: paymentOrderId,
           razorpayPaymentId: paymentId,
+          status: "pending",
+          idempotencyKey: idempotencyKeyRef.current,
         });
+        reconcilingRef.current = true;
         reconcilePaymentRequest({
           razorpayOrderId: paymentOrderId,
           razorpayPaymentId: paymentId,
         })
           .then(({ data: reconciliation }) => {
-            if (reconciliation.data?.status === "failed") {
-              idempotencyKeyRef.current = "";
-              toast.error(response.error?.description || "Payment failed");
-              setPaymentReconciliation(null);
-              return;
-            }
-            if (reconciliation.data?.status === "paid") {
-              idempotencyKeyRef.current = "";
-              if (!directCheckoutItem) dispatch(clearCartState());
-              sessionStorage.removeItem("fibio:buy-now");
-              toast.success("Payment successful");
-              router.replace(`/order?orderId=${reconciliation.data.orderId}`);
-              return;
-            }
-            if (reconciliation.data?.status === "refunded" || reconciliation.data?.status === "refund_pending") {
-              idempotencyKeyRef.current = "";
-              setPaymentReconciliation(null);
-              toast.error(
-                reconciliation.message ||
-                  "An item went out of stock after checkout began. A refund has been initiated."
-              );
-              return;
-            }
-            toast.error("Payment outcome is still being confirmed. Please do not retry yet.");
+            applyPaymentOutcome({
+              outcomeStatus: reconciliation.data?.status,
+              orderId: reconciliation.data?.orderId,
+              message: reconciliation.message,
+              razorpayOrderId: paymentOrderId,
+              razorpayPaymentId: paymentId,
+              fallbackErrorMessage: response.error?.description || "Payment failed",
+            });
           })
           .catch(() => {
             toast.error("Payment outcome is still being confirmed. Please do not retry yet.");
+          })
+          .finally(() => {
+            reconcilingRef.current = false;
           });
       });
       razorpay.open();
@@ -441,17 +550,50 @@ export function CheckoutView() {
             <span>Total</span>
             <span>{formatPrice(total)}</span>
           </div>
+          {paymentReconciliation && (
+            <div className="mt-4 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-xs">
+              <p className="font-medium text-foreground">
+                {paymentReconciliation.status === "refund_pending"
+                  ? "Refund confirmation in progress"
+                  : "Confirming payment status…"}
+              </p>
+              <p className="mt-1 text-muted-foreground">
+                {paymentReconciliation.status === "refund_pending"
+                  ? "An item went out of stock after checkout. Please wait for refund confirmation before placing a new order."
+                  : "We are checking with the payment gateway. Do not retry payment yet."}
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="mt-2 w-full"
+                disabled={isReconciling}
+                onClick={() => runSingleReconciliation(paymentReconciliation, { notifyPending: true })}
+              >
+                {isReconciling ? (
+                  <>
+                    <Loader2 className="mr-1.5 size-3 animate-spin" />
+                    Checking…
+                  </>
+                ) : (
+                  "Check status now"
+                )}
+              </Button>
+            </div>
+          )}
           <Button
             className="mt-6 w-full bg-[#033936] text-white hover:bg-[#022826]"
             size="lg"
             onClick={pay}
-            disabled={isPaying || addressLoading}
+            disabled={isPaying || addressLoading || Boolean(paymentReconciliation)}
           >
             {isPaying ? (
               <>
                 <Loader2 className="mr-2 size-4 animate-spin" />
                 Opening payment…
               </>
+            ) : paymentReconciliation ? (
+              "Reconciling previous checkout…"
             ) : (
               "Pay securely"
             )}

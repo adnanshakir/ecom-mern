@@ -3,9 +3,10 @@ import Order from "../../models/customer/order.model.js";
 import CustomerProfile from "../../models/customer/customer.model.js";
 import ApiError from "../../utils/apiError.js";
 import { adjustStock } from "../../utils/inventory.js";
-import { createRazorpayRefund } from "../../utils/razorpay.js";
+import { createRazorpayRefund, fetchRazorpayRefunds } from "../../utils/razorpay.js";
 
 const STATUSES = ["placed", "packed", "shipped", "delivered", "cancelled"];
+const REFUND_CLAIM_LEASE_MS = Number(process.env.REFUND_CLAIM_LEASE_MS) || 2 * 60 * 1000;
 
 const findCustomerUsersByAuthIds = async (authIds) => {
   if (!authIds.length) return [];
@@ -116,8 +117,60 @@ export const getAdminOrder = async (req, res, next) => {
   }
 };
 
+const recordRefundSuccess = async (orderId, refundId, refundedAt) => {
+  await Order.updateOne(
+    { _id: orderId },
+    {
+      $set: {
+        "payment.status": "refunded",
+        "payment.refundId": refundId,
+        "payment.refundStatus": "processed",
+        "payment.refundedAt": refundedAt,
+        "payment.refundError": "",
+        "payment.refundClaimedAt": null,
+        fulfillmentRecoveryNeeded: true,
+      },
+    }
+  );
+};
+
+const reconcileExistingRefundsBeforeRetry = async (order, claimTimestamp) => {
+  if (order.payment?.refundId || !order.payment?.razorpayPaymentId) {
+    return { refundId: order.payment?.refundId, refundedAt: order.payment?.refundedAt };
+  }
+
+  const refundsCollection = await fetchRazorpayRefunds(order.payment.razorpayPaymentId);
+  const items = Array.isArray(refundsCollection?.items) ? refundsCollection.items : [];
+  const activeRefund = items.find((item) => item?.status && item.status !== "failed");
+  if (!activeRefund) {
+    return { refundId: null, refundedAt: null };
+  }
+
+  const refundedAt = activeRefund.created_at ? new Date(activeRefund.created_at * 1000) : new Date();
+  if (activeRefund.status === "processed") {
+    await recordRefundSuccess(order._id, activeRefund.id, refundedAt);
+    return { refundId: activeRefund.id, refundedAt };
+  }
+
+  await Order.updateOne(
+    { _id: order._id },
+    {
+      $set: {
+        "payment.refundId": activeRefund.id,
+        "payment.refundStatus": "pending",
+        "payment.refundClaimedAt": claimTimestamp,
+      },
+    }
+  );
+  throw new ApiError(409, "Refund is already pending at the payment gateway; retry once settled");
+};
+
 const cancelPaidOrderWithRefundAndRestock = async (orderId, userId) => {
-  // Atomically claim cancellation-refund ownership so concurrent cancel calls cannot double-refund
+  const now = new Date();
+  const staleBefore = new Date(now.getTime() - REFUND_CLAIM_LEASE_MS);
+  const claimUpdate = { $set: { "payment.refundStatus": "pending", "payment.refundClaimedAt": now } };
+
+  // Atomically claim a fresh order or reclaim a stale pending refund claim after lease expiration
   let order = await Order.findOneAndUpdate(
     {
       _id: orderId,
@@ -125,23 +178,43 @@ const cancelPaidOrderWithRefundAndRestock = async (orderId, userId) => {
       orderStatus: { $ne: "cancelled" },
       "payment.refundStatus": { $in: ["none", "failed", null] },
     },
-    { $set: { "payment.refundStatus": "pending" } },
+    claimUpdate,
     { new: true }
   );
+
+  let reclaimedStaleClaim = false;
+  if (!order) {
+    order = await Order.findOneAndUpdate(
+      {
+        _id: orderId,
+        ...baseQuery(),
+        orderStatus: { $ne: "cancelled" },
+        "payment.refundStatus": "pending",
+        $or: [
+          { "payment.refundClaimedAt": { $lte: staleBefore } },
+          { "payment.refundClaimedAt": null },
+          { "payment.refundClaimedAt": { $exists: false } },
+        ],
+      },
+      claimUpdate,
+      { new: true }
+    );
+    reclaimedStaleClaim = Boolean(order);
+  }
 
   // Also allow retrying stock restoration if a prior attempt already completed the refund
   if (!order) {
     order = await Order.findOne({
       _id: orderId,
-      ...baseQuery(),
       orderStatus: { $ne: "cancelled" },
+      "payment.status": { $in: ["paid", "refunded"] },
       "payment.refundStatus": "processed",
     });
   }
 
   if (!order) {
     const existing = await Order.findById(orderId);
-    if (!existing || existing.payment?.status !== "paid") {
+    if (!existing || !["paid", "refunded", "refund_pending"].includes(existing.payment?.status)) {
       throw new ApiError(404, "Order not found");
     }
     if (existing.orderStatus === "cancelled") {
@@ -153,12 +226,40 @@ const cancelPaidOrderWithRefundAndRestock = async (orderId, userId) => {
   let refundId = order.payment?.refundId;
   let refundedAt = order.payment?.refundedAt;
 
+  if (reclaimedStaleClaim && !refundId) {
+    try {
+      const reconciled = await reconcileExistingRefundsBeforeRetry(order, now);
+      refundId = reconciled.refundId;
+      refundedAt = reconciled.refundedAt;
+    } catch (reconcileError) {
+      if (!(reconcileError instanceof ApiError && reconcileError.statusCode === 409)) {
+        await Order.updateOne(
+          { _id: order._id, "payment.refundStatus": "pending" },
+          {
+            $set: {
+              "payment.refundStatus": "failed",
+              "payment.refundError": reconcileError.message || "Refund check failed",
+              "payment.refundClaimedAt": null,
+            },
+          }
+        );
+      }
+      throw reconcileError;
+    }
+  }
+
   // Step 1: Ensure payment refund completes before allowing cancellation
   if (!refundId) {
     if (!order.payment?.razorpayPaymentId) {
       await Order.updateOne(
-        { _id: order._id },
-        { $set: { "payment.refundStatus": "failed", "payment.refundError": "Missing payment reference for refund" } }
+        { _id: order._id, "payment.refundStatus": "pending" },
+        {
+          $set: {
+            "payment.refundStatus": "failed",
+            "payment.refundError": "Missing payment reference for refund",
+            "payment.refundClaimedAt": null,
+          },
+        }
       );
       throw new ApiError(400, "Cannot cancel paid order without a payment reference for refund");
     }
@@ -175,24 +276,15 @@ const cancelPaidOrderWithRefundAndRestock = async (orderId, userId) => {
       );
       refundId = refund.id;
       refundedAt = new Date();
-      await Order.updateOne(
-        { _id: order._id },
-        {
-          $set: {
-            "payment.refundId": refundId,
-            "payment.refundStatus": "processed",
-            "payment.refundedAt": refundedAt,
-            "payment.refundError": "",
-          },
-        }
-      );
+      await recordRefundSuccess(order._id, refundId, refundedAt);
     } catch (refundError) {
       await Order.updateOne(
-        { _id: order._id },
+        { _id: order._id, "payment.refundStatus": "pending" },
         {
           $set: {
             "payment.refundStatus": "failed",
             "payment.refundError": refundError.message || "Refund failed",
+            "payment.refundClaimedAt": null,
           },
         }
       );
@@ -230,11 +322,13 @@ const cancelPaidOrderWithRefundAndRestock = async (orderId, userId) => {
 
     locked.orderStatus = "cancelled";
     locked.stockRestored = true;
+    locked.fulfillmentRecoveryNeeded = false;
     locked.payment.status = "refunded";
     locked.payment.refundId = refundId;
     locked.payment.refundStatus = "processed";
     locked.payment.refundedAt = refundedAt || new Date();
     locked.payment.refundError = "";
+    locked.payment.refundClaimedAt = null;
     await locked.save({ session });
     await session.commitTransaction();
     return locked;
@@ -257,14 +351,28 @@ export const updateAdminOrderStatus = async (req, res, next) => {
     }
 
     const order = await Order.findOneAndUpdate(
-      { _id: req.params.id, ...baseQuery(), orderStatus: { $ne: "cancelled" } },
+      {
+        _id: req.params.id,
+        ...baseQuery(),
+        orderStatus: { $ne: "cancelled" },
+        "payment.refundStatus": { $nin: ["pending", "processing", "processed"] },
+      },
       { $set: { orderStatus: req.body.orderStatus } },
       { new: true, runValidators: true }
     );
     if (!order) {
       const existing = await Order.findById(req.params.id);
-      if (existing?.orderStatus === "cancelled" && existing.payment?.status === "paid") {
-        throw new ApiError(409, "Cancelled order status cannot be updated");
+      if (
+        existing &&
+        (existing.orderStatus === "cancelled" ||
+          existing.payment?.status === "refunded" ||
+          existing.payment?.status === "refund_pending" ||
+          ["pending", "processing", "processed"].includes(existing.payment?.refundStatus))
+      ) {
+        throw new ApiError(
+          409,
+          "Order cannot proceed to fulfillment because it is cancelled or has a refund in progress or completed"
+        );
       }
       throw new ApiError(404, "Order not found");
     }
