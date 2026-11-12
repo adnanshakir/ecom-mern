@@ -72,7 +72,9 @@ export function CheckoutView() {
   }, []);
 
   useEffect(() => {
-    if (authReady && authStatus !== "authenticated") router.replace("/sign-in");
+    if (authReady && authStatus !== "authenticated") {
+      router.replace("/sign-in?from=/checkout");
+    }
   }, [authReady, authStatus, router]);
 
   useEffect(() => {

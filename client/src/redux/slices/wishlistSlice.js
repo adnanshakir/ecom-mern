@@ -3,11 +3,20 @@ import {
   getWishlistRequest,
   addToWishlistRequest,
   removeFromWishlistRequest,
+  mergeWishlistRequest,
 } from "@/services/storefront/wishlist";
+import {
+  getGuestWishlist,
+  saveGuestWishlist,
+  clearGuestWishlist as clearGuestWishlistStorage,
+} from "@/lib/guestStorage";
+
+const extractIds = (products) =>
+  (products || []).map((p) => (p?._id || p)?.toString()).filter(Boolean);
 
 const initialState = {
-  productIds: [],   // Set of product _id strings for O(1) membership checks
-  products: [],     // Full populated product objects (for wishlist page rendering)
+  productIds: [], // Set of product _id strings for O(1) membership checks
+  products: [], // Full populated product objects (for wishlist page rendering)
   status: "idle",
   error: null,
   pendingProducts: [], // productIds currently being toggled
@@ -15,10 +24,22 @@ const initialState = {
 
 // ── Thunks ────────────────────────────────────────────────────────────────────
 
+/**
+ * Fetch customer wishlist. If guest items exist in localStorage, automatically
+ * merges them into the customer's account on the server first.
+ */
 export const fetchWishlist = createAsyncThunk(
   "wishlist/fetch",
   async (_, { rejectWithValue }) => {
     try {
+      const guestItems = getGuestWishlist();
+      if (guestItems.length > 0) {
+        const productIds = guestItems.map((p) => (p._id || p).toString());
+        const { data } = await mergeWishlistRequest(productIds);
+        clearGuestWishlistStorage();
+        return data.data.products;
+      }
+
       const { data } = await getWishlistRequest();
       return data.data.products; // array of populated product objects
     } catch (err) {
@@ -51,17 +72,78 @@ export const removeFromWishlist = createAsyncThunk(
   }
 );
 
-// ── Slice ─────────────────────────────────────────────────────────────────────
+export const mergeGuestWishlistThunk = createAsyncThunk(
+  "wishlist/mergeGuest",
+  async (_, { rejectWithValue }) => {
+    try {
+      const guestItems = getGuestWishlist();
+      if (guestItems.length === 0) {
+        const { data } = await getWishlistRequest();
+        return data.data.products;
+      }
+      const productIds = guestItems.map((p) => (p._id || p).toString());
+      const { data } = await mergeWishlistRequest(productIds);
+      clearGuestWishlistStorage();
+      return data.data.products;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || "Failed to merge wishlist");
+    }
+  }
+);
 
-const extractIds = (products) => products.map((p) => (p._id || p).toString());
+// ── Slice ─────────────────────────────────────────────────────────────────────
 
 const wishlistSlice = createSlice({
   name: "wishlist",
   initialState,
   reducers: {
+    // Load unauthenticated wishlist from localStorage
+    loadGuestWishlist(state) {
+      const guestProducts = getGuestWishlist();
+      state.products = guestProducts;
+      state.productIds = extractIds(guestProducts);
+      state.status = "succeeded";
+      state.error = null;
+    },
+
+    // Toggle product in guest wishlist
+    toggleGuestWishlist(state, action) {
+      const product = action.payload;
+      if (!product?._id) return;
+      const pid = product._id.toString();
+
+      const exists = state.productIds.includes(pid);
+      if (exists) {
+        state.products = state.products.filter(
+          (p) => (p._id || p).toString() !== pid
+        );
+        state.productIds = state.productIds.filter((id) => id !== pid);
+      } else {
+        state.products.push(product);
+        state.productIds.push(pid);
+      }
+
+      saveGuestWishlist(state.products);
+      state.status = "succeeded";
+    },
+
+    // Remove from guest wishlist
+    removeGuestWishlist(state, action) {
+      const pid = action.payload?.toString();
+      if (!pid) return;
+
+      state.products = state.products.filter(
+        (p) => (p._id || p).toString() !== pid
+      );
+      state.productIds = state.productIds.filter((id) => id !== pid);
+      saveGuestWishlist(state.products);
+    },
+
+    // Reset on logout
     resetWishlist(state) {
-      state.productIds = [];
-      state.products = [];
+      const guestProducts = getGuestWishlist();
+      state.products = guestProducts;
+      state.productIds = extractIds(guestProducts);
       state.status = "idle";
       state.error = null;
       state.pendingProducts = [];
@@ -120,10 +202,26 @@ const wishlistSlice = createSlice({
           (id) => id !== action.meta.arg
         );
       });
+
+    // mergeGuestWishlistThunk
+    builder
+      .addCase(mergeGuestWishlistThunk.fulfilled, (state, action) => {
+        state.products = action.payload;
+        state.productIds = extractIds(action.payload);
+        state.status = "succeeded";
+      })
+      .addCase(mergeGuestWishlistThunk.rejected, (state, action) => {
+        state.error = action.payload;
+      });
   },
 });
 
-export const { resetWishlist } = wishlistSlice.actions;
+export const {
+  loadGuestWishlist,
+  toggleGuestWishlist,
+  removeGuestWishlist,
+  resetWishlist,
+} = wishlistSlice.actions;
 
 // ── Selectors ─────────────────────────────────────────────────────────────────
 

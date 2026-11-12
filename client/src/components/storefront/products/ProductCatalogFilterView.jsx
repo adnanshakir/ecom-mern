@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { usePublicProducts } from "@/hooks/storefront/usePublicProducts";
 import { usePublicCategories } from "@/hooks/storefront/usePublicCategories";
-import { buildChildrenMap } from "@/lib/categoryTree";
+import { buildChildrenMap, flattenCategories } from "@/lib/categoryTree";
 import { ProductCard } from "@/components/storefront/products/ProductCard";
 import { Breadcrumbs } from "@/components/storefront/layout/Breadcrumbs";
 import { Button } from "@/components/ui/button";
@@ -190,10 +190,11 @@ export function ProductCatalogFilterView({
     router.push("/category/all");
   };
 
+  const flatCategoryList = flattenCategories(categories || []);
   const childrenMap = buildChildrenMap(categories || []);
   const topCategories = (categories || []).filter((c) => !c.parent);
 
-  const currentCategoryObj = (categories || []).find(
+  const currentCategoryObj = flatCategoryList.find(
     (c) => c.slug === selectedCategory || c._id === selectedCategory
   );
 

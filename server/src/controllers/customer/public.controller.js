@@ -176,6 +176,8 @@ export const getPublicProductBySlug = async (req, res, next) => {
       name: obj.name,
       slug: obj.slug,
       description: obj.description,
+      keyFeatures: obj.keyFeatures || "",
+      productDimensions: obj.productDimensions || "",
       images: (obj.images || []).map((img) => ({ url: img.url })),
       brand: obj.brand ? { name: obj.brand.name } : null,
       category: obj.category ? { _id: obj.category._id, name: obj.category.name } : null,
@@ -191,68 +193,74 @@ export const getPublicProductBySlug = async (req, res, next) => {
 };
 
 // ---------------- GET /api/public/categories ----------------
-// All active categories.
-// Supports:
-// - parentOnly=true: returns top-level parent categories with subcategories nested inside each
-// - tree=true or nested=true: returns hierarchical tree of parent categories with subcategories nested
-// - default: flat list of active categories with direct subcategories also populated on parents
+// Returns active categories with subcategories nested inside each parent category,
+// including subcategory images (url) for mobile apps and storefronts.
 export const getPublicCategories = async (req, res, next) => {
   try {
-    const { parentOnly, tree, nested, includeSubcategories } = req.query;
+    const { parentOnly, flat } = req.query;
 
     const allCategories = await Category.find({ isActive: true })
-      .populate("parent", "_id name")
+      .populate("parent", "_id name slug")
       .sort({ name: 1 })
       .lean();
 
-    const isTreeMode =
-      tree === "true" ||
-      nested === "true" ||
-      includeSubcategories === "true" ||
-      (parentOnly === "true" && includeSubcategories !== "false");
-
-    if (isTreeMode) {
-      const treeData = buildCategoryHierarchy(allCategories);
-      return res.status(200).json({ success: true, data: treeData });
+    if (flat === "true") {
+      const formattedFlat = allCategories.map((cat) => ({
+        _id: cat._id,
+        name: cat.name,
+        slug: cat.slug,
+        description: cat.description || "",
+        image: {
+          url: cat.image?.url || "",
+        },
+        isActive: cat.isActive,
+        parent: cat.parent ? { _id: cat.parent._id, name: cat.parent.name, slug: cat.parent.slug } : null,
+      }));
+      return res.status(200).json({ success: true, data: formattedFlat });
     }
 
-    if (parentOnly === "true" && includeSubcategories === "false") {
-      const topLevelOnly = allCategories.filter((c) => !c.parent);
+    if (parentOnly === "true") {
+      const topLevelOnly = allCategories
+        .filter((c) => !c.parent)
+        .map((cat) => ({
+          _id: cat._id,
+          name: cat.name,
+          slug: cat.slug,
+          description: cat.description || "",
+          image: {
+            url: cat.image?.url || "",
+          },
+          isActive: cat.isActive,
+          subcategories: [],
+          children: [],
+        }));
       return res.status(200).json({ success: true, data: topLevelOnly });
     }
 
-    // Default: flat array with direct subcategories populated for backward compatibility
-    const categoryMap = new Map();
-    allCategories.forEach((cat) => {
-      cat.subcategories = [];
-      cat.children = [];
-      categoryMap.set(cat._id.toString(), cat);
-    });
-
-    allCategories.forEach((cat) => {
-      const rawParent = cat.parent?._id || cat.parent;
-      const parentId = rawParent ? rawParent.toString() : null;
-      if (parentId && categoryMap.has(parentId)) {
-        const parent = categoryMap.get(parentId);
-        parent.subcategories.push(cat);
-        parent.children.push(cat);
-      }
-    });
-
-    res.status(200).json({ success: true, data: allCategories });
+    // Default: Return hierarchy of categories with populated subcategories and subcategory images
+    const treeData = buildCategoryHierarchy(allCategories);
+    res.status(200).json({ success: true, data: treeData });
   } catch (err) {
     next(err);
   }
 };
 
-// Helper: build recursive category tree
+// Helper: build recursive category tree with subcategories and subcategory images
 function buildCategoryHierarchy(categories) {
   const categoryMap = new Map();
   const roots = [];
 
   for (const cat of categories) {
     categoryMap.set(cat._id.toString(), {
-      ...cat,
+      _id: cat._id,
+      name: cat.name,
+      slug: cat.slug,
+      description: cat.description || "",
+      image: {
+        url: cat.image?.url || "",
+      },
+      isActive: cat.isActive,
+      parent: cat.parent ? { _id: cat.parent._id, name: cat.parent.name, slug: cat.parent.slug } : null,
       subcategories: [],
       children: [], // alias
     });

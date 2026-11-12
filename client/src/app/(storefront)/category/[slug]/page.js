@@ -7,7 +7,21 @@ async function getCategory(slug) {
   try {
     const res = await getPublicCategories();
     const categories = res.data?.data || [];
-    return categories.find((c) => c.slug === slug || c._id === slug) || null;
+
+    function findInTree(list, target) {
+      if (!Array.isArray(list)) return null;
+      for (const c of list) {
+        if (!c) continue;
+        if (c.slug === target || c._id === target) return c;
+        if (Array.isArray(c.subcategories) && c.subcategories.length > 0) {
+          const found = findInTree(c.subcategories, target);
+          if (found) return found;
+        }
+      }
+      return null;
+    }
+
+    return findInTree(categories, slug);
   } catch (err) {
     return null;
   }

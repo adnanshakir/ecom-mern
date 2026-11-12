@@ -156,7 +156,18 @@ export const createProductSchema = z.object({
     .min(2, "Product name must be at least 2 characters")
     .max(200, "Product name cannot exceed 200 characters"),
 
-  description: z.string().trim().optional(),
+  description: z
+    .string()
+    .trim()
+    .min(1, "Product description is required")
+    .refine(
+      (val) => val.trim().split(/\s+/).filter(Boolean).length <= 500,
+      { message: "Description cannot exceed 500 words" }
+    ),
+
+  keyFeatures: z.string().trim().optional().default(""),
+
+  productDimensions: z.string().trim().optional().default(""),
 
   category: objectId,
 

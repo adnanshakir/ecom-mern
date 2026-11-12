@@ -50,20 +50,21 @@ export function ProductCard({ product, showCartOnHover = false }) {
 
   const handleWishlist = (e) => {
     e.preventDefault();
-    if (!isCustomerAuthed) {
-      toast.error("Please log in to save items to your wishlist.");
-      return;
-    }
-    toggle();
+    toggle({
+      _id: product._id,
+      name: product.name,
+      slug: product.slug,
+      images: product.images,
+      variants: product.variants,
+      brand: product.brand,
+      category: product.category,
+    });
+    toast.success(isWishlisted ? "Removed from wishlist" : "Added to wishlist");
   };
 
   const handleAddToCart = async (e) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!isCustomerAuthed) {
-      toast.error("Please log in to add items to your cart.");
-      return;
-    }
     if (!inStock || !variantId) {
       toast.error("This product is currently out of stock.");
       return;
@@ -72,7 +73,17 @@ export function ProductCard({ product, showCartOnHover = false }) {
       toast.info("Already in your cart.");
       return;
     }
-    const result = await addItem(variantId, 1);
+    const result = await addItem(variantId, 1, {
+      variant: {
+        ...defaultVariant,
+        product: {
+          _id: product._id,
+          name: product.name,
+          slug: product.slug,
+          images: product.images,
+        },
+      },
+    });
     if (result?.error) {
       toast.error(result.payload || "Unable to add this product to your cart.");
       return;

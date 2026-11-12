@@ -100,3 +100,41 @@ export const removeFromWishlist = async (req, res, next) => {
     next(err);
   }
 };
+
+// ---------------- POST /api/customers/wishlist/merge ----------------
+// Merges guest wishlist products (from localStorage) into the customer's authenticated wishlist
+export const mergeWishlist = async (req, res, next) => {
+  try {
+    const { productIds = [] } = req.body;
+
+    let wishlist = await Wishlist.findOne({ customer: req.customerProfile._id });
+    if (!wishlist) {
+      wishlist = await Wishlist.create({ customer: req.customerProfile._id, products: [] });
+    }
+
+    if (Array.isArray(productIds) && productIds.length > 0) {
+      const validProducts = await Product.find({
+        _id: { $in: productIds },
+        status: "active",
+      }).select("_id");
+
+      const validIdStrings = new Set(validProducts.map((p) => p._id.toString()));
+      const existingIdStrings = new Set(wishlist.products.map((id) => id.toString()));
+
+      for (const pid of productIds) {
+        const idStr = pid?.toString();
+        if (idStr && validIdStrings.has(idStr) && !existingIdStrings.has(idStr)) {
+          wishlist.products.push(idStr);
+          existingIdStrings.add(idStr);
+        }
+      }
+
+      await wishlist.save();
+    }
+
+    const data = await populatedWishlist(wishlist._id);
+    res.status(200).json({ success: true, data });
+  } catch (err) {
+    next(err);
+  }
+};

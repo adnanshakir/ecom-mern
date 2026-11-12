@@ -160,3 +160,46 @@ export const clearCart = async (req, res, next) => {
     next(err);
   }
 };
+
+// ---------------- POST /api/customers/cart/merge ----------------
+// Merges guest cart items (from localStorage) into the customer's authenticated cart
+export const mergeCart = async (req, res, next) => {
+  try {
+    const { items = [] } = req.body;
+
+    let cart = await Cart.findOne({ customer: req.customerProfile._id });
+    if (!cart) {
+      cart = await Cart.create({ customer: req.customerProfile._id, items: [] });
+    }
+
+    if (Array.isArray(items) && items.length > 0) {
+      for (const item of items) {
+        if (!item?.variantId) continue;
+        const variant = await ProductVariant.findById(item.variantId);
+        if (!variant || !variant.isActive || variant.stock <= 0) continue;
+
+        const existingItem = cart.items.find(
+          (ci) => ci.variant.toString() === item.variantId.toString()
+        );
+
+        const qtyToAdd = Math.max(1, Number(item.quantity) || 1);
+
+        if (existingItem) {
+          const desired = existingItem.quantity + qtyToAdd;
+          existingItem.quantity = Math.min(desired, variant.stock);
+        } else {
+          const clamped = Math.min(qtyToAdd, variant.stock);
+          if (clamped > 0) {
+            cart.items.push({ variant: item.variantId, quantity: clamped });
+          }
+        }
+      }
+      await cart.save();
+    }
+
+    const populated = await populateCart(cart._id);
+    res.status(200).json({ success: true, data: populated });
+  } catch (err) {
+    next(err);
+  }
+};

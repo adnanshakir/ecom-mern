@@ -1,0 +1,559 @@
+{
+  "info": {
+    "_postman_id": "ecom-admin-auth-users",
+    "name": "ecom-mern — 01 Admin Auth & Users",
+    "description": "Admin authentication, staff user management, and health checks.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
+            },
+            "description": "Returns server uptime and health status. No authentication required."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Server is healthy\",\n  \"uptime\": 123.456,\n  \"timestamp\": \"2026-08-29T07:00:00.000Z\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Admin — Auth",
+      "description": "Admin/staff authentication endpoints.\n\n**Rate limits:**\n- Login & Register: 10 requests per 15 minutes per IP\n- Refresh: 30 requests per 15 minutes per IP",
+      "item": [
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.success && json.data && json.data.accessToken) {",
+                  "  pm.environment.set('accessToken', json.data.accessToken);",
+                  "  pm.environment.set('adminUserId', json.data.user.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@example.com\",\n  \"password\": \"password123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Authenticates an admin/staff user.\n\n**Returns:** `accessToken` (JWT, short-lived) in the response body. A `refreshToken` HttpOnly cookie is set automatically.\n\n**Rate limit:** 10 requests per 15-minute window.\n\n**Required fields:**\n- `email` — string, valid email format\n- `password` — string, min 1 character\n\n**Error codes:**\n- `401` — Invalid email or password\n- `403` — Account deactivated\n- `429` — Rate limit exceeded"
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Login successful\",\n  \"data\": {\n    \"accessToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\",\n    \"user\": {\n      \"id\": \"60c72b2f9b1e8a001c8e4f10\",\n      \"name\": \"Admin User\",\n      \"email\": \"admin@example.com\",\n      \"role\": \"admin\"\n    }\n  }\n}"
+            },
+            {
+              "name": "401 Invalid Credentials",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Invalid email or password\"\n}"
+            },
+            {
+              "name": "403 Deactivated Account",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"This account has been deactivated\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Register New Admin/Staff (super_admin only)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"New Staff Member\",\n  \"email\": \"staff@example.com\",\n  \"password\": \"password123\",\n  \"role\": \"staff\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Creates a new admin panel user. **Only `super_admin` can call this.**\n\n**Required fields:**\n- `name` — string, min 1 character\n- `email` — string, valid email format\n- `password` — string, min 6 characters\n\n**Optional fields:**\n- `role` — enum: `super_admin` | `admin` | `staff` (default: `staff`)\n\n**Error codes:**\n- `401` — Not authenticated\n- `403` — Not authorized (not super_admin)\n- `409` — Email already in use\n- `422` — Validation error"
+          },
+          "response": [
+            {
+              "name": "201 Created",
+              "status": "Created",
+              "code": 201,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"message\": \"User registered successfully\",\n  \"data\": {\n    \"id\": \"60c72b2f9b1e8a001c8e4f11\",\n    \"name\": \"New Staff Member\",\n    \"email\": \"staff@example.com\",\n    \"role\": \"staff\"\n  }\n}"
+            },
+            {
+              "name": "409 Email Conflict",
+              "status": "Conflict",
+              "code": 409,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Email already in use\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Refresh Access Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.success && json.data && json.data.accessToken) {",
+                  "  pm.environment.set('accessToken', json.data.accessToken);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/refresh",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "refresh"
+              ]
+            },
+            "description": "Exchanges the `refreshToken` HttpOnly cookie for a new access token.\n\n**No request body needed.** The refresh token is read automatically from the cookie jar.\n\n**Rate limit:** 30 requests per 15-minute window.\n\n**Error codes:**\n- `401` — No/invalid/expired/revoked refresh token"
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"accessToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "logout"
+              ]
+            },
+            "description": "Revokes the `refreshToken` cookie and clears it. No request body needed.\n\nThe access token remains valid until it expires (short-lived by design)."
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Logged out successfully\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Admin — Users",
+      "description": "Admin panel user management. All routes require `Authorization: Bearer {{accessToken}}`.\n\n**Access:** `super_admin` only (except `GET /api/users/me` which any authenticated admin role can call).",
+      "item": [
+        {
+          "name": "Get My Profile (me)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "me"
+              ]
+            },
+            "description": "Returns the authenticated admin/staff user's own profile.\n\n**Access:** Any authenticated admin role (super_admin, admin, staff)."
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"_id\": \"60c72b2f9b1e8a001c8e4f10\",\n    \"name\": \"Admin User\",\n    \"email\": \"admin@example.com\",\n    \"role\": \"admin\",\n    \"isActive\": true,\n    \"lastLogin\": \"2026-08-29T07:00:00.000Z\",\n    \"createdAt\": \"2026-01-01T00:00:00.000Z\",\n    \"updatedAt\": \"2026-08-29T07:00:00.000Z\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "List All Users",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/users?page=1&limit=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Page number (default: 1)"
+                },
+                {
+                  "key": "limit",
+                  "value": "20",
+                  "description": "Items per page, max 100 (default: 20)"
+                },
+                {
+                  "key": "role",
+                  "value": "",
+                  "description": "Filter by role: super_admin | admin | staff",
+                  "disabled": true
+                },
+                {
+                  "key": "isActive",
+                  "value": "",
+                  "description": "Filter by active status: true | false",
+                  "disabled": true
+                },
+                {
+                  "key": "search",
+                  "value": "",
+                  "description": "Search by name (case-insensitive regex)",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Lists all admin panel users with optional filters and pagination.\n\n**Access:** `super_admin` only.\n\n**Query parameters:**\n- `page` — number (default: 1)\n- `limit` — number (default: 20, max: 100)\n- `role` — enum: `super_admin` | `admin` | `staff`\n- `isActive` — `true` | `false`\n- `search` — partial name search"
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"data\": [\n    {\n      \"_id\": \"60c72b2f9b1e8a001c8e4f10\",\n      \"name\": \"Super Admin\",\n      \"email\": \"super@example.com\",\n      \"role\": \"super_admin\",\n      \"isActive\": true,\n      \"lastLogin\": \"2026-08-29T07:00:00.000Z\",\n      \"createdAt\": \"2026-01-01T00:00:00.000Z\",\n      \"updatedAt\": \"2026-08-29T07:00:00.000Z\"\n    }\n  ],\n  \"pagination\": {\n    \"total\": 5,\n    \"page\": 1,\n    \"pages\": 1\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get User by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/{{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "{{userId}}"
+              ]
+            },
+            "description": "Fetches a single admin user by MongoDB ObjectId.\n\n**Access:** `super_admin` only.\n\n**Path params:**\n- `userId` — MongoDB ObjectId of the user\n\n**Error codes:** `404` — User not found"
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"_id\": \"60c72b2f9b1e8a001c8e4f10\",\n    \"name\": \"Admin User\",\n    \"email\": \"admin@example.com\",\n    \"role\": \"admin\",\n    \"isActive\": true,\n    \"lastLogin\": \"2026-08-29T07:00:00.000Z\",\n    \"createdAt\": \"2026-01-01T00:00:00.000Z\",\n    \"updatedAt\": \"2026-08-29T07:00:00.000Z\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update User",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Name\",\n  \"role\": \"admin\",\n  \"isActive\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/users/{{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "{{userId}}"
+              ]
+            },
+            "description": "Updates a user's `name`, `role`, or `isActive` status.\n\n**Access:** `super_admin` only.\n\n**Restrictions:**\n- A super_admin cannot change their own role or deactivate themselves.\n\n**All fields are optional:**\n- `name` — string, min 1 character\n- `role` — enum: `super_admin` | `admin` | `staff`\n- `isActive` — boolean\n\n**Error codes:**\n- `400` — Self-modification of role/status blocked\n- `404` — User not found"
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"_id\": \"60c72b2f9b1e8a001c8e4f10\",\n    \"name\": \"Updated Name\",\n    \"email\": \"admin@example.com\",\n    \"role\": \"admin\",\n    \"isActive\": true,\n    \"updatedAt\": \"2026-08-29T07:30:00.000Z\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Delete User",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/{{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "{{userId}}"
+              ]
+            },
+            "description": "Hard-deletes a user and revokes all their refresh tokens.\n\n**Access:** `super_admin` only.\n\n**Restrictions:** A super_admin cannot delete themselves.\n\n**Error codes:**\n- `400` — Self-deletion blocked\n- `404` — User not found"
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"message\": \"User deleted\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Admin — Dashboard",
+      "description": "Dashboard aggregation stats. Requires `Authorization: Bearer {{accessToken}}`.",
+      "item": [
+        {
+          "name": "Get Dashboard Stats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/dashboard/stats",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "dashboard",
+                "stats"
+              ]
+            },
+            "description": "Returns aggregated statistics:\n- Total product / category / brand counts\n- Low-stock variants (below configured threshold)\n- 10 most recent activity log entries\n- 5 most recent CSV import jobs\n\n**Access:** Any authenticated admin role."
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"totalProducts\": 120,\n    \"totalCategories\": 15,\n    \"totalBrands\": 8,\n    \"lowStock\": {\n      \"threshold\": 5,\n      \"count\": 3,\n      \"items\": [\n        {\n          \"_id\": \"60c72b2f9b1e8a001c8e4f20\",\n          \"sku\": \"SKU-001\",\n          \"stock\": 2,\n          \"product\": { \"_id\": \"60c72b2f9b1e8a001c8e4f21\", \"name\": \"Test Product\" }\n        }\n      ]\n    },\n    \"latestActivity\": [],\n    \"recentImports\": [],\n    \"csvImportStatus\": null\n  }\n}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

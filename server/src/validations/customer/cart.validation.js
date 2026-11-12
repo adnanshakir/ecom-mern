@@ -10,3 +10,12 @@ export const addToCartSchema = z.object({
 export const updateCartItemSchema = z.object({
   quantity: z.number().int().min(0, "Quantity cannot be negative"),
 });
+
+export const mergeCartSchema = z.object({
+  items: z.array(
+    z.object({
+      variantId: objectId,
+      quantity: z.number().int().positive("Quantity must be at least 1"),
+    })
+  ).default([]),
+});

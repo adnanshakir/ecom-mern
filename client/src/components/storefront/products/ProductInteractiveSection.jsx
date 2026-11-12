@@ -118,6 +118,8 @@ export function ProductInteractiveSection({ product, variantSelectorProps }) {
   const [copiedSku, setCopiedSku] = useState(false);
   const [copiedShare, setCopiedShare] = useState(false);
   const [isDescriptionOpen, setIsDescriptionOpen] = useState(false);
+  const [isKeyFeaturesOpen, setIsKeyFeaturesOpen] = useState(false);
+  const [isDimensionsOpen, setIsDimensionsOpen] = useState(false);
 
   const internalVariantSelector = useVariantSelector(product);
   const { optionTypes, selectedOptions, setOption, selectedVariant } =
@@ -153,12 +155,18 @@ export function ProductInteractiveSection({ product, variantSelectorProps }) {
   };
 
   const handleAddToCart = async () => {
-    if (!isCustomerAuthed) {
-      toast.error("Please log in to add items to your cart.");
-      return;
-    }
     if (!selectedVariant?._id) return;
-    const result = await addItem(selectedVariant._id, quantity);
+    const result = await addItem(selectedVariant._id, quantity, {
+      variant: {
+        ...selectedVariant,
+        product: {
+          _id: product?._id,
+          name: product?.name,
+          slug: product?.slug,
+          images: product?.images,
+        },
+      },
+    });
     if (result?.payload?.message) {
       toast.warning(result.payload.message);
     } else if (!result?.error) {
@@ -167,10 +175,6 @@ export function ProductInteractiveSection({ product, variantSelectorProps }) {
   };
 
   const handleBuyNow = async () => {
-    if (!isCustomerAuthed) {
-      toast.error("Please log in to purchase items.");
-      return;
-    }
     if (!selectedVariant?._id) return;
     setBuyNowPending(true);
     try {
@@ -178,6 +182,10 @@ export function ProductInteractiveSection({ product, variantSelectorProps }) {
         "fibio:buy-now",
         JSON.stringify({ variant: selectedVariant, quantity })
       );
+      if (!isCustomerAuthed) {
+        router.push("/sign-in?from=/checkout?buyNow=1");
+        return;
+      }
       router.push("/checkout?buyNow=1");
     } finally {
       setBuyNowPending(false);
@@ -185,11 +193,8 @@ export function ProductInteractiveSection({ product, variantSelectorProps }) {
   };
 
   const handleToggleWishlist = () => {
-    if (!isCustomerAuthed) {
-      toast.error("Please log in to save items to your wishlist.");
-      return;
-    }
-    toggleWishlist();
+    toggleWishlist(product);
+    toast.success(isWishlisted ? "Removed from wishlist" : "Added to wishlist");
   };
 
   const handleShare = async () => {
@@ -496,9 +501,55 @@ export function ProductInteractiveSection({ product, variantSelectorProps }) {
           </button>
           {isDescriptionOpen && (
             <div
-              className="pt-2 pb-1 text-xs sm:text-sm text-muted-foreground leading-relaxed [&_h1]:text-base [&_h1]:font-bold [&_h1]:text-foreground [&_h1]:mt-3 [&_h1]:mb-1.5 [&_h2]:text-sm [&_h2]:font-bold [&_h2]:text-foreground [&_h2]:mt-2.5 [&_h2]:mb-1 [&_h3]:text-xs [&_h3]:font-bold [&_h3]:text-foreground [&_h3]:mt-2 [&_h3]:mb-1 [&_p]:my-1.5 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:my-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:my-2 [&_li]:my-0.5 [&_strong]:font-semibold [&_strong]:text-foreground [&_a]:text-primary [&_a]:underline [&_blockquote]:border-l-2 [&_blockquote]:border-primary/50 [&_blockquote]:pl-3 [&_blockquote]:italic [&_blockquote]:my-2"
+              className="pt-2 pb-1 text-xs sm:text-sm text-muted-foreground leading-relaxed [&_h1]:text-base [&_h1]:font-bold [&_h1]:text-foreground [&_h1]:mt-3 [&_h1]:mb-1.5 [&_h2]:text-sm [&_h2]:font-bold [&_h2]:text-foreground [&_h2]:mt-2.5 [&_h2]:mb-1 [&_h3]:text-xs [&_h3]:font-bold [&_h3]:text-foreground [&_h3]:mt-2 [&_h3]:mb-1 [&_p]:my-1.5 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:my-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:my-2 [&_li]:my-0.5 [&_strong]:font-semibold [&_strong]:text-foreground [&_a]:text-primary [&_a]:underline [&_blockquote]:border-l-2 [&_blockquote]:border-primary/50 [&_blockquote]:pl-3 [&_blockquote]:italic [&_blockquote]:my-2 whitespace-pre-line"
               dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(product.description) }}
             />
+          )}
+        </div>
+      )}
+
+      {/* Collapsible Key Features Section (hidden if empty) */}
+      {product.keyFeatures && (
+        <div className="pt-2.5 border-t border-slate-200/80 dark:border-slate-800/80 mt-1">
+          <button
+            type="button"
+            onClick={() => setIsKeyFeaturesOpen((prev) => !prev)}
+            className="w-full flex items-center justify-between py-1 text-left font-bold text-xs uppercase tracking-wider text-slate-800 dark:text-slate-200 hover:text-[#033936] dark:hover:text-emerald-400 transition-colors cursor-pointer"
+          >
+            <span>Key Features</span>
+            {isKeyFeaturesOpen ? (
+              <Minus className="size-4 text-slate-500" />
+            ) : (
+              <Plus className="size-4 text-slate-500" />
+            )}
+          </button>
+          {isKeyFeaturesOpen && (
+            <div className="pt-2 pb-1 text-xs sm:text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
+              {product.keyFeatures}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Collapsible Product Dimensions Section (hidden if empty) */}
+      {product.productDimensions && (
+        <div className="pt-2.5 border-t border-slate-200/80 dark:border-slate-800/80 mt-1">
+          <button
+            type="button"
+            onClick={() => setIsDimensionsOpen((prev) => !prev)}
+            className="w-full flex items-center justify-between py-1 text-left font-bold text-xs uppercase tracking-wider text-slate-800 dark:text-slate-200 hover:text-[#033936] dark:hover:text-emerald-400 transition-colors cursor-pointer"
+          >
+            <span>Product Dimensions</span>
+            {isDimensionsOpen ? (
+              <Minus className="size-4 text-slate-500" />
+            ) : (
+              <Plus className="size-4 text-slate-500" />
+            )}
+          </button>
+          {isDimensionsOpen && (
+            <div className="pt-2 pb-1 text-xs sm:text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
+              {product.productDimensions}
+            </div>
           )}
         </div>
       )}

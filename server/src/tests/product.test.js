@@ -49,6 +49,7 @@ describe("POST /api/products", () => {
       .set("Authorization", `Bearer ${adminToken}`)
       .send({
         name: "Red Cap",
+        description: "Classic red baseball cap made from 100% cotton.",
         category: categoryId,
         brand: brandId,
         variants: [{ sku: "CAP-RED-001", price: 499, stock: 20 }],
@@ -81,6 +82,7 @@ describe("DELETE /api/products/:id", () => {
       .set("Authorization", `Bearer ${adminToken}`)
       .send({
         name: "Red Cap",
+        description: "Classic red baseball cap made from 100% cotton.",
         category: categoryId,
         brand: brandId,
         variants: [{ sku: "CAP-RED-001", price: 499, stock: 20 }],

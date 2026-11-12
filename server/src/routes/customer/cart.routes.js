@@ -5,12 +5,14 @@ import {
   updateCartItem,
   removeCartItem,
   clearCart,
+  mergeCart,
 } from "../../controllers/customer/cart.controller.js";
 import { authenticateCustomer } from "../../middleware/authenticateCustomer.middleware.js";
 import { validate } from "../../middleware/validate.middleware.js";
 import {
   addToCartSchema,
   updateCartItemSchema,
+  mergeCartSchema,
 } from "../../validations/customer/cart.validation.js";
 
 const router = express.Router();
@@ -49,5 +51,12 @@ router.delete("/items/:variantId", authenticateCustomer, removeCartItem);
  * @access  Private (authenticateCustomer)
  */
 router.delete("/", authenticateCustomer, clearCart);
+
+/**
+ * @route   POST /api/customers/cart/merge
+ * @desc    Merge guest cart items into customer's authenticated cart
+ * @access  Private (authenticateCustomer)
+ */
+router.post("/merge", authenticateCustomer, validate(mergeCartSchema), mergeCart);
 
 export default router;

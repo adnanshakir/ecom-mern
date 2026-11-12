@@ -55,14 +55,14 @@ export function Navbar() {
             </Button>
 
             <Button variant="ghost" size="icon" asChild title="Wishlist">
-              <Link href={isAuthenticated ? "/wishlist" : "/sign-in?from=/wishlist"}>
+              <Link href="/wishlist">
                 <Heart className="size-5" />
               </Link>
             </Button>
 
             {/* Cart icon with count badge */}
             <Button variant="ghost" size="icon" className="relative" asChild title="Cart">
-              <Link href={isAuthenticated ? "/cart" : "/sign-in?from=/cart"}>
+              <Link href="/cart">
                 <ShoppingCart className="size-5" />
                 {cartCount > 0 && (
                   <span className="absolute -right-0.5 -top-0.5 flex min-w-4.5 items-center justify-center rounded-full bg-primary px-1 py-px text-[10px] font-semibold leading-none text-primary-foreground">

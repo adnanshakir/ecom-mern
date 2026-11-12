@@ -49,7 +49,15 @@ const optionTypeSchema = z.object({
 
 export const productSchema = z.object({
   name: z.string().min(1, "Name is required"),
-  description: z.string().optional(),
+  description: z
+    .string()
+    .min(1, "Description is required")
+    .refine(
+      (val) => val.trim().split(/\s+/).filter(Boolean).length <= 500,
+      { message: "Description cannot exceed 500 words" }
+    ),
+  keyFeatures: z.string().optional().default(""),
+  productDimensions: z.string().optional().default(""),
   optionTypes: z.array(optionTypeSchema).optional().default([]),
   category: z.string().min(1, "Category is required"),
   brand: z.string().min(1, "Brand is required"),

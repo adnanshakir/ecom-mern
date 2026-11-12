@@ -12,3 +12,6 @@ export const removeCartItemRequest = (variantId) =>
   customerApi.delete(`/customers/cart/items/${variantId}`);
 
 export const clearCartRequest = () => customerApi.delete("/customers/cart");
+
+export const mergeCartRequest = (items) =>
+  customerApi.post("/customers/cart/merge", { items });

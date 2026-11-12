@@ -3,10 +3,14 @@ import {
   getWishlist,
   addToWishlist,
   removeFromWishlist,
+  mergeWishlist,
 } from "../../controllers/customer/wishlist.controller.js";
 import { authenticateCustomer } from "../../middleware/authenticateCustomer.middleware.js";
 import { validate } from "../../middleware/validate.middleware.js";
-import { addToWishlistSchema } from "../../validations/customer/wishlist.validation.js";
+import {
+  addToWishlistSchema,
+  mergeWishlistSchema,
+} from "../../validations/customer/wishlist.validation.js";
 
 const router = express.Router();
 
@@ -30,5 +34,12 @@ router.post("/items", authenticateCustomer, validate(addToWishlistSchema), addTo
  * @access  Private (authenticateCustomer)
  */
 router.delete("/items/:productId", authenticateCustomer, removeFromWishlist);
+
+/**
+ * @route   POST /api/customers/wishlist/merge
+ * @desc    Merge guest wishlist products into customer's authenticated wishlist
+ * @access  Private (authenticateCustomer)
+ */
+router.post("/merge", authenticateCustomer, validate(mergeWishlistSchema), mergeWishlist);
 
 export default router;

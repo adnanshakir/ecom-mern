@@ -6,6 +6,10 @@ import {
   updateCartItem,
   removeCartItem,
   clearCart,
+  addGuestCartItem,
+  updateGuestCartItem,
+  removeGuestCartItem,
+  clearGuestCartAction,
   selectCartItems,
   selectCartCount,
   selectCartStatus,
@@ -13,13 +17,8 @@ import {
 } from "@/redux/slices/cartSlice";
 
 /**
- * useCart — provides cart state and all cart mutation actions.
- *
- * Usage:
- *   const { items, count, addItem, updateItem, removeItem, clear, isPending } = useCart();
- *
- * isPending(variantId) returns true while a specific line item is being mutated,
- * so callers can show per-button spinners without blocking the whole cart.
+ * useCart — provides cart state and all cart mutation actions for both
+ * authenticated and guest customers.
  */
 export function useCart() {
   const dispatch = useDispatch();
@@ -28,15 +27,54 @@ export function useCart() {
   const status = useSelector(selectCartStatus);
   const pendingVariants = useSelector(selectCartPendingVariants);
 
-  const addItem = (variantId, quantity = 1) =>
-    dispatch(addToCart({ variantId, quantity }));
+  const authStatus = useSelector((state) => state.customerAuth.status);
+  const isAuthenticated = authStatus === "authenticated";
 
-  const updateItem = (variantId, quantity) =>
-    dispatch(updateCartItem({ variantId, quantity }));
+  const addItem = async (variantId, quantity = 1, variantSnapshot = null) => {
+    if (isAuthenticated) {
+      return dispatch(addToCart({ variantId, quantity }));
+    } else {
+      // Guest mode: save to localStorage
+      const variant = variantSnapshot?.variant || {
+        _id: variantId,
+        sku: variantSnapshot?.sku || "",
+        price: variantSnapshot?.price || 0,
+        salePrice: variantSnapshot?.salePrice,
+        stock: variantSnapshot?.stock || 999,
+        product: variantSnapshot?.product || { name: "Product", slug: "", images: [] },
+      };
 
-  const removeItem = (variantId) => dispatch(removeCartItem(variantId));
+      dispatch(addGuestCartItem({ variant, quantity }));
+      return { payload: { items } };
+    }
+  };
 
-  const clear = () => dispatch(clearCart());
+  const updateItem = async (variantId, quantity) => {
+    if (isAuthenticated) {
+      return dispatch(updateCartItem({ variantId, quantity }));
+    } else {
+      dispatch(updateGuestCartItem({ variantId, quantity }));
+      return { payload: items };
+    }
+  };
+
+  const removeItem = async (variantId) => {
+    if (isAuthenticated) {
+      return dispatch(removeCartItem(variantId));
+    } else {
+      dispatch(removeGuestCartItem(variantId));
+      return { payload: items };
+    }
+  };
+
+  const clear = async () => {
+    if (isAuthenticated) {
+      return dispatch(clearCart());
+    } else {
+      dispatch(clearGuestCartAction());
+      return { payload: [] };
+    }
+  };
 
   const isPending = (variantId) => pendingVariants.includes(variantId);
 
