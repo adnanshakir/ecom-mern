@@ -65,9 +65,7 @@ export const addToWishlist = async (req, res, next) => {
       wishlist = await Wishlist.create({ customer: req.customerProfile._id, products: [] });
     }
 
-    const alreadyPresent = wishlist.products.some(
-      (id) => id.toString() === productId
-    );
+    const alreadyPresent = wishlist.products.some((id) => id.toString() === productId);
 
     if (!alreadyPresent) {
       wishlist.products.push(productId);
@@ -89,9 +87,7 @@ export const removeFromWishlist = async (req, res, next) => {
     const wishlist = await Wishlist.findOne({ customer: req.customerProfile._id });
     if (!wishlist) throw new ApiError(404, "Wishlist not found");
 
-    wishlist.products = wishlist.products.filter(
-      (id) => id.toString() !== productId
-    );
+    wishlist.products = wishlist.products.filter((id) => id.toString() !== productId);
     await wishlist.save();
 
     const data = await populatedWishlist(wishlist._id);

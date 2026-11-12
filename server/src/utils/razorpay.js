@@ -11,7 +11,11 @@ const getRazorpayAuthHeader = () => {
   return `Basic ${Buffer.from(`${keyId}:${secret}`).toString("base64")}`;
 };
 
-const razorpayFetch = async (url, options = {}, fallbackErrorMessage = "Payment gateway request failed") => {
+const razorpayFetch = async (
+  url,
+  options = {},
+  fallbackErrorMessage = "Payment gateway request failed"
+) => {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), RAZORPAY_TIMEOUT_MS);
 
@@ -25,7 +29,11 @@ const razorpayFetch = async (url, options = {}, fallbackErrorMessage = "Payment 
     }
     return await response.json();
   } catch (error) {
-    if (error?.name === "AbortError" || error?.name === "TimeoutError" || controller.signal.aborted) {
+    if (
+      error?.name === "AbortError" ||
+      error?.name === "TimeoutError" ||
+      controller.signal.aborted
+    ) {
       throw new ApiError(504, "Payment gateway request timed out");
     }
     throw error;
@@ -89,4 +97,3 @@ export const createRazorpayRefund = async (razorpayPaymentId, amount, notes = {}
     "Unable to initiate payment refund"
   );
 };
-

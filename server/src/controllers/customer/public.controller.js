@@ -60,10 +60,7 @@ export const getPublicProducts = async (req, res, next) => {
       if (minPrice) priceQuery.$gte = Number(minPrice);
       if (maxPrice) priceQuery.$lte = Number(maxPrice);
 
-      const matchingVariants = await ProductVariant.find(
-        { price: priceQuery },
-        "product"
-      );
+      const matchingVariants = await ProductVariant.find({ price: priceQuery }, "product");
       const matchedProductIds = [...new Set(matchingVariants.map((v) => v.product.toString()))];
       filter._id = { $in: matchedProductIds };
     }
@@ -215,7 +212,9 @@ export const getPublicCategories = async (req, res, next) => {
           url: cat.image?.url || "",
         },
         isActive: cat.isActive,
-        parent: cat.parent ? { _id: cat.parent._id, name: cat.parent.name, slug: cat.parent.slug } : null,
+        parent: cat.parent
+          ? { _id: cat.parent._id, name: cat.parent.name, slug: cat.parent.slug }
+          : null,
       }));
       return res.status(200).json({ success: true, data: formattedFlat });
     }
@@ -260,7 +259,9 @@ function buildCategoryHierarchy(categories) {
         url: cat.image?.url || "",
       },
       isActive: cat.isActive,
-      parent: cat.parent ? { _id: cat.parent._id, name: cat.parent.name, slug: cat.parent.slug } : null,
+      parent: cat.parent
+        ? { _id: cat.parent._id, name: cat.parent.name, slug: cat.parent.slug }
+        : null,
       subcategories: [],
     });
   }
@@ -308,7 +309,10 @@ export const getPublicSearchSuggestions = async (req, res, next) => {
     ]);
 
     const productIds = products.map((p) => p._id);
-    const variants = await ProductVariant.find({ product: { $in: productIds } }, "product price salePrice");
+    const variants = await ProductVariant.find(
+      { product: { $in: productIds } },
+      "product price salePrice"
+    );
     const priceMap = {};
     for (const v of variants) {
       const pid = v.product.toString();
@@ -356,5 +360,3 @@ export const getPublicBanners = async (req, res, next) => {
     next(err);
   }
 };
-
-

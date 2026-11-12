@@ -261,7 +261,9 @@ describe("Product Description & Detail Modules", () => {
     expect(res.status).toBe(201);
     expect(res.body.success).toBe(true);
     expect(res.body.data.name).toBe("Pro Headphones");
-    expect(res.body.data.keyFeatures).toBe("• Studio Monitor Quality\n• Detachable Cable\n• Gold Plated Jack");
+    expect(res.body.data.keyFeatures).toBe(
+      "• Studio Monitor Quality\n• Detachable Cable\n• Gold Plated Jack"
+    );
     expect(res.body.data.productDimensions).toBe("25 x 20 x 10 cm, 380g");
   });
 
@@ -419,9 +421,21 @@ describe("Guest Cart Merge Flow & Loophole Probing", () => {
     expect(res.body.data.items[0].variant._id.toString()).toBe(variantId);
     expect(res.body.data.skippedItems).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ variantId: fakeVariantId, reason: "not_found", requestedQuantity: 5 }),
-        expect.objectContaining({ variantId: inactiveVariantId, reason: "inactive", requestedQuantity: 3 }),
-        expect.objectContaining({ variantId: outOfStockVariant._id.toString(), reason: "out_of_stock", requestedQuantity: 1 }),
+        expect.objectContaining({
+          variantId: fakeVariantId,
+          reason: "not_found",
+          requestedQuantity: 5,
+        }),
+        expect.objectContaining({
+          variantId: inactiveVariantId,
+          reason: "inactive",
+          requestedQuantity: 3,
+        }),
+        expect.objectContaining({
+          variantId: outOfStockVariant._id.toString(),
+          reason: "out_of_stock",
+          requestedQuantity: 1,
+        }),
       ])
     );
     expect(res.body.data.skippedItems).toHaveLength(3);
@@ -583,4 +597,3 @@ describe("Guest Wishlist Merge Flow & Loophole Probing", () => {
     expect(res.status).toBe(400);
   });
 });
-

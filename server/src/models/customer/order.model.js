@@ -31,7 +31,12 @@ const orderSchema = new mongoose.Schema(
   {
     orderNumber: { type: String, required: true, unique: true, index: true },
     idempotencyKey: { type: String, trim: true },
-    customer: { type: mongoose.Schema.Types.ObjectId, ref: "CustomerProfile", required: true, index: true },
+    customer: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "CustomerProfile",
+      required: true,
+      index: true,
+    },
     items: { type: [orderItemSchema], required: true },
     shippingAddress: { type: addressSchema, required: true },
     subtotal: { type: Number, required: true, min: 0 },

@@ -20,7 +20,12 @@ afterAll(async () => {
 });
 
 beforeEach(async () => {
-  await User.create({ name: "Admin", email: "admin@test.com", password: "Test1234!", role: "admin" });
+  await User.create({
+    name: "Admin",
+    email: "admin@test.com",
+    password: "Test1234!",
+    role: "admin",
+  });
 
   const loginRes = await request(app)
     .post("/api/auth/login")

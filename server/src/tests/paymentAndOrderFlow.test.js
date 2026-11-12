@@ -212,7 +212,9 @@ describe("Checkout Idempotency, Receipt Uniqueness & Capture Guarantees", () => 
     jest.spyOn(Order, "create").mockImplementation(async (doc) => {
       createCalls += 1;
       if (createCalls === 1) {
-        const dupErr = new Error("E11000 duplicate key error collection: orders index: orderNumber_1");
+        const dupErr = new Error(
+          "E11000 duplicate key error collection: orders index: orderNumber_1"
+        );
         dupErr.code = 11000;
         dupErr.keyPattern = { orderNumber: 1 };
         throw dupErr;
@@ -342,12 +344,20 @@ describe("Checkout Idempotency, Receipt Uniqueness & Capture Guarantees", () => 
 
     global.fetch = jest.fn(async (url, opts) => {
       if (url === "https://api.razorpay.com/v1/orders") {
-        return { ok: true, json: async () => ({ id: rzpOrderId, amount: totalPaise, currency: "INR" }) };
+        return {
+          ok: true,
+          json: async () => ({ id: rzpOrderId, amount: totalPaise, currency: "INR" }),
+        };
       }
       if (url === `https://api.razorpay.com/v1/payments/${rzpPaymentId}`) {
         return {
           ok: true,
-          json: async () => ({ id: rzpPaymentId, order_id: rzpOrderId, status: "captured", amount: totalPaise }),
+          json: async () => ({
+            id: rzpPaymentId,
+            order_id: rzpOrderId,
+            status: "captured",
+            amount: totalPaise,
+          }),
         };
       }
       if (url === `https://api.razorpay.com/v1/payments/${rzpPaymentId}/refund`) {
@@ -425,14 +435,29 @@ describe("Admin Orders RBAC, Stats paidAt, Visibility, Lookup & Cancel Refund/Re
     variantBStockAfterSale = 0,
   } = {}) => {
     await ProductVariant.updateOne({ _id: variantA._id }, { $set: { stock: 8 } });
-    await ProductVariant.updateOne({ _id: variantB._id }, { $set: { stock: variantBStockAfterSale } });
+    await ProductVariant.updateOne(
+      { _id: variantB._id },
+      { $set: { stock: variantBStockAfterSale } }
+    );
 
     const doc = await Order.create({
       orderNumber,
       customer: customerProfile._id,
       items: [
-        { product: variantA.product, variantId: variantA._id, name: "Heavyweight Hoodie", quantity: 2, unitPrice: 1000 },
-        { product: variantB.product, variantId: variantB._id, name: "Heavyweight Hoodie", quantity: 2, unitPrice: 800 },
+        {
+          product: variantA.product,
+          variantId: variantA._id,
+          name: "Heavyweight Hoodie",
+          quantity: 2,
+          unitPrice: 1000,
+        },
+        {
+          product: variantB.product,
+          variantId: variantB._id,
+          name: "Heavyweight Hoodie",
+          quantity: 2,
+          unitPrice: 800,
+        },
       ],
       shippingAddress: {
         fullName: "Test Buyer",
@@ -466,9 +491,20 @@ describe("Admin Orders RBAC, Stats paidAt, Visibility, Lookup & Cancel Refund/Re
     const order = await seedPaidOrder();
 
     // Staff CAN read stats, list, detail
-    expect((await request(app).get("/api/orders/stats").set("Authorization", `Bearer ${staffToken}`)).status).toBe(200);
-    expect((await request(app).get("/api/orders").set("Authorization", `Bearer ${staffToken}`)).status).toBe(200);
-    expect((await request(app).get(`/api/orders/${order._id}`).set("Authorization", `Bearer ${staffToken}`)).status).toBe(200);
+    expect(
+      (await request(app).get("/api/orders/stats").set("Authorization", `Bearer ${staffToken}`))
+        .status
+    ).toBe(200);
+    expect(
+      (await request(app).get("/api/orders").set("Authorization", `Bearer ${staffToken}`)).status
+    ).toBe(200);
+    expect(
+      (
+        await request(app)
+          .get(`/api/orders/${order._id}`)
+          .set("Authorization", `Bearer ${staffToken}`)
+      ).status
+    ).toBe(200);
 
     // Staff CANNOT mutate status or seen
     const statusRes = await request(app)
@@ -524,7 +560,10 @@ describe("Admin Orders RBAC, Stats paidAt, Visibility, Lookup & Cancel Refund/Re
   });
 
   it("allows inspecting pending and failed orders in detail lookup while blocking fulfillment updates on unpaid orders", async () => {
-    const pendingOrder = await seedPaidOrder({ orderNumber: "ORD-PEND-1", paymentStatus: "pending" });
+    const pendingOrder = await seedPaidOrder({
+      orderNumber: "ORD-PEND-1",
+      paymentStatus: "pending",
+    });
     const failedOrder = await seedPaidOrder({ orderNumber: "ORD-FAIL-1", paymentStatus: "failed" });
 
     // Listed when filtered by paymentStatus
@@ -569,12 +608,25 @@ describe("Admin Orders RBAC, Stats paidAt, Visibility, Lookup & Cancel Refund/Re
     const order = await Order.create({
       orderNumber: "ORD-PROJ-1",
       customer: customProfile._id,
-      items: [{ product: variantA.product, variantId: variantA._id, name: "Hoodie", quantity: 1, unitPrice: 1000 }],
+      items: [
+        {
+          product: variantA.product,
+          variantId: variantA._id,
+          name: "Hoodie",
+          quantity: 1,
+          unitPrice: 1000,
+        },
+      ],
       shippingAddress: { line1: "1 St", city: "Pune", postalCode: "411001" },
       subtotal: 1000,
       shipping: 100,
       total: 1100,
-      payment: { method: "razorpay", status: "paid", razorpayPaymentId: "pay_proj_1", paidAt: new Date() },
+      payment: {
+        method: "razorpay",
+        status: "paid",
+        razorpayPaymentId: "pay_proj_1",
+        paidAt: new Date(),
+      },
     });
 
     const detailRes = await request(app)
@@ -669,7 +721,9 @@ describe("Admin Orders RBAC, Stats paidAt, Visibility, Lookup & Cancel Refund/Re
     expect((await ProductVariant.findById(variantA._id)).stock).toBe(10);
     expect((await ProductVariant.findById(variantB._id)).stock).toBe(2);
 
-    const movements = await InventoryMovement.find({ reason: `Order cancelled: ${order.orderNumber}` });
+    const movements = await InventoryMovement.find({
+      reason: `Order cancelled: ${order.orderNumber}`,
+    });
     expect(movements).toHaveLength(2);
     expect(movements.every((m) => m.type === "return")).toBe(true);
   });
@@ -750,4 +804,3 @@ describe("Admin Orders RBAC, Stats paidAt, Visibility, Lookup & Cancel Refund/Re
     expect(updated.orderStatus).toBe("placed");
   });
 });
-
