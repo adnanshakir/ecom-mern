@@ -67,6 +67,16 @@ function bumpRevision(revisionKey) {
   localStorage.setItem(revisionKey, String(current + 1));
 }
 
+function emitGuestStorageEvent(eventName) {
+  if (typeof window === "undefined") return;
+  const dispatch = () => window.dispatchEvent(new Event(eventName));
+  if (typeof queueMicrotask === "function") {
+    queueMicrotask(dispatch);
+  } else {
+    setTimeout(dispatch, 0);
+  }
+}
+
 function buildRevisionToken(storageKey, revisionKey) {
   if (typeof window === "undefined") return "0:";
   try {
@@ -113,7 +123,7 @@ export function saveGuestCart(items) {
   try {
     localStorage.setItem(GUEST_CART_STORAGE_KEY, JSON.stringify(items));
     bumpRevision(GUEST_CART_REVISION_KEY);
-    window.dispatchEvent(new Event("guestCartChanged"));
+    emitGuestStorageEvent("guestCartChanged");
   } catch (err) {
     console.error("Failed to save guest cart to localStorage:", err);
   }
@@ -124,7 +134,7 @@ export function clearGuestCart() {
   try {
     localStorage.removeItem(GUEST_CART_STORAGE_KEY);
     bumpRevision(GUEST_CART_REVISION_KEY);
-    window.dispatchEvent(new Event("guestCartChanged"));
+    emitGuestStorageEvent("guestCartChanged");
   } catch (err) {
     console.error("Failed to clear guest cart in localStorage:", err);
   }
@@ -376,7 +386,7 @@ export function saveGuestWishlist(products) {
   try {
     localStorage.setItem(GUEST_WISHLIST_STORAGE_KEY, JSON.stringify(products));
     bumpRevision(GUEST_WISHLIST_REVISION_KEY);
-    window.dispatchEvent(new Event("guestWishlistChanged"));
+    emitGuestStorageEvent("guestWishlistChanged");
   } catch (err) {
     console.error("Failed to save guest wishlist to localStorage:", err);
   }
@@ -387,7 +397,7 @@ export function clearGuestWishlist() {
   try {
     localStorage.removeItem(GUEST_WISHLIST_STORAGE_KEY);
     bumpRevision(GUEST_WISHLIST_REVISION_KEY);
-    window.dispatchEvent(new Event("guestWishlistChanged"));
+    emitGuestStorageEvent("guestWishlistChanged");
   } catch (err) {
     console.error("Failed to clear guest wishlist in localStorage:", err);
   }

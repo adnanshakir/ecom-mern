@@ -82,19 +82,24 @@ export function buildChildrenMap(categories) {
   const validIds = new Set(allList.map((c) => c._id));
   const map = new Map();
 
+  const addUniqueChild = (parentKey, child) => {
+    if (!child?._id) return;
+    if (!map.has(parentKey)) map.set(parentKey, []);
+    const bucket = map.get(parentKey);
+    if (!bucket.some((existing) => existing._id === child._id)) {
+      bucket.push(child);
+    }
+  };
+
   allList.forEach((c) => {
     const rawParentId = c.parent?._id || c.parent || null;
     const parentId = rawParentId && validIds.has(rawParentId) ? rawParentId : null;
-    if (!map.has(parentId)) map.set(parentId, []);
-    map.get(parentId).push(c);
+    addUniqueChild(parentId, c);
 
     // Also link subcategories if attached directly
     if (Array.isArray(c.subcategories) && c.subcategories.length > 0) {
-      if (!map.has(c._id)) map.set(c._id, []);
       for (const sub of c.subcategories) {
-        if (!map.get(c._id).some((existing) => existing._id === sub._id)) {
-          map.get(c._id).push(sub);
-        }
+        addUniqueChild(c._id, sub);
       }
     }
   });

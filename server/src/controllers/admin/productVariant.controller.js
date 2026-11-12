@@ -70,7 +70,7 @@ export const updateVariant = async (req, res, next) => {
 
 
     const variant = await ProductVariant.findByIdAndUpdate(req.params.id, updates, {
-      new: true,
+      returnDocument: "after",
       runValidators: true,
     });
     if (!variant) throw new ApiError(404, "Variant not found");

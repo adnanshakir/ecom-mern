@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useDispatch, useSelector } from "react-redux";
-import { Loader2, MapPin, Pencil, Plus, ShieldCheck, Trash2 } from "lucide-react";
+import { ArrowLeft, Loader2, MapPin, Pencil, Plus, ShieldCheck, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { useCart } from "@/hooks/storefront/useCart";
@@ -23,6 +23,7 @@ const RECONCILIATION_POLL_MS = 4000;
 const DELIVERY_CHARGE = 100;
 const EMPTY_ADDRESS = {
   label: "Home",
+  fullName: "",
   line1: "",
   line2: "",
   city: "",
@@ -30,6 +31,25 @@ const EMPTY_ADDRESS = {
   postalCode: "",
   country: "India",
   phone: "",
+};
+
+const ADDRESS_FIELD_CONFIG = [
+  { key: "label", placeholder: "Label (e.g. Home, Office)" },
+  { key: "fullName", placeholder: "Full name *" },
+  { key: "line1", placeholder: "House / flat / street *" },
+  { key: "line2", placeholder: "Landmark / area (optional)" },
+  { key: "city", placeholder: "City *" },
+  { key: "state", placeholder: "State" },
+  { key: "postalCode", placeholder: "Postal code *" },
+  { key: "phone", placeholder: "Phone" },
+];
+
+const getDefaultFullName = (currentUser) => {
+  const candidate = currentUser?.name?.trim();
+  if (!candidate) return "";
+  if (candidate === currentUser?.phoneNumber || candidate === currentUser?.phone) return "";
+  if (/^\+?91?\d{10}$/.test(candidate.replace(/\s/g, ""))) return "";
+  return candidate;
 };
 
 /** Load the Razorpay checkout constructor once it is available in the browser. */
@@ -258,8 +278,13 @@ export function CheckoutView() {
   const saveAddress = async (event) => {
     event.preventDefault();
     const nextAddress = { ...addressForm };
-    if (!nextAddress.line1.trim() || !nextAddress.city.trim() || !nextAddress.postalCode.trim()) {
-      toast.error("House/street, city, and postal code are required");
+    if (
+      !nextAddress.fullName?.trim() ||
+      !nextAddress.line1.trim() ||
+      !nextAddress.city.trim() ||
+      !nextAddress.postalCode.trim()
+    ) {
+      toast.error("Full name, house/street, city, and postal code are required");
       return;
     }
 
@@ -326,6 +351,7 @@ export function CheckoutView() {
         idempotencyKeyRef.current
       );
       const order = orderResponse.data;
+      const selectedAddress = addresses.find((address) => address._id === selectedAddressId);
       const razorpay = new Razorpay({
         key: order.keyId,
         amount: order.amount,
@@ -333,7 +359,7 @@ export function CheckoutView() {
         name: "Fibio Wholesale",
         description: `${checkoutCount} item${checkoutCount === 1 ? "" : "s"}`,
         order_id: order.razorpayOrderId,
-        prefill: { name: user?.name || "", email: user?.email || "" },
+        prefill: { name: selectedAddress?.fullName || user?.name || "", email: user?.email || "" },
         theme: { color: "#033936" },
         handler: async (payment) => {
           try {
@@ -446,15 +472,37 @@ export function CheckoutView() {
     );
   }
 
+  const openNewAddressForm = () => {
+    setAddressForm({ ...EMPTY_ADDRESS, fullName: getDefaultFullName(user) });
+  };
+
   return (
     <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
+      <div className="mb-4">
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="-ml-2 gap-1.5 text-muted-foreground hover:text-foreground"
+          onClick={() => {
+            if (typeof window !== "undefined" && window.history.length > 1) {
+              router.back();
+            } else {
+              router.push("/cart");
+            }
+          }}
+        >
+          <ArrowLeft className="size-4" />
+          Back
+        </Button>
+      </div>
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
         <div className="rounded-lg border bg-card p-6">
           <div className="flex items-center justify-between">
             <h1 className="text-xl font-semibold">Delivery address</h1>
             <button
               className="inline-flex items-center gap-1 text-sm text-[#033936]"
-              onClick={() => setAddressForm({ ...EMPTY_ADDRESS })}
+              onClick={openNewAddressForm}
             >
               <Plus className="size-4" /> Add address
             </button>
@@ -464,7 +512,7 @@ export function CheckoutView() {
           ) : !addresses.length ? (
             <button
               className="mt-6 flex w-full items-center gap-3 rounded-lg border border-dashed p-4 text-left text-sm"
-              onClick={() => setAddressForm({ ...EMPTY_ADDRESS })}
+              onClick={openNewAddressForm}
             >
               <MapPin className="size-5 text-[#033936]" /> Add a delivery address
             </button>
@@ -483,6 +531,11 @@ export function CheckoutView() {
                     />
                     <span className="min-w-0 text-sm">
                       <strong>{address.label || "Address"}</strong>
+                      {address.fullName && (
+                        <span className="mt-0.5 block font-medium text-foreground">
+                          {address.fullName}
+                        </span>
+                      )}
                       <span className="mt-1 block text-muted-foreground">
                         {address.line1}
                         {address.line2 ? `, ${address.line2}` : ""}, {address.city}, {address.state} -{" "}
@@ -496,7 +549,13 @@ export function CheckoutView() {
                   <div className="mt-3 flex gap-3 pl-6 text-xs">
                     <button
                       className="inline-flex items-center gap-1 text-[#033936]"
-                      onClick={() => setAddressForm({ ...address })}
+                      onClick={() =>
+                        setAddressForm({
+                          ...EMPTY_ADDRESS,
+                          ...address,
+                          fullName: address.fullName || getDefaultFullName(user),
+                        })
+                      }
                     >
                       <Pencil className="size-3" /> Edit
                     </button>
@@ -513,11 +572,11 @@ export function CheckoutView() {
           )}
           {addressForm && (
             <form onSubmit={saveAddress} className="mt-5 grid gap-3 rounded-lg border bg-muted/20 p-4">
-              {["label", "line1", "line2", "city", "state", "postalCode", "phone"].map((key) => (
+              {ADDRESS_FIELD_CONFIG.map(({ key, placeholder }) => (
                 <input
                   key={key}
                   className="h-10 rounded-md border bg-background px-3 text-sm"
-                  placeholder={`${key === "line1" ? "House / flat / street" : key}${["line1", "city", "postalCode"].includes(key) ? " *" : ""}`}
+                  placeholder={placeholder}
                   value={addressForm[key] || ""}
                   onChange={(event) => setAddressForm({ ...addressForm, [key]: event.target.value })}
                 />

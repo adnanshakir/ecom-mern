@@ -210,7 +210,7 @@ const cancelPaidOrderWithRefundAndRestock = async (orderId, userId) => {
       "payment.refundStatus": { $in: ["none", "failed", null] },
     },
     claimUpdate,
-    { new: true }
+    { returnDocument: "after" }
   );
 
   let reclaimedStaleClaim = false;
@@ -228,7 +228,7 @@ const cancelPaidOrderWithRefundAndRestock = async (orderId, userId) => {
         ],
       },
       claimUpdate,
-      { new: true }
+      { returnDocument: "after" }
     );
     reclaimedStaleClaim = Boolean(order);
   }
@@ -393,7 +393,7 @@ export const updateAdminOrderStatus = async (req, res, next) => {
         "payment.refundStatus": { $nin: ["pending", "processing", "processed"] },
       },
       { $set: { orderStatus: req.body.orderStatus } },
-      { new: true, runValidators: true }
+      { returnDocument: "after", runValidators: true }
     );
     if (!order) {
       const existing = await Order.findById(req.params.id);
@@ -424,7 +424,7 @@ export const markAdminOrderSeen = async (req, res, next) => {
     const order = await Order.findOneAndUpdate(
       { _id: req.params.id },
       { $set: { adminSeen: true } },
-      { new: true }
+      { returnDocument: "after" }
     );
     if (!order) throw new ApiError(404, "Order not found");
     res.json({ success: true, data: order });

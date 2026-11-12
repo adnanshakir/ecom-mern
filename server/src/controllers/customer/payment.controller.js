@@ -4,6 +4,7 @@ import Cart from "../../models/customer/cart.model.js";
 import Order from "../../models/customer/order.model.js";
 import ProductVariant from "../../models/admin/productVariant.model.js";
 import ApiError from "../../utils/apiError.js";
+import { cleanupLegacyOrderIndexes } from "../../config/db.js";
 import {
   createRazorpayOrder,
   createRazorpayRefund,
@@ -116,7 +117,7 @@ const recoverRefundForOrder = async (order, reason = "insufficient_stock_after_p
         "payment.refundClaimedAt": new Date(),
       },
     },
-    { new: true }
+    { returnDocument: "after" }
   );
   if (!claimed) {
     return (await Order.findById(order._id)) || order;
@@ -150,7 +151,7 @@ const recoverRefundForOrder = async (order, reason = "insufficient_stock_after_p
           fulfillmentRecoveryNeeded: false,
         },
       },
-      { new: true }
+      { returnDocument: "after" }
     );
     return updated || (await Order.findById(claimed._id)) || claimed;
   } catch (refundError) {
@@ -168,7 +169,7 @@ const recoverRefundForOrder = async (order, reason = "insufficient_stock_after_p
           fulfillmentRecoveryNeeded: true,
         },
       },
-      { new: true }
+      { returnDocument: "after" }
     );
     return updated || (await Order.findById(claimed._id)) || claimed;
   }
@@ -241,7 +242,7 @@ const markOrderPaid = async (order, paymentId, paidAt = new Date()) => {
             fulfillmentFailureReason: error.message,
           },
         },
-        { new: true }
+        { returnDocument: "after" }
       );
       const target = recorded || (await Order.findById(order._id));
       if (target?.payment?.status === "refund_pending") {
@@ -295,7 +296,10 @@ export const createPaymentOrder = async (req, res, next) => {
           ...(idempotencyKey ? { idempotencyKey } : {}),
           customer: req.customerProfile._id,
           items,
-          shippingAddress: { ...address.toObject(), fullName: getCustomerName(req.customer) },
+          shippingAddress: {
+            ...address.toObject(),
+            fullName: address.fullName?.trim() || getCustomerName(req.customer),
+          },
           subtotal,
           shipping: SHIPPING,
           total: subtotal + SHIPPING,
@@ -306,6 +310,14 @@ export const createPaymentOrder = async (req, res, next) => {
       } catch (err) {
         if (err?.code === 11000) {
           const dupKeys = Object.keys(err?.keyPattern || {});
+          const isLegacyRazorpayIndexConflict =
+            dupKeys.includes("razorpayOrderId") ||
+            String(err?.message).includes("index: razorpayOrderId_1");
+          if (isLegacyRazorpayIndexConflict) {
+            await cleanupLegacyOrderIndexes();
+            continue;
+          }
+
           const isIdempotencyConflict =
             Boolean(idempotencyKey) &&
             (dupKeys.includes("idempotencyKey") || String(err?.message).includes("idempotencyKey"));

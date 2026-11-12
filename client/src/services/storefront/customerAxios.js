@@ -10,6 +10,7 @@ export function injectCustomerStore(_store) {
 const customerAxios = axios.create({
   baseURL: getApiBaseUrl(),
   withCredentials: true,
+  timeout: 15000,
 });
 
 // Response interceptor: on 401 Unauthorized, immediately clear local customer auth state

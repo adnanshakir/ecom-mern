@@ -14,6 +14,7 @@ function Dialog({
 }
 
 function DialogTrigger({
+  asChild: _asChild,
   render,
   children,
   ...props

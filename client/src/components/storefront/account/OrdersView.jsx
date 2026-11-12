@@ -142,8 +142,11 @@ export function OrdersView() {
                   </span>
                 </div>
                 <div className="mt-4 grid gap-2 border-t pt-4 text-sm">
-                  {order.items.map((item) => (
-                    <div key={`${order._id}-${item.sku}`} className="flex justify-between gap-4">
+                  {order.items.map((item, index) => (
+                    <div
+                      key={`${order._id}-${item.variantId || item.sku || index}-${index}`}
+                      className="flex justify-between gap-4"
+                    >
                       <span className="text-muted-foreground">
                         {item.name} × {item.quantity}
                       </span>

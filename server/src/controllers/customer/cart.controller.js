@@ -259,7 +259,7 @@ export const mergeCart = async (req, res, next) => {
           : {}),
       };
 
-      const updated = await Cart.findOneAndUpdate(filter, update, { new: true });
+      const updated = await Cart.findOneAndUpdate(filter, update, { returnDocument: "after" });
       if (updated) {
         finalSkippedItems = skippedItems;
         break;
