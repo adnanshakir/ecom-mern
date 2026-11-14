@@ -18,7 +18,14 @@ export const cleanupLegacyOrderIndexes = async () => {
   const indexes = await ordersCollection.indexes();
   for (const indexName of LEGACY_ORDER_INDEXES) {
     if (indexes.some((idx) => idx.name === indexName)) {
-      await ordersCollection.dropIndex(indexName);
+      try {
+        await ordersCollection.dropIndex(indexName);
+      } catch (error) {
+        if (error?.code === 27 || error?.codeName === 'IndexNotFound') {
+          continue;
+        }
+        throw error;
+      }
     }
   }
 };

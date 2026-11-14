@@ -18,6 +18,8 @@ import inventoryRoutes from "./routes/admin/inventory.routes.js";
 import userRoutes from "./routes/admin/user.routes.js";
 import bannerRoutes from "./routes/admin/banner.routes.js";
 import orderRoutes from "./routes/admin/order.routes.js";
+import notificationRoutes from "./routes/admin/notification.routes.js";
+import notificationTemplateRoutes from "./routes/admin/notificationTemplate.routes.js";
 
 // Customer routes
 import publicRoutes from "./routes/customer/public.routes.js";
@@ -27,6 +29,8 @@ import reviewRoutes from "./routes/customer/review.routes.js";
 import customerImageRoutes from "./routes/customer/customerImage.routes.js";
 import profileRoutes from "./routes/customer/profile.routes.js";
 import paymentRoutes from "./routes/customer/payment.routes.js";
+import deviceRoutes from "./routes/customer/device.routes.js";
+import { activeTicker } from "./controllers/publicTicker.controller.js";
 
 import { errorHandler, notFound } from "./middleware/error.middleware.js";
 
@@ -111,6 +115,12 @@ app.use("/api/inventory", inventoryRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/banners", bannerRoutes);
 app.use("/api/orders", orderRoutes);
+app.use("/api/admin/notifications", notificationRoutes);
+app.use("/admin/notifications", notificationRoutes);
+app.use("/api/notifications", notificationRoutes);
+app.use("/api/admin/notification-templates", notificationTemplateRoutes);
+app.use("/admin/notification-templates", notificationTemplateRoutes);
+app.use("/api/notification-templates", notificationTemplateRoutes);
 
 // ---- Customer routes ----
 app.use("/api/customers/profile", profileRoutes);
@@ -119,7 +129,11 @@ app.use("/api/customers/wishlist", wishlistRoutes);
 app.use("/api/customers/reviews", reviewRoutes);
 app.use("/api/customers/images", customerImageRoutes);
 app.use("/api/public", publicRoutes);
+app.use("/public/ticker", activeTicker);
 app.use("/api/customers/payments", paymentRoutes);
+app.use("/api/customer/devices", deviceRoutes);
+app.use("/customer/devices", deviceRoutes);
+app.use("/api/customers/devices", deviceRoutes);
 
 // Global error handling middleware
 app.use(notFound);

@@ -110,7 +110,7 @@ Right after login/registration (or session restore on app launch), sync local gu
   - `quantity`: positive integer (`>= 1`).
   - `batchId`: optional trimmed string (`1..128` chars) — **strongly recommended for mobile**.
 - **Server Behavior & Deduplication**:
-  - **Idempotent batch retry**: Send a persisted `batchId` (UUID) for each pending merge batch. The server stores processed `batchId`s per cart (`processedMergeBatches`) and executes the merge **atomically**, guaranteeing a `batchId` modifies cart quantities **at most once** across retries or duplicate concurrent requests.
+  - **Idempotent batch retry**: Send a persisted `batchId` (UUID) for each pending merge batch. The server stores only the latest **50** processed `batchId` entries per cart (`processedMergeBatches`) and executes the merge **atomically**, guaranteeing a `batchId` modifies cart quantities **at most once** across duplicate concurrent requests and retries while that `batchId` remains within the latest 50 retained entries. Once more than 50 newer batches are processed for the cart, an older `batchId` is evicted and may be applied again if retried—so persisting a `batchId` alone does not make indefinitely delayed retries safe.
   - **Stock clamping**: If `existingQty + guestQty > variant.stock`, the quantity is clamped to `variant.stock`.
   - **Skipped items reporting**: If any guest variant is missing, inactive (`!variant.isActive`), or out of stock (`variant.stock <= 0`), the server skips it without failing the batch and returns `skippedItems`:
     ```json

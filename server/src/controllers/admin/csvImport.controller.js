@@ -18,6 +18,7 @@ import ApiError from "../../utils/apiError.js";
 import { adjustStock } from "../../utils/inventory.js";
 import InventoryMovement from "../../models/admin/inventoryMovement.model.js";
 import imagekit from "../../utils/imagekit.js";
+import { notifyRestock } from "../../services/notificationTriggers.js";
 
 async function uploadExternalImageToImageKit(imageUrl) {
   const controller = new AbortController();
@@ -311,6 +312,15 @@ export const confirmCsvImport = async (req, res, next) => {
     return next(err);
   }
   session.endSession();
+
+  for (const productId of createdProductIds) {
+    const variants = await ProductVariant.find({ product: productId });
+    const totalStock = variants.reduce((sum, v) => sum + (v.stock || 0), 0);
+    if (totalStock > 0) {
+      const product = await Product.findById(productId);
+      if (product) notifyRestock(product).catch(console.error);
+    }
+  }
 
   const importJob = await ImportJob.create({
     user: req.user.id,
