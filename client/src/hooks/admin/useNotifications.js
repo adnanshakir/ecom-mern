@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { toast } from "sonner";
 import {
   getNotifications,
@@ -77,6 +77,7 @@ export function useNotifications() {
   const [historyStatusFilter, setHistoryStatusFilter] = useState("all");
   const [historyPage, setHistoryPage] = useState(1);
   const [historyPagination, setHistoryPagination] = useState({ total: 0, page: 1, pages: 1 });
+  const historyReqSeqRef = useRef(0);
 
   // ---------------- FETCH TEMPLATES ----------------
   const loadTemplates = useCallback(async () => {
@@ -93,28 +94,37 @@ export function useNotifications() {
   }, []);
 
   // ---------------- FETCH NOTIFICATIONS ----------------
-  const loadNotifications = useCallback(async () => {
+  const loadNotifications = useCallback(async (overrides = {}) => {
+    const seq = ++historyReqSeqRef.current;
     setNotificationsLoading(true);
     setNotificationsError("");
     try {
+      const page = overrides.page !== undefined ? overrides.page : historyPage;
+      const status = overrides.status !== undefined ? overrides.status : historyStatusFilter;
       const params = {
-        page: historyPage,
+        page,
         limit: 10,
       };
-      if (historyStatusFilter !== "all") {
-        params.status = historyStatusFilter;
+      if (status !== "all") {
+        params.status = status;
       }
       const res = await getNotifications(params);
-      setNotifications(res.data.notifications || []);
-      setHistoryPagination({
-        total: res.data.total || 0,
-        page: res.data.page || 1,
-        pages: res.data.pages || 1,
-      });
+      if (seq === historyReqSeqRef.current) {
+        setNotifications(res.data.notifications || []);
+        setHistoryPagination({
+          total: res.data.total || 0,
+          page: res.data.page || 1,
+          pages: res.data.pages || 1,
+        });
+      }
     } catch (err) {
-      setNotificationsError(err.response?.data?.message || "Failed to load notifications history");
+      if (seq === historyReqSeqRef.current) {
+        setNotificationsError(err.response?.data?.message || "Failed to load notifications history");
+      }
     } finally {
-      setNotificationsLoading(false);
+      if (seq === historyReqSeqRef.current) {
+        setNotificationsLoading(false);
+      }
     }
   }, [historyPage, historyStatusFilter]);
 
@@ -124,9 +134,28 @@ export function useNotifications() {
   }, [loadTemplates]);
 
   useEffect(() => {
-    const timer = setTimeout(loadNotifications, 0);
-    return () => clearTimeout(timer);
-  }, [loadNotifications]);
+    if (activeTab !== "history") return;
+
+    const timer = setTimeout(() => {
+      loadNotifications();
+    }, 0);
+
+    const hasActiveRows = notifications.some(
+      (n) => n.status === "scheduled" || n.status === "sending"
+    );
+
+    let intervalId = null;
+    if (hasActiveRows) {
+      intervalId = setInterval(() => {
+        loadNotifications();
+      }, 5000);
+    }
+
+    return () => {
+      clearTimeout(timer);
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [activeTab, loadNotifications, notifications]);
 
   // Product search effect when openScreen === "product"
   useEffect(() => {
@@ -308,7 +337,7 @@ export function useNotifications() {
       // Switch to History tab and reload
       setActiveTab("history");
       setHistoryPage(1);
-      loadNotifications();
+      loadNotifications({ page: 1 });
     } catch (err) {
       setSendError(err.response?.data?.message || "Failed to process notification");
       toast.error(err.response?.data?.message || "Failed to process notification");

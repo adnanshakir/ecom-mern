@@ -41,11 +41,25 @@ export default function TickerBar() {
     </span>
   ));
 
+  const duplicateContent = items.map((i) => (
+    <span key={i._id} className="mx-10 inline-block">
+      {i.link ? (
+        <Link href={i.link} tabIndex={-1} className="hover:underline">
+          {i.text}
+        </Link>
+      ) : (
+        i.text
+      )}
+    </span>
+  ));
+
   return (
-    <div className="relative flex h-9 items-center overflow-hidden bg-black text-sm text-white">
+    <div className="ticker-bar relative flex h-9 items-center overflow-hidden bg-black text-sm text-white">
       <div className="ticker-track flex w-max whitespace-nowrap" style={{ animationDuration: `${duration}s` }}>
         <div className="flex min-w-[100vw] shrink-0 justify-around">{content}</div>
-        <div className="flex min-w-[100vw] shrink-0 justify-around" aria-hidden="true">{content}</div>
+        <div className="ticker-duplicate flex min-w-[100vw] shrink-0 justify-around" aria-hidden="true" inert="">
+          {duplicateContent}
+        </div>
       </div>
       <button
         aria-label="Dismiss"

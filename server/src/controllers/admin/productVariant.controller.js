@@ -35,17 +35,23 @@ export const createVariant = async (req, res, next) => {
     await session.commitTransaction();
     session.endSession();
 
-    const variantsAfter = await ProductVariant.find({ product: req.params.productId });
-    const totalStockAfter = variantsAfter.reduce((sum, v) => sum + (v.stock || 0), 0);
-    if (totalStockBefore <= 0 && totalStockAfter > 0) {
-      const product = await Product.findById(req.params.productId);
-      if (product) notifyRestock(product).catch(console.error);
+    try {
+      const variantsAfter = await ProductVariant.find({ product: req.params.productId });
+      const totalStockAfter = variantsAfter.reduce((sum, v) => sum + (v.stock || 0), 0);
+      if (totalStockBefore <= 0 && totalStockAfter > 0) {
+        const product = await Product.findById(req.params.productId);
+        if (product) notifyRestock(product).catch(console.error);
+      }
+    } catch (notifyErr) {
+      console.error("Variant restock notification error:", notifyErr);
     }
 
     const populated = await ProductVariant.findById(variant._id);
     res.status(201).json({ success: true, data: populated });
   } catch (err) {
-    await session.abortTransaction();
+    if (session.inTransaction()) {
+      await session.abortTransaction();
+    }
     session.endSession();
     next(err);
   }

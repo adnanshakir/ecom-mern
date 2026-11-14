@@ -38,6 +38,7 @@ export const createNotification = async (req, res) => {
       imageUrl: imageUrl.trim(),
       tickerDurationHours,
       status: sendNow ? "sending" : "scheduled",
+      claimExpiresAt: sendNow ? new Date(Date.now() + 5 * 60 * 1000) : undefined,
       scheduledAt: when,
     });
     if (sendNow) n = await dispatch(n);
@@ -154,7 +155,17 @@ export const updateTemplate = async (req, res) => {
     if (type !== undefined) tpl.type = type;
     if (titleTpl !== undefined) tpl.titleTpl = titleTpl.trim();
     if (bodyTpl !== undefined) tpl.bodyTpl = (bodyTpl || "").trim();
-    if (channel !== undefined) tpl.channel = channel;
+    if (channel !== undefined) {
+      if (!["web", "app", "both"].includes(channel)) {
+        return res.status(400).json({ message: "Invalid channel" });
+      }
+      if (tpl.auto && channel !== "app") {
+        return res.status(400).json({
+          message: "Automatic templates only support the 'app' channel for personal delivery",
+        });
+      }
+      tpl.channel = channel;
+    }
 
     await tpl.save();
     res.json({ template: tpl });

@@ -383,16 +383,17 @@ export default function NotificationsPage() {
                                 </p>
                               ) : (
                                 productResults.map((p) => (
-                                  <div
+                                  <button
                                     key={p._id}
+                                    type="button"
                                     onClick={() => setSelectedProduct({ _id: p._id, name: p.name, slug: p.slug })}
-                                    className="flex cursor-pointer items-center justify-between rounded-sm p-2 text-sm hover:bg-accent"
+                                    className="flex w-full cursor-pointer items-center justify-between rounded-sm p-2 text-left text-sm hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                                   >
                                     <span className="truncate font-medium">{p.name}</span>
                                     <span className="ml-2 shrink-0 font-mono text-xs text-muted-foreground">
                                       /product/{p.slug}
                                     </span>
-                                  </div>
+                                  </button>
                                 ))
                               )}
                             </div>
@@ -446,16 +447,17 @@ export default function NotificationsPage() {
                                 </p>
                               ) : (
                                 categoryResults.map((c) => (
-                                  <div
+                                  <button
                                     key={c._id}
+                                    type="button"
                                     onClick={() => setSelectedCategory({ _id: c._id, name: c.name, slug: c.slug || c._id })}
-                                    className="flex cursor-pointer items-center justify-between rounded-sm p-2 text-sm hover:bg-accent"
+                                    className="flex w-full cursor-pointer items-center justify-between rounded-sm p-2 text-left text-sm hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                                   >
                                     <span className="truncate font-medium">{c.name}</span>
                                     <span className="ml-2 shrink-0 font-mono text-xs text-muted-foreground">
                                       /category/{c.slug || c._id}
                                     </span>
-                                  </div>
+                                  </button>
                                 ))
                               )}
                             </div>

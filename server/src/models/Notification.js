@@ -15,6 +15,7 @@ const notificationSchema = new mongoose.Schema(
     status: { type: String, enum: ["scheduled", "sending", "sent", "failed", "cancelled"], default: "scheduled" },
     scheduledAt: Date,
     sentAt: Date,
+    claimExpiresAt: Date,
     tickerDurationHours: { type: Number, default: 24 },
     tickerEndsAt: Date,
     result: { ok: Boolean, error: String },
@@ -23,6 +24,7 @@ const notificationSchema = new mongoose.Schema(
 );
 notificationSchema.index({ status: 1, scheduledAt: 1 });
 notificationSchema.index({ status: 1, tickerEndsAt: 1 });
+notificationSchema.index({ status: 1, claimExpiresAt: 1 });
 
 const Notification = mongoose.model("Notification", notificationSchema);
 export default Notification;

@@ -93,7 +93,11 @@ export default function InvoiceTemplate({ order: raw }) {
           <div className="p-2">
             <p className="text-[10px] font-bold uppercase">Payment</p>
             <p className="text-base font-extrabold">
-              {isCod ? `COD ${money(o.total)}` : "PREPAID"}
+              {isCod
+                ? `COD ${money(o.total)}`
+                : o.paymentStatus === "paid"
+                ? "PREPAID"
+                : String(o.paymentStatus || "UNPAID").toUpperCase()}
             </p>
           </div>
         </div>

@@ -313,13 +313,17 @@ export const confirmCsvImport = async (req, res, next) => {
   }
   session.endSession();
 
-  for (const productId of createdProductIds) {
-    const variants = await ProductVariant.find({ product: productId });
-    const totalStock = variants.reduce((sum, v) => sum + (v.stock || 0), 0);
-    if (totalStock > 0) {
-      const product = await Product.findById(productId);
-      if (product) notifyRestock(product).catch(console.error);
+  try {
+    for (const productId of createdProductIds) {
+      const variants = await ProductVariant.find({ product: productId });
+      const totalStock = variants.reduce((sum, v) => sum + (v.stock || 0), 0);
+      if (totalStock > 0) {
+        const product = await Product.findById(productId);
+        if (product) notifyRestock(product).catch(console.error);
+      }
     }
+  } catch (notifyErr) {
+    console.error("CSV import restock notification error:", notifyErr);
   }
 
   const importJob = await ImportJob.create({

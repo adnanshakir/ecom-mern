@@ -3,13 +3,16 @@ import DeviceToken from "../../models/DeviceToken.js";
 export const registerDevice = async (req, res) => {
   try {
     const { token, platform = "android" } = req.body;
-    if (!token) return res.status(400).json({ message: "Token is required" });
+    if (typeof token !== "string" || !token.trim()) {
+      return res.status(400).json({ message: "Token is required" });
+    }
+    const trimmedToken = token.trim();
 
     const customerId = req.customerProfile?._id || req.customer?._id || req.customer?.id;
     if (!customerId) return res.status(401).json({ message: "Customer profile not found" });
 
     const device = await DeviceToken.findOneAndUpdate(
-      { token },
+      { token: trimmedToken },
       {
         customer: customerId,
         platform: platform === "ios" ? "ios" : "android",
@@ -27,9 +30,12 @@ export const registerDevice = async (req, res) => {
 export const unregisterDevice = async (req, res) => {
   try {
     const { token } = req.body;
-    if (!token) return res.status(400).json({ message: "Token is required" });
+    if (typeof token !== "string" || !token.trim()) {
+      return res.status(400).json({ message: "Token is required" });
+    }
+    const trimmedToken = token.trim();
 
-    await DeviceToken.deleteOne({ token });
+    await DeviceToken.deleteOne({ token: trimmedToken });
     res.status(200).json({ success: true, message: "Device token deleted" });
   } catch (e) {
     res.status(500).json({ message: e.message });

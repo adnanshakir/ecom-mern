@@ -386,18 +386,22 @@ export const updateAdminOrderStatus = async (req, res, next) => {
       return res.json({ success: true, data: cancelledOrder });
     }
 
+    const targetStatus = req.body.orderStatus;
     const order = await Order.findOneAndUpdate(
       {
         _id: req.params.id,
         ...baseQuery(),
-        orderStatus: { $ne: "cancelled" },
+        orderStatus: { $ne: "cancelled", $nin: [targetStatus] },
         "payment.refundStatus": { $nin: ["pending", "processing", "processed"] },
       },
-      { $set: { orderStatus: req.body.orderStatus } },
+      { $set: { orderStatus: targetStatus } },
       { returnDocument: "after", runValidators: true }
     );
     if (!order) {
       const existing = await Order.findById(req.params.id);
+      if (existing && existing.orderStatus === targetStatus) {
+        return res.json({ success: true, data: existing });
+      }
       if (
         existing &&
         (existing.orderStatus === "cancelled" ||
@@ -413,12 +417,12 @@ export const updateAdminOrderStatus = async (req, res, next) => {
       throw new ApiError(404, "Order not found");
     }
 
-    if (req.body.orderStatus === "shipped") {
+    if (targetStatus === "shipped") {
       sendTemplateToCustomer("order_shipped", order.customer, {
         orderNumber: order.orderNumber,
         link: "/orders/" + order._id,
       }).catch(console.error);
-    } else if (req.body.orderStatus === "delivered") {
+    } else if (targetStatus === "delivered") {
       sendTemplateToCustomer("order_delivered", order.customer, {
         orderNumber: order.orderNumber,
         link: "/orders/" + order._id,

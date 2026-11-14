@@ -34,11 +34,15 @@ export const createMovement = async (req, res, next) => {
     await session.commitTransaction();
 
     if (productId) {
-      const variantsAfter = await ProductVariant.find({ product: productId });
-      const totalStockAfter = variantsAfter.reduce((sum, v) => sum + (v.stock || 0), 0);
-      if (totalStockBefore <= 0 && totalStockAfter > 0) {
-        const product = await Product.findById(productId);
-        if (product) notifyRestock(product).catch(console.error);
+      try {
+        const variantsAfter = await ProductVariant.find({ product: productId });
+        const totalStockAfter = variantsAfter.reduce((sum, v) => sum + (v.stock || 0), 0);
+        if (totalStockBefore <= 0 && totalStockAfter > 0) {
+          const product = await Product.findById(productId);
+          if (product) notifyRestock(product).catch(console.error);
+        }
+      } catch (notifyErr) {
+        console.error("Inventory restock notification error:", notifyErr);
       }
     }
 
@@ -47,7 +51,9 @@ export const createMovement = async (req, res, next) => {
       data: { variant, movement },
     });
   } catch (err) {
-    await session.abortTransaction();
+    if (session.inTransaction()) {
+      await session.abortTransaction();
+    }
     return next(err);
   } finally {
     session.endSession();
