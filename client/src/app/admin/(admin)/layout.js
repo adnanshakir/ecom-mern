@@ -19,6 +19,7 @@ import {
   Menu,
   X,
   ShoppingBag,
+  Bell,
   Sun,
   Moon,
   Loader2,
@@ -44,6 +45,7 @@ const NAV_ITEMS = [
   { href: "/admin/csv-import", label: "CSV Import", icon: FileUp, allow: ["super_admin", "admin"] },
   { href: "/admin/users", label: "Users", icon: Users, allow: ["super_admin"] },
   { href: "/admin/orders", label: "Orders", icon: ShoppingBag, allow: ["super_admin", "admin", "staff"] },
+  { href: "/admin/notifications", label: "Notifications", icon: Bell, allow: ["super_admin", "admin", "staff"] },
 ];
 
 const COLLAPSE_KEY = "admin-sidebar-collapsed";

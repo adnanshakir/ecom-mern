@@ -4,6 +4,7 @@ import CustomerProfile from "../../models/customer/customer.model.js";
 import ApiError from "../../utils/apiError.js";
 import { adjustStock } from "../../utils/inventory.js";
 import { createRazorpayRefund, fetchRazorpayRefunds } from "../../utils/razorpay.js";
+import { sendTemplateToCustomer } from "../../services/notificationService.js";
 
 const STATUSES = ["placed", "packed", "shipped", "delivered", "cancelled"];
 const REFUND_CLAIM_LEASE_MS = Number(process.env.REFUND_CLAIM_LEASE_MS) || 2 * 60 * 1000;
@@ -411,6 +412,19 @@ export const updateAdminOrderStatus = async (req, res, next) => {
       }
       throw new ApiError(404, "Order not found");
     }
+
+    if (req.body.orderStatus === "shipped") {
+      sendTemplateToCustomer("order_shipped", order.customer, {
+        orderNumber: order.orderNumber,
+        link: "/orders/" + order._id,
+      }).catch(console.error);
+    } else if (req.body.orderStatus === "delivered") {
+      sendTemplateToCustomer("order_delivered", order.customer, {
+        orderNumber: order.orderNumber,
+        link: "/orders/" + order._id,
+      }).catch(console.error);
+    }
+
     res.json({ success: true, data: order });
   } catch (error) {
     next(error);
