@@ -10,10 +10,12 @@ import {
   getProductReviews,
   getReviewSummary,
 } from "../../controllers/customer/review.controller.js";
+import { activeTicker } from "../../controllers/publicTicker.controller.js";
 
 const router = express.Router();
 
 // No authenticate / authenticateCustomer middleware — fully public
+router.get("/ticker", activeTicker);
 router.get("/search/suggestions", getPublicSearchSuggestions);
 router.get("/products", getPublicProducts);
 router.get("/products/:slug", getPublicProductBySlug);

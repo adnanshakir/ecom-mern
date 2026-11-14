@@ -48,7 +48,7 @@ const getDefaultFullName = (currentUser) => {
   const candidate = currentUser?.name?.trim();
   if (!candidate) return "";
   if (candidate === currentUser?.phoneNumber || candidate === currentUser?.phone) return "";
-  if (/^\+?91?\d{10}$/.test(candidate.replace(/\s/g, ""))) return "";
+  if (/^(?:\+?91)?\d{10}$/.test(candidate.replace(/\s/g, ""))) return "";
   return candidate;
 };
 

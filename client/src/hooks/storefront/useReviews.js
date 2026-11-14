@@ -26,6 +26,7 @@ export function useReviews(productId, isAuthenticated = false) {
   });
   const [myReview, setMyReview] = useState(null); // the current customer's review (or null)
   const [loading, setLoading] = useState(Boolean(productId));
+  const [myReviewLoading, setMyReviewLoading] = useState(Boolean(productId && isAuthenticated));
   const [error, setError] = useState(null);
   const [page, setPage] = useState(1);
   const [sort, setSort] = useState("most_recent");
@@ -100,9 +101,6 @@ export function useReviews(productId, isAuthenticated = false) {
 
     return () => {
       cancelled = true;
-      // Reset so that React Strict Mode re-mount (or genuine re-mount)
-      // will re-run loadAll instead of bailing on the fetchKey check.
-      lastFetchKey.current = null;
     };
   }, [productId, fetchReviews, fetchSummary]);
 
@@ -115,14 +113,20 @@ export function useReviews(productId, isAuthenticated = false) {
 
     const loadMyReview = async () => {
       if (!isAuthenticated) {
-        if (!cancelled) setMyReview(null);
+        if (!cancelled) {
+          setMyReview(null);
+          setMyReviewLoading(false);
+        }
         return;
       }
+      setMyReviewLoading(true);
       try {
         const { data } = await getMyReview(productId);
         if (!cancelled) setMyReview(data.data || null);
       } catch {
         if (!cancelled) setMyReview(null);
+      } finally {
+        if (!cancelled) setMyReviewLoading(false);
       }
     };
     loadMyReview();
@@ -217,6 +221,7 @@ export function useReviews(productId, isAuthenticated = false) {
     summary,
     myReview,
     loading: productId ? loading : false,
+    myReviewLoading: productId && isAuthenticated ? myReviewLoading : false,
     error,
     page,
     sort,

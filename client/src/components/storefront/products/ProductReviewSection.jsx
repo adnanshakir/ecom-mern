@@ -67,6 +67,7 @@ export function ProductReviewSection({ productId }) {
     summary,
     myReview,
     loading,
+    myReviewLoading,
     page,
     sort,
     pagination,
@@ -89,6 +90,7 @@ export function ProductReviewSection({ productId }) {
       toast.error("Please log in to write a review.");
       return;
     }
+    if (myReviewLoading) return;
     // If customer already has a review, open in edit mode
     if (myReview) {
       setEditingReview(myReview);
@@ -200,9 +202,19 @@ export function ProductReviewSection({ productId }) {
           {/* Write a Review CTA */}
           <Button
             onClick={handleWriteReview}
+            disabled={myReviewLoading}
             className="bg-red-500 hover:bg-red-600 text-white font-bold px-6 h-10 text-sm shadow-sm shrink-0 w-full sm:w-auto"
           >
-            {myReview ? "Edit Your Review" : "Write a Review"}
+            {myReviewLoading ? (
+              <>
+                <Loader2 className="size-4 animate-spin mr-1.5" />
+                Checking review...
+              </>
+            ) : myReview ? (
+              "Edit Your Review"
+            ) : (
+              "Write a Review"
+            )}
           </Button>
         </div>
       </div>
@@ -221,9 +233,17 @@ export function ProductReviewSection({ productId }) {
           </div>
           <Button
             onClick={handleWriteReview}
+            disabled={myReviewLoading}
             className="bg-red-500 hover:bg-red-600 text-white font-bold px-8 h-10"
           >
-            Write the First Review
+            {myReviewLoading ? (
+              <>
+                <Loader2 className="size-4 animate-spin mr-1.5" />
+                Checking review...
+              </>
+            ) : (
+              "Write the First Review"
+            )}
           </Button>
         </div>
       )}

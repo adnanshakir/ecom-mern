@@ -1,5 +1,5 @@
-import * as React from "react"
 import { Button as ButtonPrimitive } from "@base-ui/react/button"
+import { Slot } from "@radix-ui/react-slot"
 import { cva } from "class-variance-authority";
 
 import { cn } from "@/lib/utils"
@@ -51,12 +51,16 @@ function Button({
 }) {
   const classes = cn(buttonVariants({ variant, size, className }));
 
-  if (asChild && React.isValidElement(children)) {
-    return React.cloneElement(children, {
-      "data-slot": "button",
-      ...props,
-      className: cn(classes, children.props?.className),
-    });
+  if (asChild) {
+    return (
+      <Slot
+        data-slot="button"
+        className={classes}
+        {...props}
+      >
+        {children}
+      </Slot>
+    );
   }
 
   return (

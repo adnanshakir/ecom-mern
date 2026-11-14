@@ -7,6 +7,7 @@ import { generateUniqueSlug } from "../../utils/slugify.js";
 import { escapeRegex } from "../../utils/escapeRegex.js";
 import { logActivity } from "../../utils/activityLogger.js";
 import { adjustStock } from "../../utils/inventory.js";
+import { notifyRestock } from "../../services/notificationTriggers.js";
 import mongoose from "mongoose";
 
 // ---------------- CREATE ----------------
@@ -66,6 +67,11 @@ export const createProduct = async (req, res, next) => {
     resourceId: product._id,
     description: `Created product: ${product.name} (${finalVariants.length} variant${finalVariants.length > 1 ? "s" : ""})`,
   });
+
+  const totalStock = finalVariants.reduce((sum, v) => sum + (v.stock || 0), 0);
+  if (totalStock > 0) {
+    notifyRestock(product).catch(console.error);
+  }
 
   res.status(201).json({
     success: true,

@@ -4,6 +4,7 @@ import CustomerProfile from "../../models/customer/customer.model.js";
 import ApiError from "../../utils/apiError.js";
 import { adjustStock } from "../../utils/inventory.js";
 import { createRazorpayRefund, fetchRazorpayRefunds } from "../../utils/razorpay.js";
+import { sendTemplateToCustomer } from "../../services/notificationService.js";
 
 const STATUSES = ["placed", "packed", "shipped", "delivered", "cancelled"];
 const REFUND_CLAIM_LEASE_MS = Number(process.env.REFUND_CLAIM_LEASE_MS) || 2 * 60 * 1000;
@@ -385,18 +386,22 @@ export const updateAdminOrderStatus = async (req, res, next) => {
       return res.json({ success: true, data: cancelledOrder });
     }
 
+    const targetStatus = req.body.orderStatus;
     const order = await Order.findOneAndUpdate(
       {
         _id: req.params.id,
         ...baseQuery(),
-        orderStatus: { $ne: "cancelled" },
+        orderStatus: { $ne: "cancelled", $nin: [targetStatus] },
         "payment.refundStatus": { $nin: ["pending", "processing", "processed"] },
       },
-      { $set: { orderStatus: req.body.orderStatus } },
+      { $set: { orderStatus: targetStatus } },
       { returnDocument: "after", runValidators: true }
     );
     if (!order) {
       const existing = await Order.findById(req.params.id);
+      if (existing && existing.orderStatus === targetStatus) {
+        return res.json({ success: true, data: existing });
+      }
       if (
         existing &&
         (existing.orderStatus === "cancelled" ||
@@ -411,6 +416,19 @@ export const updateAdminOrderStatus = async (req, res, next) => {
       }
       throw new ApiError(404, "Order not found");
     }
+
+    if (targetStatus === "shipped") {
+      sendTemplateToCustomer("order_shipped", order.customer, {
+        orderNumber: order.orderNumber,
+        link: "/orders/" + order._id,
+      }).catch(console.error);
+    } else if (targetStatus === "delivered") {
+      sendTemplateToCustomer("order_delivered", order.customer, {
+        orderNumber: order.orderNumber,
+        link: "/orders/" + order._id,
+      }).catch(console.error);
+    }
+
     res.json({ success: true, data: order });
   } catch (error) {
     next(error);
