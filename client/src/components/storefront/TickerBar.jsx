@@ -1,69 +1,75 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
 import api from "@/lib/customerApi";
 
+const SPEED = 60; // pixels per second
+
 export default function TickerBar() {
   const [items, setItems] = useState([]);
-  const [hiddenSig, setHiddenSig] = useState(() => {
-    if (typeof window !== "undefined") {
-      try {
-        return sessionStorage.getItem("tickerHidden") || "";
-      } catch {
-        return "";
-      }
-    }
-    return "";
-  });
+  const [closed, setClosed] = useState(false); // memory only: bar returns on reload
+  const [setWidth, setSetWidth] = useState(0);
+  const measureRef = useRef(null);
 
   useEffect(() => {
     let alive = true;
     const load = () =>
       api.get("/public/ticker").then((r) => alive && setItems(r.data.items || [])).catch(() => {});
-    const timer = setTimeout(load, 0);
+    load();
     const id = setInterval(load, 5 * 60 * 1000);
     return () => {
       alive = false;
-      clearTimeout(timer);
       clearInterval(id);
     };
   }, []);
 
   const sig = items.map((i) => i._id).join(",");
-  if (!items.length || hiddenSig === sig) return null;
 
-  const chars = items.reduce((s, i) => s + i.text.length, 0);
-  const duration = Math.max(15, Math.round(chars * 0.35)); // seconds, longer text = slower loop
+  useLayoutEffect(() => {
+    if (measureRef.current) setSetWidth(measureRef.current.offsetWidth);
+  }, [sig]);
 
-  const content = items.map((i) => (
-    <span key={i._id} className="mx-10 inline-block">
-      {i.link ? <Link href={i.link} className="hover:underline">{i.text}</Link> : i.text}
-    </span>
-  ));
+  if (!items.length || closed) return null;
 
-  const duplicateContent = items.map((i) => (
-    <span key={i._id} className="mx-10 inline-block">
-      {i.link ? (
-        <Link href={i.link} tabIndex={-1} className="hover:underline">
-          {i.text}
-        </Link>
-      ) : (
-        i.text
-      )}
-    </span>
-  ));
+  const group = (key, { dup = false, extra = false } = {}) => (
+    <div key={key} className={`flex shrink-0 items-center${extra ? " ticker-repeat" : ""}`}>
+      {items.map((i) => (
+        <span key={i._id} className="flex items-center">
+          <span className="mx-6">
+            {i.link ? (
+              <Link href={i.link} tabIndex={dup ? -1 : undefined} className="hover:underline">
+                {i.text}
+              </Link>
+            ) : (
+              i.text
+            )}
+          </span>
+          <span className="opacity-50">•</span>
+        </span>
+      ))}
+    </div>
+  );
+
+  const vw = typeof window !== "undefined" ? window.innerWidth : 1280;
+  const copies = setWidth > 0 ? Math.ceil(vw / setWidth) + 1 : 1;
+  const duration = Math.max(10, Math.round((setWidth * copies) / SPEED));
 
   return (
     <div className="ticker-bar relative flex h-9 items-center overflow-hidden bg-black text-sm text-white">
+      <div ref={measureRef} className="invisible absolute left-0 top-0 flex whitespace-nowrap" aria-hidden="true">
+        {group("measure", { dup: true })}
+      </div>
       <div className="ticker-track flex w-max whitespace-nowrap" style={{ animationDuration: `${duration}s` }}>
-        <div className="flex min-w-[100vw] shrink-0 justify-around">{content}</div>
-        <div className="ticker-duplicate flex min-w-[100vw] shrink-0 justify-around" aria-hidden="true" inert="">
-          {duplicateContent}
+        <div className="flex shrink-0">
+          {Array.from({ length: copies }, (_, n) => group(`a${n}`, { extra: n > 0 }))}
+        </div>
+        <div className="ticker-dup flex shrink-0" aria-hidden="true">
+          {Array.from({ length: copies }, (_, n) => group(`b${n}`, { dup: true, extra: n > 0 }))}
         </div>
       </div>
       <button
         aria-label="Dismiss"
-        onClick={() => { sessionStorage.setItem("tickerHidden", sig); setHiddenSig(sig); }}
+        onClick={() => setClosed(true)}
         className="absolute right-0 top-0 flex h-9 w-9 items-center justify-center bg-black text-white/80 hover:text-white"
       >
         ✕
@@ -71,4 +77,3 @@ export default function TickerBar() {
     </div>
   );
 }
-
