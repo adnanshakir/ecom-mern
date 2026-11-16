@@ -221,7 +221,8 @@ export const confirmCsvImport = async (req, res, next) => {
 
   try {
     for (const prepared of preparedItems) {
-      const { item, preparedProductImages, preparedVariantImagesList, preparedCategoryImage } = prepared;
+      const { item, preparedProductImages, preparedVariantImagesList, preparedCategoryImage } =
+        prepared;
 
       if (!item.valid) {
         errors.push(`Skipped "${item.product?.name || item.handle}": marked invalid`);
@@ -413,7 +414,10 @@ export const rollbackCsvImport = async (req, res, next) => {
     try {
       await ProductVariant.deleteMany({ _id: { $in: importJob.createdVariantIds } }, { session });
       await Product.deleteMany({ _id: { $in: importJob.createdProductIds } }, { session });
-      await InventoryMovement.deleteMany({ product: { $in: importJob.createdProductIds } }, { session });
+      await InventoryMovement.deleteMany(
+        { product: { $in: importJob.createdProductIds } },
+        { session }
+      );
 
       // Rollback created categories in reverse order (leaf categories first, then parents)
       const categoryIdsToRollback = [...(importJob.createdCategoryIds || [])].reverse();
@@ -423,7 +427,11 @@ export const rollbackCsvImport = async (req, res, next) => {
         if (!inUseByOther && !hasSubcategories) {
           await Category.deleteOne({ _id: catId }, { session });
         } else if (!inUseByOther) {
-          await Category.updateOne({ _id: catId }, { $set: { image: { url: "", fileId: "" } } }, { session });
+          await Category.updateOne(
+            { _id: catId },
+            { $set: { image: { url: "", fileId: "" } } },
+            { session }
+          );
         }
       }
 

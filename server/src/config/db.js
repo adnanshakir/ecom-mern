@@ -1,7 +1,7 @@
-import mongoose from 'mongoose';
-import { config } from './config.js';
+import mongoose from "mongoose";
+import { config } from "./config.js";
 
-const LEGACY_ORDER_INDEXES = ['razorpayOrderId_1', 'razorpayPaymentId_1', 'status_1'];
+const LEGACY_ORDER_INDEXES = ["razorpayOrderId_1", "razorpayPaymentId_1", "status_1"];
 
 /**
  * Drop stale top-level Order indexes left behind by an earlier schema version
@@ -11,17 +11,17 @@ export const cleanupLegacyOrderIndexes = async () => {
   const db = mongoose.connection.db;
   if (!db) return;
 
-  const collections = await db.listCollections({ name: 'orders' }).toArray();
+  const collections = await db.listCollections({ name: "orders" }).toArray();
   if (!collections.length) return;
 
-  const ordersCollection = db.collection('orders');
+  const ordersCollection = db.collection("orders");
   const indexes = await ordersCollection.indexes();
   for (const indexName of LEGACY_ORDER_INDEXES) {
     if (indexes.some((idx) => idx.name === indexName)) {
       try {
         await ordersCollection.dropIndex(indexName);
       } catch (error) {
-        if (error?.code === 27 || error?.codeName === 'IndexNotFound') {
+        if (error?.code === 27 || error?.codeName === "IndexNotFound") {
           continue;
         }
         throw error;
@@ -37,7 +37,7 @@ export const connectDB = async () => {
 
     console.log("MongoDB Connected");
   } catch (error) {
-    console.error('MongoDB Connection Failed');
+    console.error("MongoDB Connection Failed");
     console.error(error.message);
 
     process.exit(1);

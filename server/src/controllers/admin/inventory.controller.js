@@ -111,8 +111,8 @@ export const reconcileStock = async (req, res, next) => {
       data: {
         variantId,
         sku: variant.sku,
-        currentStock,          // what variant.stock field actually holds
-        computedStock,         // what the movement ledger sums to
+        currentStock, // what variant.stock field actually holds
+        computedStock, // what the movement ledger sums to
         hasDrift: currentStock !== computedStock,
       },
     });

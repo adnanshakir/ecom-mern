@@ -7,13 +7,21 @@ import DeviceToken from "../models/DeviceToken.js";
 
 const CLAIM_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
 
-if (!getApps().length && process.env.FIREBASE_SERVICE_ACCOUNT) {
-  try {
-    initializeApp({ credential: cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)) });
-  } catch (e) {
-    console.error("Firebase init error:", e.message);
+if (!getApps().length) {
+  const b64 = process.env.FIREBASE_SERVICE_ACCOUNT_B64;
+  if (!b64) {
+    console.error("[firebase] NOT configured: FIREBASE_SERVICE_ACCOUNT_B64 is missing");
+  } else {
+    try {
+      const json = Buffer.from(b64.trim(), "base64").toString("utf8");
+      initializeApp({ credential: cert(JSON.parse(json)) });
+      console.log("[firebase] initialized");
+    } catch (e) {
+      console.error("[firebase] init failed:", e.message);
+    }
   }
 }
+
 const pushEnabled = () => getApps().length > 0;
 const pushStubEnabled = () =>
   process.env.NODE_ENV !== "production" &&
@@ -21,7 +29,8 @@ const pushStubEnabled = () =>
     process.env.ENABLE_PUSH_STUB === "true" ||
     process.env.PUSH_STUB === "true");
 
-const fill = (tpl, vars = {}) => (tpl || "").replace(/\{\{(\w+)\}\}/g, (_, k) => (vars[k] !== undefined ? String(vars[k]) : ""));
+const fill = (tpl, vars = {}) =>
+  (tpl || "").replace(/\{\{(\w+)\}\}/g, (_, k) => (vars[k] !== undefined ? String(vars[k]) : ""));
 
 const buildMessage = ({ title, body, link, imageUrl }) => {
   const img = imageUrl && /^https:\/\//.test(imageUrl) ? imageUrl : undefined;
@@ -30,7 +39,11 @@ const buildMessage = ({ title, body, link, imageUrl }) => {
     data: { link: link || "", imageUrl: img || "" }, // all values must be strings
     android: {
       priority: "high",
-      notification: { channelId: "fibio_default", sound: "default", ...(img ? { imageUrl: img } : {}) },
+      notification: {
+        channelId: "fibio_default",
+        sound: "default",
+        ...(img ? { imageUrl: img } : {}),
+      },
     },
     apns: {
       payload: { aps: { sound: "default", mutableContent: true } },
@@ -59,8 +72,7 @@ function isInvalidOrUnregisteredTokenError(error) {
   const code = error.code || "";
   return (
     code === "messaging/registration-token-not-registered" ||
-    code === "messaging/invalid-registration-token" ||
-    code === "messaging/invalid-argument"
+    code === "messaging/invalid-registration-token"
   );
 }
 
@@ -116,7 +128,10 @@ async function sendToCustomer(customerId, n) {
   // Retry only recipients classified as retryable while leaving successful recipients untouched
   if (retryTokens.length > 0) {
     try {
-      const retryRes = await getMessaging().sendEachForMulticast({ tokens: retryTokens, ...message });
+      const retryRes = await getMessaging().sendEachForMulticast({
+        tokens: retryTokens,
+        ...message,
+      });
       const retryBadTokens = [];
       retryRes.responses.forEach((r, i) => {
         if (r.success) return;
@@ -136,7 +151,9 @@ async function sendToCustomer(customerId, n) {
   }
 
   if (failures.length > 0) {
-    const errorMessages = failures.map((f) => f.error?.message || f.error?.code || "Unknown error").join("; ");
+    const errorMessages = failures
+      .map((f) => f.error?.message || f.error?.code || "Unknown error")
+      .join("; ");
     const err = new Error(`Customer push notification partially or fully failed: ${errorMessages}`);
     err.failures = failures;
     throw err;
@@ -179,7 +196,10 @@ function startNotificationScheduler() {
       const now = new Date();
 
       // 1. Due scheduled notifications
-      const due = await Notification.find({ status: "scheduled", scheduledAt: { $lte: now } }).limit(20);
+      const due = await Notification.find({
+        status: "scheduled",
+        scheduledAt: { $lte: now },
+      }).limit(20);
       for (const n of due) {
         const claimExpiresAt = new Date(Date.now() + CLAIM_TIMEOUT_MS);
         // atomic claim so two server instances never double-send
@@ -224,7 +244,8 @@ function startNotificationScheduler() {
           claimedExpired.claimExpiresAt = undefined;
           claimedExpired.result = {
             ok: false,
-            error: "Claim expired with unknown provider delivery outcome; delivery aborted to prevent duplicates",
+            error:
+              "Claim expired with unknown provider delivery outcome; delivery aborted to prevent duplicates",
           };
           await claimedExpired.save();
         } else {
@@ -237,5 +258,19 @@ function startNotificationScheduler() {
   });
 }
 
-export { fill, sendToTopic, sendToCustomer, sendTemplateToCustomer, dispatch, startNotificationScheduler };
-export default { fill, sendToTopic, sendToCustomer, sendTemplateToCustomer, dispatch, startNotificationScheduler };
+export {
+  fill,
+  sendToTopic,
+  sendToCustomer,
+  sendTemplateToCustomer,
+  dispatch,
+  startNotificationScheduler,
+};
+export default {
+  fill,
+  sendToTopic,
+  sendToCustomer,
+  sendTemplateToCustomer,
+  dispatch,
+  startNotificationScheduler,
+};

@@ -43,4 +43,3 @@ export const unregisterDevice = async (req, res) => {
 };
 
 export default { registerDevice, unregisterDevice };
-
