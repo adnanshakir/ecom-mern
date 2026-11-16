@@ -14,7 +14,11 @@ import {
 } from "@/services/adminNotificationService";
 import { getProducts } from "@/services/admin/products";
 import { getCategories } from "@/services/admin/categories";
-import { extractVars, fillTpl, hasPlaceholders } from "@/lib/notificationTpl";
+import {
+  extractVars,
+  fillTpl,
+  hasPlaceholders,
+} from "@/lib/notificationTpl";
 import { useConfirm } from "@/hooks/useConfirm";
 
 export function useNotifications() {
@@ -23,15 +27,20 @@ export function useNotifications() {
   // Confirm dialog hook
   const { confirmState, requestConfirm, handleConfirm, handleCancel } = useConfirm();
 
-  // ---------------- SEND FORM STATE ----------------
+  // ---------------- TEMPLATES LIST (Shared) ----------------
   const [templates, setTemplates] = useState([]);
   const [templatesLoading, setTemplatesLoading] = useState(false);
   const [templatesError, setTemplatesError] = useState("");
 
-  const [selectedTemplateId, setSelectedTemplateId] = useState("custom");
-  const [templateVars, setTemplateVars] = useState({});
-  const [title, setTitle] = useState("");
-  const [body, setBody] = useState("");
+  // ---------------- WIZARD STATE (Send Tab) ----------------
+  const [step, setStep] = useState(1); // 1 | 2 | 3
+  const [template, setTemplate] = useState(null); // null = Write your own
+  const [vars, setVars] = useState({}); // { [varName]: value }
+  const [titleTpl, setTitleTpl] = useState("");
+  const [bodyTpl, setBodyTpl] = useState("");
+  const [editText, setEditText] = useState(false);
+  const [showMore, setShowMore] = useState(false);
+
   const [imageUrl, setImageUrl] = useState("");
 
   // Open Screen & Destination Link State
@@ -50,6 +59,7 @@ export function useNotifications() {
   const [categoryLoading, setCategoryLoading] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState(null); // { _id, name, slug }
 
+  // Step 3 Channel & Timing
   const [channel, setChannel] = useState("both"); // "both" | "app" | "web"
   const [tickerDurationHours, setTickerDurationHours] = useState(24);
   const [sendMode, setSendMode] = useState("now"); // "now" | "schedule"
@@ -60,6 +70,7 @@ export function useNotifications() {
   // ---------------- TEMPLATES TAB STATE ----------------
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState(null);
+  const [activeTemplateField, setActiveTemplateField] = useState("titleTpl");
   const [templateFormData, setTemplateFormData] = useState({
     name: "",
     type: "custom",
@@ -96,7 +107,9 @@ export function useNotifications() {
   // ---------------- FETCH NOTIFICATIONS ----------------
   const loadNotifications = useCallback(async (overrides = {}) => {
     const seq = ++historyReqSeqRef.current;
-    setNotificationsLoading(true);
+    if (!overrides.silent) {
+      setNotificationsLoading(true);
+    }
     setNotificationsError("");
     try {
       const page = overrides.page !== undefined ? overrides.page : historyPage;
@@ -133,6 +146,7 @@ export function useNotifications() {
     return () => clearTimeout(timer);
   }, [loadTemplates]);
 
+  // Load notifications when entering history tab or when filter/page changes
   useEffect(() => {
     if (activeTab !== "history") return;
 
@@ -140,22 +154,26 @@ export function useNotifications() {
       loadNotifications();
     }, 0);
 
-    const hasActiveRows = notifications.some(
-      (n) => n.status === "scheduled" || n.status === "sending"
+    return () => clearTimeout(timer);
+  }, [activeTab, loadNotifications]);
+
+  // Check if any notifications are currently scheduled, sending, or live-ticker
+  const hasActiveRows = useMemo(() => {
+    return notifications.some(
+      (n) => n.status === "scheduled" || n.status === "sending" || Boolean(n.isTickerLive)
     );
+  }, [notifications]);
 
-    let intervalId = null;
-    if (hasActiveRows) {
-      intervalId = setInterval(() => {
-        loadNotifications();
-      }, 5000);
-    }
+  // 5s silent polling for scheduled/sending rows while on history tab
+  useEffect(() => {
+    if (activeTab !== "history" || !hasActiveRows) return;
 
-    return () => {
-      clearTimeout(timer);
-      if (intervalId) clearInterval(intervalId);
-    };
-  }, [activeTab, loadNotifications, notifications]);
+    const intervalId = setInterval(() => {
+      loadNotifications({ silent: true });
+    }, 5000);
+
+    return () => clearInterval(intervalId);
+  }, [activeTab, hasActiveRows, loadNotifications]);
 
   // Product search effect when openScreen === "product"
   useEffect(() => {
@@ -183,15 +201,21 @@ export function useNotifications() {
     if (openScreen !== "category") return;
     let alive = true;
     if (allCategories.length === 0) {
-      setCategoryLoading(true);
-      getCategories()
-        .then((res) => {
-          if (alive) setAllCategories(res.data.data || []);
-        })
-        .catch(() => {})
-        .finally(() => {
-          if (alive) setCategoryLoading(false);
-        });
+      const timer = setTimeout(() => {
+        setCategoryLoading(true);
+        getCategories()
+          .then((res) => {
+            if (alive) setAllCategories(res.data.data || []);
+          })
+          .catch(() => {})
+          .finally(() => {
+            if (alive) setCategoryLoading(false);
+          });
+      }, 0);
+      return () => {
+        alive = false;
+        clearTimeout(timer);
+      };
     }
   }, [openScreen, allCategories.length]);
 
@@ -219,53 +243,59 @@ export function useNotifications() {
     }
   }, [openScreen, selectedProduct, selectedCategory, customLink]);
 
-  // Non-auto templates for the Send tab
+  // Non-auto templates for the Send wizard
   const manualTemplates = useMemo(() => {
     return templates.filter((t) => !t.auto);
   }, [templates]);
 
-  // Selected template object
-  const currentTemplate = useMemo(() => {
-    return manualTemplates.find((t) => t._id === selectedTemplateId) || null;
-  }, [manualTemplates, selectedTemplateId]);
-
-  // Extracted variables from the current template
-  const currentTemplateVarsList = useMemo(() => {
-    if (!currentTemplate) return [];
-    return extractVars(currentTemplate.titleTpl, currentTemplate.bodyTpl);
-  }, [currentTemplate]);
-
-  // Template select handler in Send tab
-  const handleSelectTemplate = (id) => {
-    setSelectedTemplateId(id);
+  // Pick template in Step 1
+  const pickTemplate = (t) => {
+    setTemplate(t);
+    setVars({});
+    setTitleTpl(t ? t.titleTpl : "");
+    setBodyTpl(t ? t.bodyTpl || "" : "");
+    setChannel(t ? t.channel || "both" : "both");
+    setEditText(!t);
+    setStep(2);
     setSendError("");
-    if (id === "custom") {
-      setTemplateVars({});
-      return;
-    }
-    const tpl = manualTemplates.find((t) => t._id === id);
-    if (!tpl) return;
-
-    const vars = extractVars(tpl.titleTpl, tpl.bodyTpl);
-    const initialVars = {};
-    vars.forEach((v) => {
-      initialVars[v] = "";
-    });
-    setTemplateVars(initialVars);
-    setTitle(tpl.titleTpl);
-    setBody(tpl.bodyTpl || "");
-    setChannel(tpl.channel || "both");
   };
 
-  // Variable input change handler in Send tab
+  // Switch to editing text in Step 2
+  const startEditText = () => {
+    const currentTitle = fillTpl(titleTpl, vars, "strict");
+    const currentBody = fillTpl(bodyTpl, vars, "strict");
+    setTitleTpl(currentTitle);
+    setBodyTpl(currentBody);
+    setVars({});
+    setEditText(true);
+  };
+
   const handleVarChange = (varName, value) => {
-    const updatedVars = { ...templateVars, [varName]: value };
-    setTemplateVars(updatedVars);
-    if (currentTemplate) {
-      setTitle(fillTpl(currentTemplate.titleTpl, updatedVars));
-      setBody(fillTpl(currentTemplate.bodyTpl || "", updatedVars));
-    }
+    setVars((prev) => ({ ...prev, [varName]: value }));
   };
+
+  // Variable names from current title/body templates
+  const varNames = useMemo(() => {
+    return extractVars(titleTpl, bodyTpl);
+  }, [titleTpl, bodyTpl]);
+
+  // Final strings for sending & validation
+  const finalTitle = useMemo(() => {
+    return fillTpl(titleTpl, vars, "strict");
+  }, [titleTpl, vars]);
+
+  const finalBody = useMemo(() => {
+    return fillTpl(bodyTpl, vars, "strict");
+  }, [bodyTpl, vars]);
+
+  // Preview strings (unfilled variables shown as [Label])
+  const previewTitle = useMemo(() => {
+    return fillTpl(titleTpl, vars, "label");
+  }, [titleTpl, vars]);
+
+  const previewBody = useMemo(() => {
+    return fillTpl(bodyTpl, vars, "label");
+  }, [bodyTpl, vars]);
 
   // Min datetime-local string (now + 1 min), initialized via effect
   const [minScheduledAt, setMinScheduledAt] = useState("");
@@ -278,10 +308,18 @@ export function useNotifications() {
   }, []);
 
   // Validation
-  const placeholdersRemaining = hasPlaceholders(title, body);
-  const isTitleEmpty = !title.trim();
-  const isTitleTooLong = title.length > 65;
-  const isBodyTooLong = body.length > 240;
+  const varsFilled = useMemo(() => {
+    return varNames.every((k) => {
+      if (!vars || !Object.prototype.hasOwnProperty.call(vars, k)) return false;
+      const v = typeof vars[k] === "string" ? vars[k] : vars[k] != null ? String(vars[k]) : "";
+      return v.trim().length > 0;
+    });
+  }, [varNames, vars]);
+
+  const placeholdersRemaining = hasPlaceholders(finalTitle, finalBody);
+  const isTitleEmpty = !finalTitle.trim();
+  const isTitleTooLong = finalTitle.length > 65;
+  const isBodyTooLong = finalBody.length > 240;
   const isImageUrlInvalid = Boolean(imageUrl.trim() && !/^https:\/\//i.test(imageUrl.trim()));
   const isScheduleInvalid =
     sendMode === "schedule" && (!scheduledAt || (minScheduledAt ? scheduledAt < minScheduledAt : false));
@@ -289,14 +327,16 @@ export function useNotifications() {
     (openScreen === "product" && !selectedProduct?.slug) ||
     (openScreen === "category" && !selectedCategory?.slug);
 
-  const canSubmitSend =
+  const canNext2 =
+    varsFilled &&
     !isTitleEmpty &&
     !isTitleTooLong &&
     !isBodyTooLong &&
     !placeholdersRemaining &&
     !isImageUrlInvalid &&
-    !isScheduleInvalid &&
     !isScreenSelectionIncomplete;
+
+  const canSubmitSend = canNext2 && !isScheduleInvalid;
 
   // ---------------- SEND SUBMISSION ----------------
   const submitSend = async () => {
@@ -305,9 +345,9 @@ export function useNotifications() {
     setSendError("");
     try {
       const payload = {
-        title: title.trim(),
-        body: body.trim(),
-        type: currentTemplate?.type || "custom",
+        title: finalTitle.trim(),
+        body: finalBody.trim(),
+        type: template?.type || "custom",
         channel,
         link: computedLink,
         imageUrl: imageUrl.trim(),
@@ -319,11 +359,14 @@ export function useNotifications() {
       await createNotification(payload);
       toast.success(sendMode === "now" ? "Notification sent successfully!" : "Notification scheduled successfully!");
 
-      // Reset form
-      setSelectedTemplateId("custom");
-      setTemplateVars({});
-      setTitle("");
-      setBody("");
+      // Reset wizard to Step 1
+      setStep(1);
+      setTemplate(null);
+      setVars({});
+      setTitleTpl("");
+      setBodyTpl("");
+      setEditText(false);
+      setShowMore(false);
       setImageUrl("");
       setOpenScreen("home");
       setSelectedProduct(null);
@@ -349,6 +392,7 @@ export function useNotifications() {
   // ---------------- TEMPLATE CRUD ----------------
   const openCreateTemplateDialog = () => {
     setEditingTemplate(null);
+    setActiveTemplateField("titleTpl");
     setTemplateFormData({
       name: "",
       type: "custom",
@@ -362,6 +406,7 @@ export function useNotifications() {
 
   const openEditTemplateDialog = (tpl) => {
     setEditingTemplate(tpl);
+    setActiveTemplateField("titleTpl");
     setTemplateFormData({
       name: tpl.name,
       type: tpl.type || "custom",
@@ -377,6 +422,19 @@ export function useNotifications() {
     setTemplateDialogOpen(false);
     setEditingTemplate(null);
     setTemplateFormError("");
+  };
+
+  const insertVariableInTemplateForm = (varName) => {
+    const placeholder = `{{${varName}}}`;
+    setTemplateFormData((prev) => {
+      const field = activeTemplateField === "bodyTpl" ? "bodyTpl" : "titleTpl";
+      const currentVal = prev[field] || "";
+      const separator = currentVal && !currentVal.endsWith(" ") ? " " : "";
+      return {
+        ...prev,
+        [field]: `${currentVal}${separator}${placeholder}`,
+      };
+    });
   };
 
   const submitTemplate = async () => {
@@ -461,11 +519,14 @@ export function useNotifications() {
   };
 
   const reuseNotification = (n) => {
-    setSelectedTemplateId("custom");
-    setTemplateVars({});
-    setTitle(n.title || "");
-    setBody(n.body || "");
+    setStep(2);
+    setTemplate(null);
+    setVars({});
+    setTitleTpl(n.title || "");
+    setBodyTpl(n.body || "");
+    setEditText(true);
     setImageUrl(n.imageUrl || "");
+    setShowMore(Boolean(n.imageUrl || (n.link && n.link !== "/")));
     setChannel(n.channel || "both");
     setTickerDurationHours(n.tickerDurationHours || 24);
     setSendMode("now");
@@ -516,18 +577,29 @@ export function useNotifications() {
     handleConfirm,
     handleCancel,
 
-    // Send Tab
+    // Wizard / Send Tab
+    step,
+    setStep,
+    template,
     manualTemplates,
-    selectedTemplateId,
-    handleSelectTemplate,
-    currentTemplate,
-    currentTemplateVarsList,
-    templateVars,
+    pickTemplate,
+    vars,
+    setVars,
     handleVarChange,
-    title,
-    setTitle,
-    body,
-    setBody,
+    titleTpl,
+    setTitleTpl,
+    bodyTpl,
+    setBodyTpl,
+    finalTitle,
+    finalBody,
+    previewTitle,
+    previewBody,
+    varNames,
+    editText,
+    setEditText,
+    startEditText,
+    showMore,
+    setShowMore,
     imageUrl,
     setImageUrl,
     openScreen,
@@ -563,6 +635,7 @@ export function useNotifications() {
     isImageUrlInvalid,
     isScheduleInvalid,
     isScreenSelectionIncomplete,
+    canNext2,
     canSubmitSend,
     sendLoading,
     sendError,
@@ -575,8 +648,11 @@ export function useNotifications() {
     templateDialogOpen,
     setTemplateDialogOpen,
     editingTemplate,
+    activeTemplateField,
+    setActiveTemplateField,
     templateFormData,
     setTemplateFormData,
+    insertVariableInTemplateForm,
     templateSubmitting,
     templateFormError,
     openCreateTemplateDialog,

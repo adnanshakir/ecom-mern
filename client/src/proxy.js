@@ -29,9 +29,6 @@ export function proxy(request) {
   return NextResponse.next();
 }
 
-// Alias for backward compatibility if needed
-export const middleware = proxy;
-
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  matcher: ["/((?!api|_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt).*)"],
 };
