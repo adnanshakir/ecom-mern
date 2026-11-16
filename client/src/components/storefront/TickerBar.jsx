@@ -9,7 +9,9 @@ export default function TickerBar() {
   const [items, setItems] = useState([]);
   const [closed, setClosed] = useState(false); // memory only: bar returns on reload
   const [setWidth, setSetWidth] = useState(0);
+  const [vw, setVw] = useState(typeof window !== "undefined" ? window.innerWidth : 1280);
   const measureRef = useRef(null);
+  const containerRef = useRef(null);
 
   useEffect(() => {
     let alive = true;
@@ -29,10 +31,37 @@ export default function TickerBar() {
     if (measureRef.current) setSetWidth(measureRef.current.offsetWidth);
   }, [sig]);
 
+  useEffect(() => {
+    const el = containerRef.current;
+    const updateWidth = () => {
+      setVw(el?.offsetWidth || (typeof window !== "undefined" ? window.innerWidth : 1280));
+    };
+
+    updateWidth();
+
+    if (typeof ResizeObserver !== "undefined" && el) {
+      const ro = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          const width = entry.contentRect?.width || el.offsetWidth;
+          if (width) setVw(width);
+        }
+      });
+      ro.observe(el);
+      return () => ro.disconnect();
+    }
+
+    window.addEventListener("resize", updateWidth);
+    return () => window.removeEventListener("resize", updateWidth);
+  }, [sig, closed]);
+
   if (!items.length || closed) return null;
 
   const group = (key, { dup = false, extra = false } = {}) => (
-    <div key={key} className={`flex shrink-0 items-center${extra ? " ticker-repeat" : ""}`}>
+    <div
+      key={key}
+      aria-hidden={dup ? "true" : undefined}
+      className={`flex shrink-0 items-center motion-reduce:shrink motion-reduce:min-w-0 motion-reduce:flex-wrap motion-reduce:whitespace-normal motion-reduce:justify-center${extra ? " ticker-repeat" : ""}`}
+    >
       {items.map((i) => (
         <span key={i._id} className="flex items-center">
           <span className="mx-6">
@@ -50,18 +79,20 @@ export default function TickerBar() {
     </div>
   );
 
-  const vw = typeof window !== "undefined" ? window.innerWidth : 1280;
   const copies = setWidth > 0 ? Math.ceil(vw / setWidth) + 1 : 1;
   const duration = Math.max(10, Math.round((setWidth * copies) / SPEED));
 
   return (
-    <div className="ticker-bar relative flex h-9 items-center overflow-hidden bg-black text-sm text-white">
+    <div ref={containerRef} className="ticker-bar relative flex h-9 items-center overflow-hidden bg-black text-sm text-white">
       <div ref={measureRef} className="invisible absolute left-0 top-0 flex whitespace-nowrap" aria-hidden="true">
         {group("measure", { dup: true })}
       </div>
-      <div className="ticker-track flex w-max whitespace-nowrap" style={{ animationDuration: `${duration}s` }}>
-        <div className="flex shrink-0">
-          {Array.from({ length: copies }, (_, n) => group(`a${n}`, { extra: n > 0 }))}
+      <div
+        className="ticker-track flex w-max whitespace-nowrap motion-reduce:w-full motion-reduce:max-w-[calc(100%-2.25rem)] motion-reduce:flex-wrap motion-reduce:whitespace-normal"
+        style={{ animationDuration: `${duration}s` }}
+      >
+        <div className="flex shrink-0 motion-reduce:shrink motion-reduce:min-w-0 motion-reduce:w-full motion-reduce:flex-wrap motion-reduce:whitespace-normal motion-reduce:justify-center">
+          {Array.from({ length: copies }, (_, n) => group(`a${n}`, { dup: n > 0, extra: n > 0 }))}
         </div>
         <div className="ticker-dup flex shrink-0" aria-hidden="true">
           {Array.from({ length: copies }, (_, n) => group(`b${n}`, { dup: true, extra: n > 0 }))}

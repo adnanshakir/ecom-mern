@@ -102,8 +102,12 @@ export function SendStep3Delivery({
           </Button>
         </div>
         {sendMode === "schedule" && (
-          <div className="mt-2 space-y-1">
+          <div className="mt-2 space-y-1.5">
+            <Label htmlFor="schedule-time" className="text-xs font-medium">
+              Schedule time
+            </Label>
             <Input
+              id="schedule-time"
               type="datetime-local"
               min={minScheduledAt}
               value={scheduledAt}

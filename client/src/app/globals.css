@@ -193,7 +193,7 @@
   }
   .ticker-dup,
   .ticker-repeat,
-  .ticker-bar > [aria-hidden="true"] {
+  .ticker-bar > [aria-hidden="true"]:not(.invisible) {
     display: none;
   }
 }

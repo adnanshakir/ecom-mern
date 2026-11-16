@@ -2249,7 +2249,7 @@
                 "exec": [
                   "const json = pm.response.json();",
                   "if (json.notification && json.notification._id) {",
-                  "  pm.environment.set(\"notificationId\", json.notification._id);",
+                  "  pm.environment.set(\"sentNotificationId\", json.notification._id);",
                   "}"
                 ],
                 "type": "text/javascript"
@@ -2305,12 +2305,23 @@
           "name": "Schedule Broadcast (Admin)",
           "event": [
             {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const oneHourAhead = new Date(Date.now() + 60 * 60 * 1000).toISOString();",
+                  "pm.environment.set(\"scheduledAt\", oneHourAhead);",
+                  "pm.variables.set(\"scheduledAt\", oneHourAhead);"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
               "listen": "test",
               "script": {
                 "exec": [
                   "const json = pm.response.json();",
                   "if (json.notification && json.notification._id) {",
-                  "  pm.environment.set(\"notificationId\", json.notification._id);",
+                  "  pm.environment.set(\"scheduledNotificationId\", json.notification._id);",
                   "}"
                 ],
                 "type": "text/javascript"
@@ -2327,7 +2338,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"title\": \"Weekend Clearance Starts Soon! ⏳\",\n  \"body\": \"Up to 70% off across all categories.\",\n  \"type\": \"sale\",\n  \"channel\": \"both\",\n  \"link\": \"/sale\",\n  \"imageUrl\": \"https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da\",\n  \"tickerDurationHours\": 72,\n  \"sendNow\": false,\n  \"scheduledAt\": \"2026-11-20T10:00:00.000Z\"\n}",
+              "raw": "{\n  \"title\": \"Weekend Clearance Starts Soon! ⏳\",\n  \"body\": \"Up to 70% off across all categories.\",\n  \"type\": \"sale\",\n  \"channel\": \"both\",\n  \"link\": \"/sale\",\n  \"imageUrl\": \"https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da\",\n  \"tickerDurationHours\": 72,\n  \"sendNow\": false,\n  \"scheduledAt\": \"{{scheduledAt}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -2368,7 +2379,7 @@
             "method": "PATCH",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/admin/notifications/{{notificationId}}/cancel",
+              "raw": "{{baseUrl}}/api/admin/notifications/{{scheduledNotificationId}}/cancel",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -2376,7 +2387,7 @@
                 "api",
                 "admin",
                 "notifications",
-                "{{notificationId}}",
+                "{{scheduledNotificationId}}",
                 "cancel"
               ]
             },
@@ -2403,7 +2414,7 @@
             "method": "PATCH",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/admin/notifications/{{notificationId}}/end-ticker",
+              "raw": "{{baseUrl}}/api/admin/notifications/{{sentNotificationId}}/end-ticker",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -2411,7 +2422,7 @@
                 "api",
                 "admin",
                 "notifications",
-                "{{notificationId}}",
+                "{{sentNotificationId}}",
                 "end-ticker"
               ]
             },

@@ -249,7 +249,7 @@ export function HistoryTab({ notif }) {
         </div>
 
         {/* Pagination */}
-        {historyPagination.pages > 1 && (
+        {(historyPagination.pages > 1 || historyPage > 1) && (
           <div
             className={cn(
               "mt-4 flex items-center justify-between text-xs text-muted-foreground",

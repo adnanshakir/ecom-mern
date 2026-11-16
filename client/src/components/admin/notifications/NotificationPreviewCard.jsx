@@ -21,6 +21,7 @@ export function NotificationPreviewCard({
             {imageUrl && /^https:\/\//i.test(imageUrl.trim()) && (
               <div className="relative aspect-[2/1] w-full overflow-hidden rounded-lg bg-muted">
                 <img
+                  key={imageUrl.trim()}
                   src={imageUrl.trim()}
                   alt="Notification banner"
                   className="h-full w-full object-cover"

@@ -251,6 +251,7 @@ export function SendStep2Message({
                         type="button"
                         variant="ghost"
                         size="sm"
+                        aria-label={`Remove ${selectedProduct.name}`}
                         onClick={() => setSelectedProduct(null)}
                         className="h-5 px-1 text-[10px]"
                       >
@@ -306,6 +307,7 @@ export function SendStep2Message({
                         type="button"
                         variant="ghost"
                         size="sm"
+                        aria-label={`Remove ${selectedCategory.name}`}
                         onClick={() => setSelectedCategory(null)}
                         className="h-5 px-1 text-[10px]"
                       >

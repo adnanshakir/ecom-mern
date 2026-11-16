@@ -18,42 +18,44 @@ export function SendStep1Template({
         <p className="text-xs text-muted-foreground">Select a template or start from scratch.</p>
       </div>
 
-      {templatesLoading ? (
-        <div className="flex h-40 items-center justify-center text-sm text-muted-foreground">
-          <Loader2 className="mr-2 size-5 animate-spin text-primary" />
-          Loading templates...
-        </div>
-      ) : templatesError ? (
-        <ApiErrorSummary message={templatesError} />
-      ) : (
-        <div className="grid gap-3 sm:grid-cols-2">
-          {/* Blank card */}
-          <div
-            onClick={() => pickTemplate(null)}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") pickTemplate(null);
-            }}
-            className="group flex flex-col justify-between rounded-lg border-2 border-dashed p-4 text-left transition-all hover:border-primary/60 hover:bg-accent/40 cursor-pointer"
-          >
-            <div className="space-y-1.5">
-              <span className="font-semibold text-sm group-hover:text-primary transition-colors">
-                ✏️ Write your own
-              </span>
-              <p className="text-xs text-muted-foreground">
-                Compose a custom notification without a template.
-              </p>
-            </div>
-            <div className="mt-4 pt-2">
-              <Badge variant="outline" className="text-[10px]">
-                Custom
-              </Badge>
-            </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {/* Blank card */}
+        <div
+          onClick={() => pickTemplate(null)}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") pickTemplate(null);
+          }}
+          className="group flex flex-col justify-between rounded-lg border-2 border-dashed p-4 text-left transition-all hover:border-primary/60 hover:bg-accent/40 cursor-pointer"
+        >
+          <div className="space-y-1.5">
+            <span className="font-semibold text-sm group-hover:text-primary transition-colors">
+              ✏️ Write your own
+            </span>
+            <p className="text-xs text-muted-foreground">
+              Compose a custom notification without a template.
+            </p>
           </div>
+          <div className="mt-4 pt-2">
+            <Badge variant="outline" className="text-[10px]">
+              Custom
+            </Badge>
+          </div>
+        </div>
 
-          {/* Non-auto templates */}
-          {manualTemplates.map((t) => (
+        {/* Fetched template cards */}
+        {templatesLoading ? (
+          <div className="flex h-40 items-center justify-center text-sm text-muted-foreground sm:col-span-1">
+            <Loader2 className="mr-2 size-5 animate-spin text-primary" />
+            Loading templates...
+          </div>
+        ) : templatesError ? (
+          <div className="sm:col-span-1">
+            <ApiErrorSummary message={templatesError} />
+          </div>
+        ) : (
+          manualTemplates.map((t) => (
             <div
               key={t._id}
               onClick={() => pickTemplate(t)}
@@ -83,9 +85,9 @@ export function SendStep1Template({
                 )}
               </div>
             </div>
-          ))}
-        </div>
-      )}
+          ))
+        )}
+      </div>
     </div>
   );
 }

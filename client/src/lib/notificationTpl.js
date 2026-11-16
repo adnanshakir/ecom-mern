@@ -26,7 +26,9 @@ export const extractVars = (...tpls) =>
 //       "label" shows [Label] (live preview), "sample" shows example values (template cards)
 export const fillTpl = (tpl, vars = {}, mode = "strict") =>
   (tpl || "").replace(/\{\{(\w+)\}\}/g, (_, k) => {
-    const v = (vars[k] || "").trim();
+    const hasProp = Boolean(vars && Object.prototype.hasOwnProperty.call(vars, k));
+    const rawVal = hasProp ? vars[k] : undefined;
+    const v = (typeof rawVal === "string" ? rawVal : rawVal != null ? String(rawVal) : "").trim();
     if (v) return v;
     if (mode === "sample") return varSample(k);
     if (mode === "label") return `[${varLabel(k)}]`;

@@ -135,7 +135,7 @@ export function useNotifications() {
         setNotificationsError(err.response?.data?.message || "Failed to load notifications history");
       }
     } finally {
-      if (seq === historyReqSeqRef.current && !overrides.silent) {
+      if (seq === historyReqSeqRef.current) {
         setNotificationsLoading(false);
       }
     }
@@ -157,10 +157,10 @@ export function useNotifications() {
     return () => clearTimeout(timer);
   }, [activeTab, loadNotifications]);
 
-  // Check if any notifications are currently scheduled or sending
+  // Check if any notifications are currently scheduled, sending, or live-ticker
   const hasActiveRows = useMemo(() => {
     return notifications.some(
-      (n) => n.status === "scheduled" || n.status === "sending"
+      (n) => n.status === "scheduled" || n.status === "sending" || Boolean(n.isTickerLive)
     );
   }, [notifications]);
 
@@ -309,7 +309,11 @@ export function useNotifications() {
 
   // Validation
   const varsFilled = useMemo(() => {
-    return varNames.every((k) => (vars[k] || "").trim().length > 0);
+    return varNames.every((k) => {
+      if (!vars || !Object.prototype.hasOwnProperty.call(vars, k)) return false;
+      const v = typeof vars[k] === "string" ? vars[k] : vars[k] != null ? String(vars[k]) : "";
+      return v.trim().length > 0;
+    });
   }, [varNames, vars]);
 
   const placeholdersRemaining = hasPlaceholders(finalTitle, finalBody);

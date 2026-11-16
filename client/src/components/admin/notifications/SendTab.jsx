@@ -72,31 +72,30 @@ export function SendTab({ notif }) {
       <div className="max-w-[720px] w-full space-y-6">
         {/* Step Indicator */}
         <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground pb-2 border-b">
-          <span
+          <button
+            type="button"
             onClick={() => setStep(1)}
-            role="button"
-            tabIndex={0}
             className={cn(
               "cursor-pointer transition-colors",
               step === 1 ? "text-primary font-semibold" : step > 1 ? "text-foreground hover:text-primary" : ""
             )}
           >
             1 Template
-          </span>
+          </button>
           <span className="text-muted-foreground/40">›</span>
-          <span
+          <button
+            type="button"
             onClick={() => {
               if (step > 2) setStep(2);
             }}
-            role="button"
-            tabIndex={0}
+            disabled={step <= 2}
             className={cn(
               step > 2 && "cursor-pointer hover:text-primary",
               step === 2 ? "text-primary font-semibold" : step > 2 ? "text-foreground" : ""
             )}
           >
             2 Message
-          </span>
+          </button>
           <span className="text-muted-foreground/40">›</span>
           <span className={cn(step === 3 ? "text-primary font-semibold" : "")}>
             3 Send

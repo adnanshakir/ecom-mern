@@ -56,7 +56,7 @@ export function TemplateFormDialog({ notif }) {
         if (!open) closeTemplateDialog();
       }}
     >
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {editingTemplate ? "Edit Template" : "New Template"}
