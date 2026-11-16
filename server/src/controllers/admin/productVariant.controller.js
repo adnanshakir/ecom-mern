@@ -13,7 +13,9 @@ export const createVariant = async (req, res, next) => {
   try {
     const { stock, ...variantData } = req.body;
 
-    const variantsBefore = await ProductVariant.find({ product: req.params.productId }).session(session);
+    const variantsBefore = await ProductVariant.find({ product: req.params.productId }).session(
+      session
+    );
     const totalStockBefore = variantsBefore.reduce((sum, v) => sum + (v.stock || 0), 0);
 
     const [variant] = await ProductVariant.create(
@@ -84,8 +86,7 @@ export const updateVariant = async (req, res, next) => {
   try {
     const updates = { ...req.body };
     delete updates.product; // enforced at the validation layer too, but double-guarded here
-    delete updates.stock;   // stock is ledger-only — use POST /inventory/movements instead
-
+    delete updates.stock; // stock is ledger-only — use POST /inventory/movements instead
 
     const variant = await ProductVariant.findByIdAndUpdate(req.params.id, updates, {
       returnDocument: "after",
@@ -107,7 +108,10 @@ export const deleteVariant = async (req, res, next) => {
 
     const variantCount = await ProductVariant.countDocuments({ product: variant.product });
     if (variantCount === 1) {
-      throw new ApiError(400, "Cannot delete the only variant of a product. Delete the product instead.");
+      throw new ApiError(
+        400,
+        "Cannot delete the only variant of a product. Delete the product instead."
+      );
     }
 
     await variant.deleteOne();

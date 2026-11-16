@@ -263,7 +263,11 @@ describe("Checkout Idempotency, Receipt Uniqueness & Capture Guarantees", () => 
         const body = JSON.parse(opts.body);
         return {
           ok: true,
-          json: async () => ({ id: `order_rzp_legacy_${callNum}`, amount: body.amount, currency: "INR" }),
+          json: async () => ({
+            id: `order_rzp_legacy_${callNum}`,
+            amount: body.amount,
+            currency: "INR",
+          }),
         };
       }
       throw new Error(`Unexpected fetch: ${url}`);

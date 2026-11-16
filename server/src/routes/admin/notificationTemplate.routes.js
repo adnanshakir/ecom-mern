@@ -15,4 +15,3 @@ router.patch("/:id", authenticate, updateTemplate);
 router.delete("/:id", authenticate, deleteTemplate);
 
 export default router;
-

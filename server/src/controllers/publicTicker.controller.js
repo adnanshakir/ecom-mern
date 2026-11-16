@@ -26,4 +26,3 @@ export const activeTicker = async (req, res) => {
 };
 
 export default { activeTicker };
-

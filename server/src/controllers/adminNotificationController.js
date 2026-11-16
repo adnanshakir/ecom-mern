@@ -16,7 +16,8 @@ export const createNotification = async (req, res) => {
       tickerDurationHours = 24,
     } = req.body;
     if (!title || !title.trim()) return res.status(400).json({ message: "Title is required" });
-    if (/\{\{/.test(`${title} ${body}`)) return res.status(400).json({ message: "Fill all {{placeholders}} before sending" });
+    if (/\{\{/.test(`${title} ${body}`))
+      return res.status(400).json({ message: "Fill all {{placeholders}} before sending" });
 
     if (imageUrl && imageUrl.trim() && !/^https:\/\//i.test(imageUrl.trim())) {
       return res.status(400).json({ message: "Image URL must start with https://" });
@@ -26,7 +27,9 @@ export const createNotification = async (req, res) => {
     if (!sendNow) {
       when = new Date(scheduledAt);
       if (isNaN(when.getTime()) || when.getTime() < Date.now() + 60000) {
-        return res.status(400).json({ message: "Schedule time must be at least 1 minute in the future" });
+        return res
+          .status(400)
+          .json({ message: "Schedule time must be at least 1 minute in the future" });
       }
     }
     let n = await Notification.create({
@@ -50,8 +53,13 @@ export const createNotification = async (req, res) => {
 
 export const cancelNotification = async (req, res) => {
   try {
-    const n = await Notification.findOneAndUpdate({ _id: req.params.id, status: "scheduled" }, { status: "cancelled" }, { new: true });
-    if (!n) return res.status(400).json({ message: "Only scheduled notifications can be cancelled" });
+    const n = await Notification.findOneAndUpdate(
+      { _id: req.params.id, status: "scheduled" },
+      { status: "cancelled" },
+      { new: true }
+    );
+    if (!n)
+      return res.status(400).json({ message: "Only scheduled notifications can be cancelled" });
     res.json({ notification: n });
   } catch (e) {
     res.status(500).json({ message: e.message });
@@ -60,7 +68,11 @@ export const cancelNotification = async (req, res) => {
 
 export const endTicker = async (req, res) => {
   try {
-    const n = await Notification.findByIdAndUpdate(req.params.id, { tickerEndsAt: new Date() }, { new: true });
+    const n = await Notification.findByIdAndUpdate(
+      req.params.id,
+      { tickerEndsAt: new Date() },
+      { new: true }
+    );
     if (!n) return res.status(404).json({ message: "Not found" });
     res.json({ notification: n });
   } catch (e) {
@@ -123,9 +135,15 @@ export const createTemplate = async (req, res) => {
   try {
     const { name, type = "custom", titleTpl, bodyTpl = "", channel = "both" } = req.body;
     if (!name || !name.trim()) return res.status(400).json({ message: "Name is required" });
-    if (!titleTpl || !titleTpl.trim()) return res.status(400).json({ message: "Title template is required" });
+    if (!titleTpl || !titleTpl.trim())
+      return res.status(400).json({ message: "Title template is required" });
 
-    const baseSlug = name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "") || "tpl";
+    const baseSlug =
+      name
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9]+/g, "_")
+        .replace(/^_+|_+$/g, "") || "tpl";
     const rand = Math.random().toString(36).substring(2, 6);
     const key = `${baseSlug}_${rand}`;
 
@@ -198,4 +216,3 @@ export default {
   updateTemplate,
   deleteTemplate,
 };
-

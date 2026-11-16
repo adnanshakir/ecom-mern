@@ -14,4 +14,3 @@ export async function notifyRestock(product) {
 }
 
 export default { notifyRestock };
-

@@ -15,4 +15,3 @@ router.patch("/:id/cancel", authenticate, cancelNotification);
 router.patch("/:id/end-ticker", authenticate, endTicker);
 
 export default router;
-
