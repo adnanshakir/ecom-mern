@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "ecom-mern-api-collection",
     "name": "ecom-mern API",
-    "description": "Complete API collection for the ecom-mern backend.\n\n**Base URL:** `{{baseUrl}}` (default: `http://localhost:5000`)\n\n---\n\n## Authentication\n\n### Admin / Staff routes\nProtected endpoints use `Authorization: Bearer {{accessToken}}`.\nThe token is a **short-lived JWT** returned by `POST /api/auth/login` (automatically captured into `{{accessToken}}`). Refresh tokens are stored in **HttpOnly cookies** handled automatically by Postman's Cookie Jar.\n\nThe collection-level auth is set to **Bearer Token -> `{{accessToken}}`** so Admin folders inherit it automatically.\n\n### Customer routes\nCustomer OTP auth (`/api/v1/customers/auth/*`), profile, cart, and wishlist endpoints use **Better Auth HTTP-only session cookies** stored automatically in Postman's Cookie Jar. Customer folders explicitly override auth to `noauth` so they do not send the Admin Bearer token.\n\n### Public Storefront routes\nPublic endpoints under `/api/public/*` require no authentication and override auth to `noauth`.\n\n---\n\n## Roles\n| Role | Description |\n|------|-------------|\n| `super_admin` | Full access incl. user management & registration |\n| `admin` | Products, categories, brands, inventory, banners |\n| `staff` | Read-only access to most resources |",
+    "description": "Complete API collection for the ecom-mern backend.\n\n**Base URL:** `{{baseUrl}}` (default: `http://localhost:5000`)\n\n---\n\n## Authentication\n\n### Admin / Staff routes\nProtected endpoints use `Authorization: Bearer {{accessToken}}`.\nThe token is a **short-lived JWT** returned by `POST /api/auth/login` (automatically captured into `{{accessToken}}`). Refresh tokens are stored in **HttpOnly cookies** handled automatically by Postman's Cookie Jar.\n\nThe collection-level auth is set to **Bearer Token -> `{{accessToken}}`** so Admin folders inherit it automatically.\n\n### Customer routes\nCustomer OTP auth (`/api/v1/customers/auth/*`), profile, cart, and wishlist endpoints use **Better Auth HTTP-only session cookies** stored automatically in Postman's Cookie Jar. Customer folders explicitly override auth to `noauth` so they do not send the Admin Bearer token.\n\n### Public Storefront routes\nPublic endpoints under `/api/public/*` require no authentication and override auth to `noauth`.\n\n---\n\n## Roles\n| Role | Description |\n|------|-------------|\n| `super_admin` | Full access incl. user management & registration |\n| `admin` | Products, categories, brands, inventory, banners, notifications |\n| `staff` | Read-only access to most resources |",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
@@ -2189,6 +2189,441 @@
       ]
     },
     {
+      "name": "Admin — Notifications",
+      "description": "Notification Center broadcast management for web ticker announcements and mobile app push notifications (FCM).\n\nRequires `Authorization: Bearer {{accessToken}}`.\n\n**Channels:**\n- `both` — Sends to mobile app push and web ticker\n- `app` — Broadcasts via Firebase Cloud Messaging (FCM topic 'all')\n- `web` — Scrolls infinitely across the storefront ticker bar\n\n**Types:** `sale`, `flash_sale`, `tagline`, `free_shipping`, `new_arrival`, `festive`, `coupon`, `win_back`, `custom`\n\n**Access:** `super_admin`, `admin`, `staff`",
+      "item": [
+        {
+          "name": "List Notifications (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/notifications?page=1&limit=10&status=all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "notifications"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "status",
+                  "value": "all",
+                  "description": "all | scheduled | sending | sent | failed | cancelled"
+                }
+              ]
+            },
+            "description": "Lists notifications with pagination and live ticker status (`isTickerLive`). Filter by status using the `status` query param."
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"notifications\": [\n    {\n      \"_id\": \"6735e5d32b35ec5cb5529f10\",\n      \"title\": \"Flash Sale is Live! 🔥\",\n      \"body\": \"Flat 50% off on all shirts today only.\",\n      \"type\": \"flash_sale\",\n      \"channel\": \"both\",\n      \"link\": \"/category/shirts\",\n      \"imageUrl\": \"https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da\",\n      \"status\": \"sent\",\n      \"tickerDurationHours\": 24,\n      \"tickerEndsAt\": \"2026-11-15T10:00:00.000Z\",\n      \"sentAt\": \"2026-11-14T10:00:00.000Z\",\n      \"isTickerLive\": true,\n      \"createdAt\": \"2026-11-14T10:00:00.000Z\",\n      \"updatedAt\": \"2026-11-14T10:00:00.000Z\"\n    }\n  ],\n  \"total\": 1,\n  \"page\": 1,\n  \"pages\": 1\n}"
+            }
+          ]
+        },
+        {
+          "name": "Send Broadcast Now (Admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.notification && json.notification._id) {",
+                  "  pm.environment.set(\"notificationId\", json.notification._id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Diwali Mega Flash Sale! 🔥\",\n  \"body\": \"Flat 50% off on all ethnic wear. Valid today only!\",\n  \"type\": \"flash_sale\",\n  \"channel\": \"both\",\n  \"link\": \"/category/ethnic-wear\",\n  \"imageUrl\": \"https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da\",\n  \"tickerDurationHours\": 24,\n  \"sendNow\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/notifications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "notifications"
+              ]
+            },
+            "description": "Creates and immediately dispatches a broadcast notification.\n\n- If channel includes `app`: broadcast push is sent to FCM topic `all`.\n- If channel includes `web`: added to the active website ticker bar for `tickerDurationHours`.\n\n**Validation:**\n- `title` is required (max 65 chars)\n- `body` is optional (max 240 chars)\n- Cannot contain unresolved `{{variable}}` placeholders\n- `imageUrl` must be HTTPS only if provided"
+          },
+          "response": [
+            {
+              "name": "201 Created",
+              "status": "Created",
+              "code": 201,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"notification\": {\n    \"_id\": \"6735e5d32b35ec5cb5529f10\",\n    \"title\": \"Diwali Mega Flash Sale! 🔥\",\n    \"body\": \"Flat 50% off on all ethnic wear. Valid today only!\",\n    \"type\": \"flash_sale\",\n    \"channel\": \"both\",\n    \"link\": \"/category/ethnic-wear\",\n    \"imageUrl\": \"https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da\",\n    \"status\": \"sent\",\n    \"tickerDurationHours\": 24,\n    \"tickerEndsAt\": \"2026-11-17T12:00:00.000Z\",\n    \"sentAt\": \"2026-11-16T12:00:00.000Z\",\n    \"result\": {\n      \"ok\": true\n    },\n    \"createdAt\": \"2026-11-16T12:00:00.000Z\",\n    \"updatedAt\": \"2026-11-16T12:00:00.000Z\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Schedule Broadcast (Admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.notification && json.notification._id) {",
+                  "  pm.environment.set(\"notificationId\", json.notification._id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Weekend Clearance Starts Soon! ⏳\",\n  \"body\": \"Up to 70% off across all categories.\",\n  \"type\": \"sale\",\n  \"channel\": \"both\",\n  \"link\": \"/sale\",\n  \"imageUrl\": \"https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da\",\n  \"tickerDurationHours\": 72,\n  \"sendNow\": false,\n  \"scheduledAt\": \"2026-11-20T10:00:00.000Z\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/notifications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "notifications"
+              ]
+            },
+            "description": "Schedules a notification broadcast to run in the future. The server runs a background cron job every minute to dispatch due notifications.\n\n`scheduledAt` must be an ISO 8601 date string at least 1 minute in the future."
+          },
+          "response": [
+            {
+              "name": "201 Created",
+              "status": "Created",
+              "code": 201,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"notification\": {\n    \"_id\": \"6735e5d32b35ec5cb5529f11\",\n    \"title\": \"Weekend Clearance Starts Soon! ⏳\",\n    \"body\": \"Up to 70% off across all categories.\",\n    \"type\": \"sale\",\n    \"channel\": \"both\",\n    \"link\": \"/sale\",\n    \"imageUrl\": \"https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da\",\n    \"status\": \"scheduled\",\n    \"tickerDurationHours\": 72,\n    \"scheduledAt\": \"2026-11-20T10:00:00.000Z\",\n    \"createdAt\": \"2026-11-16T12:00:00.000Z\",\n    \"updatedAt\": \"2026-11-16T12:00:00.000Z\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Cancel Scheduled Notification (Admin)",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/notifications/{{notificationId}}/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "notifications",
+                "{{notificationId}}",
+                "cancel"
+              ]
+            },
+            "description": "Cancels a scheduled notification before it is sent. Only notifications with status `scheduled` can be cancelled."
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"notification\": {\n    \"_id\": \"6735e5d32b35ec5cb5529f11\",\n    \"title\": \"Weekend Clearance Starts Soon! ⏳\",\n    \"status\": \"cancelled\",\n    \"updatedAt\": \"2026-11-16T12:05:00.000Z\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "End Website Ticker Early (Admin)",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/notifications/{{notificationId}}/end-ticker",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "notifications",
+                "{{notificationId}}",
+                "end-ticker"
+              ]
+            },
+            "description": "Immediately expires an active announcement from the storefront ticker by setting `tickerEndsAt` to the current timestamp."
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"notification\": {\n    \"_id\": \"6735e5d32b35ec5cb5529f10\",\n    \"title\": \"Diwali Mega Flash Sale! 🔥\",\n    \"tickerEndsAt\": \"2026-11-16T12:05:00.000Z\",\n    \"updatedAt\": \"2026-11-16T12:05:00.000Z\"\n  }\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Admin — Notification Templates",
+      "description": "Reusable notification templates with dynamic `{{variable}}` placeholders.\n\nRequires `Authorization: Bearer {{accessToken}}`.\n\n- **Manual templates (`auto: false`)** appear in the admin wizard Send tab.\n- **Automated templates (`auto: true`)** trigger programmatically on events (restock, order_shipped, order_delivered).\n- **System templates (`isSystem: true`)** can be modified but cannot be deleted.",
+      "item": [
+        {
+          "name": "List Notification Templates (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/notification-templates?auto=false",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "notification-templates"
+              ],
+              "query": [
+                {
+                  "key": "auto",
+                  "value": "false",
+                  "description": "false = manual templates only | true = automated templates only | omitted = all"
+                }
+              ]
+            },
+            "description": "Returns all notification templates sorted by creation date."
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"templates\": [\n    {\n      \"_id\": \"6735a201b1e8a001c8e4f100\",\n      \"key\": \"flash_sale_default\",\n      \"name\": \"Flash Sale\",\n      \"type\": \"flash_sale\",\n      \"titleTpl\": \"⚡ Flash Sale: {{discount}}% off for the next {{hours}} hours!\",\n      \"bodyTpl\": \"Grab your favorites in {{category}} before {{endDate}}.\",\n      \"channel\": \"both\",\n      \"auto\": false,\n      \"isSystem\": true,\n      \"createdAt\": \"2026-11-14T10:00:00.000Z\",\n      \"updatedAt\": \"2026-11-14T10:00:00.000Z\"\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Create Notification Template (Admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.template && json.template._id) {",
+                  "  pm.environment.set(\"templateId\", json.template._id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Festive Mega Sale\",\n  \"type\": \"festive\",\n  \"channel\": \"both\",\n  \"titleTpl\": \"🎉 Happy {{festival}}! Flat {{discount}}% off on {{category}}\",\n  \"bodyTpl\": \"Apply code {{code}} at checkout before {{endDate}}!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/notification-templates",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "notification-templates"
+              ]
+            },
+            "description": "Creates a new custom notification template.\n\n**Required:**\n- `name` — string\n- `titleTpl` — string containing placeholders like `{{discount}}`\n\n**Optional:**\n- `bodyTpl` — string with placeholders\n- `type` — string enum (default `custom`)\n- `channel` — `web` | `app` | `both` (default `both`)"
+          },
+          "response": [
+            {
+              "name": "201 Created",
+              "status": "Created",
+              "code": 201,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"template\": {\n    \"_id\": \"6735a201b1e8a001c8e4f105\",\n    \"key\": \"festive_mega_sale_ab12\",\n    \"name\": \"Festive Mega Sale\",\n    \"type\": \"festive\",\n    \"titleTpl\": \"🎉 Happy {{festival}}! Flat {{discount}}% off on {{category}}\",\n    \"bodyTpl\": \"Apply code {{code}} at checkout before {{endDate}}!\",\n    \"channel\": \"both\",\n    \"auto\": false,\n    \"isSystem\": false,\n    \"createdAt\": \"2026-11-16T12:00:00.000Z\",\n    \"updatedAt\": \"2026-11-16T12:00:00.000Z\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update Notification Template (Admin)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Festive Mega Sale (Updated)\",\n  \"titleTpl\": \"🎉 Happy {{festival}}! Get {{discount}}% off today on {{category}}\",\n  \"bodyTpl\": \"Use coupon {{code}} before {{endDate}}!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/notification-templates/{{templateId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "notification-templates",
+                "{{templateId}}"
+              ]
+            },
+            "description": "Updates fields on an existing template (both custom and system templates can be updated)."
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"template\": {\n    \"_id\": \"6735a201b1e8a001c8e4f105\",\n    \"name\": \"Festive Mega Sale (Updated)\",\n    \"titleTpl\": \"🎉 Happy {{festival}}! Get {{discount}}% off today on {{category}}\",\n    \"bodyTpl\": \"Use coupon {{code}} before {{endDate}}!\",\n    \"updatedAt\": \"2026-11-16T12:10:00.000Z\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Delete Notification Template (Admin)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/notification-templates/{{templateId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "notification-templates",
+                "{{templateId}}"
+              ]
+            },
+            "description": "Deletes a custom notification template. System templates cannot be deleted."
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"message\": \"Template deleted\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "name": "Customer — Auth & Profile",
       "description": "Customer OTP authentication mounted at `/api/v1/customers/auth` (Better Auth) and customer profile endpoints mounted at `/api/customers/profile`.\n\nFirst-time Phone OTP verification automatically registers the customer account (`signUpOnVerification`) and sets an HTTP-only session cookie in Postman's Cookie Jar. Subsequent customer requests (profile, cart, wishlist, orders, payments) authenticate via that session cookie automatically—no `Authorization: Bearer` header is used or accepted by customer middleware.",
       "auth": {
@@ -3335,6 +3770,109 @@
       ]
     },
     {
+      "name": "Customer — Devices (FCM)",
+      "auth": {
+        "type": "noauth"
+      },
+      "description": "Mobile device token registration for push notifications (via Firebase Cloud Messaging).\n\n**Auth:** Active Better Auth customer session cookie (or customer bearer token).\n\nUsed by the Flutter mobile app and web push workers to register and deregister device FCM tokens.",
+      "item": [
+        {
+          "name": "Register Device Token (Customer)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"fcm_sample_device_registration_token_1234567890\",\n  \"platform\": \"android\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/customer/devices",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customer",
+                "devices"
+              ]
+            },
+            "description": "Registers or updates the FCM registration token for the authenticated customer device.\n\n**Body params:**\n- `token` — string (required)\n- `platform` — `android` | `ios` (default: `android`)"
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"deviceToken\": {\n    \"_id\": \"6735e5d32b35ec5cb5529f20\",\n    \"customer\": \"60c72b2f9b1e8a001c8e4f50\",\n    \"token\": \"fcm_sample_device_registration_token_1234567890\",\n    \"platform\": \"android\",\n    \"lastSeenAt\": \"2026-11-16T12:00:00.000Z\",\n    \"createdAt\": \"2026-11-16T12:00:00.000Z\",\n    \"updatedAt\": \"2026-11-16T12:00:00.000Z\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Unregister Device Token (Customer)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"fcm_sample_device_registration_token_1234567890\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/customer/devices",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customer",
+                "devices"
+              ]
+            },
+            "description": "Deletes the device token when a customer logs out so no personal notifications are sent to that device afterwards."
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Device token deleted\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "name": "Public — Storefront",
       "description": "Fully public endpoints — no authentication required. Used by the storefront/frontend.",
       "auth": {
@@ -3650,6 +4188,43 @@
             },
             "description": "Returns average rating, total review count, and star distribution."
           }
+        },
+        {
+          "name": "Get Public Active Ticker",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/public/ticker",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "public",
+                "ticker"
+              ]
+            },
+            "description": "Returns up to 5 active announcement messages for the storefront ticker bar (`status: sent`, channel `web` or `both`, and `tickerEndsAt` in the future).\n\nCached with `Cache-Control: public, max-age=60`."
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "Cache-Control",
+                  "value": "public, max-age=60"
+                }
+              ],
+              "body": "{\n  \"items\": [\n    {\n      \"_id\": \"6735e5d32b35ec5cb5529f10\",\n      \"text\": \"Diwali Mega Flash Sale! 🔥 — Flat 50% off on all ethnic wear. Valid today only!\",\n      \"link\": \"/category/ethnic-wear\"\n    }\n  ]\n}"
+            }
+          ]
         }
       ]
     }
