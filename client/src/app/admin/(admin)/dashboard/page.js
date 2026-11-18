@@ -1,57 +1,52 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
-  Package,
-  Tags,
-  BadgeCheck,
-  AlertTriangle,
-  RefreshCw,
+  ArrowRight,
   History,
+  IndianRupee,
+  LayoutGrid,
+  Package,
+  Printer,
+  RefreshCw,
+  ShoppingBag,
+  TriangleAlert,
 } from "lucide-react";
 
-import api from "@/services/admin/axios";
-import { useRecentImports } from "@/hooks/admin/useRecentImports";
-import { StatCard } from "@/components/admin/dashboard/StatCard";
+import { useDashboard } from "@/hooks/admin/useDashboard";
+import KpiCard from "@/components/admin/dashboard/KpiCard";
+import SectionCard from "@/components/admin/dashboard/SectionCard";
+import StatusBadge from "@/components/admin/StatusBadge";
 import { LowStockCard } from "@/components/admin/dashboard/LowStockCard";
 import { ActivityCard } from "@/components/admin/dashboard/ActivityCard";
+import { DashboardSkeleton } from "@/components/admin/dashboard/DashboardSkeleton";
 import { ImportHistoryModal } from "@/components/admin/csv-import/ImportHistoryModal";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
-import { DashboardSkeleton } from "@/components/admin/dashboard/DashboardSkeleton";
 import { Button } from "@/components/ui/button";
-import Link from "next/link";
-import { ShoppingBag } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useOrders } from "@/hooks/admin/useOrders";
+import { formatCurrency } from "@/lib/formatCurrency";
+import { timeAgo } from "@/lib/time";
+
+function truncateMiddle(str, maxLength = 16) {
+  if (!str || str.length <= maxLength) return str || "";
+  const half = Math.floor((maxLength - 1) / 2);
+  return `${str.slice(0, half)}…${str.slice(-half)}`;
+}
 
 export default function DashboardPage() {
-  const [stats, setStats] = useState(null);
-  const [error, setError] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
-
-  const recentImports = useRecentImports();
-  const { orders: recentOrders, stats: orderStats } = useOrders();
-
-  const fetchStats = useCallback(async (isManualRefresh = false) => {
-    if (isManualRefresh) setRefreshing(true);
-    try {
-      const { data } = await api.get("/dashboard/stats");
-      setStats(data.data);
-      setError(null);
-    } catch (err) {
-      setError(err.response?.data?.message || "Failed to load dashboard statistics.");
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    const timer = setTimeout(fetchStats, 0);
-    return () => clearTimeout(timer);
-  }, [fetchStats]);
+  const router = useRouter();
+  const {
+    stats,
+    orderStats,
+    recentOrders,
+    recentImports,
+    loading,
+    refreshing,
+    error,
+    historyDialogOpen,
+    setHistoryDialogOpen,
+    refresh,
+  } = useDashboard();
 
   if (loading) {
     return <DashboardSkeleton />;
@@ -59,137 +54,206 @@ export default function DashboardPage() {
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] text-center space-y-4 rounded-xl border border-destructive/20 bg-destructive/5 p-8">
-        <div className="size-12 rounded-full bg-destructive/10 text-destructive flex items-center justify-center">
-          <AlertTriangle className="size-6" />
-        </div>
-        <div className="space-y-1">
-          <h2 className="text-lg font-bold text-foreground">Dashboard Failed to Load</h2>
-          <p className="text-sm text-muted-foreground">{error}</p>
-        </div>
-        <Button onClick={() => fetchStats(true)} variant="outline" size="sm">
-          <RefreshCw className="mr-2 size-4" /> Try Again
+      <div className="surface flex flex-col items-center justify-center min-h-[300px] text-center p-8">
+        <TriangleAlert className="h-6 w-6 text-muted-foreground mb-2" strokeWidth={1.75} />
+        <h2 className="text-sm font-medium text-foreground">Dashboard Failed to Load</h2>
+        <p className="text-xs text-muted-foreground mt-1 max-w-sm">{error}</p>
+        <Button
+          onClick={() => refresh(true)}
+          variant="ghost"
+          size="sm"
+          className="mt-4 gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+        >
+          <RefreshCw className="h-3.5 w-3.5" strokeWidth={1.75} />
+          <span>Try Again</span>
         </Button>
       </div>
     );
   }
 
-  const lowStockCount = stats?.lowStock?.count || 0;
+  const latestOrders = (recentOrders || []).slice(0, 5);
 
   return (
     <div className="space-y-4 sm:space-y-5 pb-8 w-full max-w-full overflow-hidden">
-      {/* Dashboard Header — clean & responsive */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-border/50 pb-4 w-full">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2.5 flex-wrap">
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">Dashboard</h1>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-              <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              Live
-            </span>
-          </div>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Catalog metrics, inventory alerts, and activity overview.
-          </p>
+      {/* 1. Header: title "Dashboard" (small green dot + no "Live" pill), right side: "Import History" ghost button + Refresh icon button */}
+      <div className="flex items-center justify-between pb-1">
+        <div className="flex items-center gap-2">
+          <h1 className="text-xl font-semibold tracking-tight text-foreground">Dashboard</h1>
+          <span className="size-2 rounded-full bg-emerald-500 inline-block" />
         </div>
 
-        {/* Top Header Actions */}
-        <div className="flex items-center gap-2 flex-wrap self-start sm:self-auto">
+        <div className="flex items-center gap-1.5">
           <Button
-            variant="outline"
+            variant="ghost"
             size="sm"
             onClick={() => setHistoryDialogOpen(true)}
-            className="h-8 gap-1.5 text-xs font-medium bg-background shadow-xs hover:bg-accent"
+            className="h-8 gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground"
           >
-            <History className="size-3.5 text-primary" />
+            <History className="h-3.5 w-3.5" strokeWidth={1.75} />
             <span>Import History</span>
             {recentImports.jobs?.length > 0 && (
-              <span className="ml-0.5 rounded-full bg-primary/10 px-1.5 py-0.2 text-[10px] font-bold text-primary">
+              <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
                 {recentImports.jobs.length}
               </span>
             )}
           </Button>
 
-          <button
-            type="button"
-            onClick={() => {
-              fetchStats(true);
-              recentImports.fetchJobs();
-            }}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => refresh(true)}
             disabled={refreshing}
-            className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50 h-8 px-2 rounded-md hover:bg-accent/50"
+            aria-label="Refresh dashboard"
+            className="h-8 w-8 text-muted-foreground hover:text-foreground"
           >
-            <RefreshCw className={`size-3.5 ${refreshing ? "animate-spin text-primary" : ""}`} />
-            {refreshing ? "Syncing…" : "Refresh"}
-          </button>
+            <RefreshCw
+              className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`}
+              strokeWidth={1.75}
+            />
+          </Button>
         </div>
       </div>
 
-      {/* KPI Metric Cards — 2 cols on mobile, 4 on desktop */}
-      <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4 lg:gap-4 w-full min-w-0">
-        <StatCard
-          label="Products"
-          value={stats?.totalProducts}
+      {/* 2. KPI row: 4 KpiCards (grid-cols-2 on mobile, 4 on lg) */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
+        <KpiCard
+          icon={ShoppingBag}
+          label="New orders"
+          value={orderStats?.newCount ?? 0}
+          hint="Awaiting review"
+          href="/admin/orders"
+        />
+        <KpiCard
+          icon={IndianRupee}
+          label="Today's revenue"
+          value={formatCurrency(orderStats?.todayRevenue ?? 0)}
+          hint={`${orderStats?.todayCount ?? 0} orders today`}
+          href="/admin/orders"
+        />
+        <KpiCard
           icon={Package}
-          color="blue"
-          subtitle="Active catalog"
+          label="To ship"
+          value={orderStats?.pendingCount ?? 0}
+          hint="Placed, not shipped yet"
+          href="/admin/orders"
         />
-        <Link href="/admin/orders">
-          <StatCard label="New Orders" value={orderStats.newCount} icon={ShoppingBag} color="violet" subtitle="Awaiting review" />
-        </Link>
-        <StatCard
-          label="Categories"
-          value={stats?.totalCategories}
-          icon={Tags}
-          color="violet"
-          subtitle="Taxonomy groups"
-        />
-        <StatCard
-          label="Brands"
-          value={stats?.totalBrands}
-          icon={BadgeCheck}
-          color="emerald"
-          subtitle="Brand partners"
-        />
-        <StatCard
-          label="Low Stock"
-          value={lowStockCount}
-          icon={AlertTriangle}
-          color={lowStockCount > 0 ? "rose" : "amber"}
-          alertCount={lowStockCount}
-          subtitle={`Threshold: < ${stats?.lowStock?.threshold ?? 5} units`}
+        <KpiCard
+          icon={LayoutGrid}
+          label="Catalog"
+          value={stats?.totalProducts ?? 0}
+          hint={`${stats?.totalCategories ?? 0} categories · ${stats?.totalBrands ?? 0} brands`}
+          href="/admin/products"
         />
       </div>
 
-      {/* Main Panels — Low Stock Inventory & Recent Activity */}
-      <div className="grid gap-4 lg:grid-cols-2 w-full min-w-0">
+      {/* 3. Recent orders (full width, SectionCard icon ShoppingBag, action "View all") */}
+      <SectionCard
+        title="Recent orders"
+        icon={ShoppingBag}
+        action={
+          <Link
+            href="/admin/orders"
+            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <span>View all</span>
+            <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.75} />
+          </Link>
+        }
+      >
+        {latestOrders.length === 0 ? (
+          <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
+            <ShoppingBag className="h-4 w-4" strokeWidth={1.75} />
+            <span>No orders yet</span>
+          </div>
+        ) : (
+          <div className="w-full overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="text-xs text-muted-foreground">
+                <tr>
+                  <th className="text-left font-normal py-2 px-3">Order</th>
+                  <th className="text-left font-normal py-2 px-3 hidden sm:table-cell">Customer</th>
+                  <th className="text-right font-normal py-2 px-3">Total</th>
+                  <th className="text-left font-normal py-2 px-3">Status</th>
+                  <th className="text-left font-normal py-2 px-3 hidden sm:table-cell">Time</th>
+                  <th className="py-2 px-2 text-right w-10">
+                    <span className="sr-only">Actions</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {latestOrders.map((order) => (
+                  <tr
+                    key={order._id}
+                    onClick={() => router.push("/admin/orders")}
+                    className="cursor-pointer transition-colors hover:bg-black/[0.03] dark:hover:bg-white/5 rounded-lg"
+                  >
+                    <td className="py-2.5 px-3">
+                      <div className="flex items-center gap-1.5 font-medium text-foreground">
+                        <span>{truncateMiddle(order.orderNumber)}</span>
+                        {order.adminSeen === false && (
+                          <span
+                            className="size-1.5 rounded-full bg-blue-500 shrink-0"
+                            title="New"
+                          />
+                        )}
+                      </div>
+                      <div className="text-xs text-muted-foreground truncate">
+                        {order.customer?.phoneNumber ||
+                          order.customer?.phone ||
+                          order.shippingAddress?.phone ||
+                          "—"}
+                      </div>
+                    </td>
+                    <td className="py-2.5 px-3 hidden sm:table-cell">
+                      <span className="truncate text-foreground block max-w-[140px] md:max-w-[200px]">
+                        {order.customer?.name ||
+                          order.shippingAddress?.fullName ||
+                          "Customer"}
+                      </span>
+                    </td>
+                    <td className="py-2.5 px-3 text-right tabular-nums font-medium text-foreground">
+                      {formatCurrency(order.total)}
+                    </td>
+                    <td className="py-2.5 px-3">
+                      <StatusBadge status={order.orderStatus} />
+                    </td>
+                    <td className="py-2.5 px-3 text-xs text-muted-foreground whitespace-nowrap hidden sm:table-cell">
+                      {timeAgo(order.createdAt)}
+                    </td>
+                    <td className="py-2.5 px-2 text-right">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label="Print invoice"
+                        className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          window.open(
+                            `/admin/orders/${order._id}/invoice`,
+                            "_blank",
+                            "noopener,noreferrer"
+                          );
+                        }}
+                      >
+                        <Printer className="h-4 w-4" strokeWidth={1.75} />
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </SectionCard>
+
+      {/* 4. Below, two cards side by side on lg (stacked on mobile) */}
+      <div className="grid gap-4 lg:grid-cols-2">
         <LowStockCard
           items={stats?.lowStock?.items}
-          threshold={stats?.lowStock?.threshold}
-          count={lowStockCount}
+          count={stats?.lowStock?.count}
         />
-        <ActivityCard
-          items={stats?.latestActivity}
-        />
+        <ActivityCard items={stats?.latestActivity} />
       </div>
-
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-sm font-medium">Recent Orders</CardTitle>
-          <Link href="/admin/orders" className="text-xs text-primary hover:underline">View all</Link>
-        </CardHeader>
-        <CardContent className="grid gap-2">
-          {recentOrders.slice(0, 5).map((order) => (
-            <div key={order._id} className="flex items-center justify-between gap-3 border-b py-2 last:border-0">
-              <div className="min-w-0"><p className="truncate text-sm font-medium">{order.orderNumber}</p><p className="truncate text-xs text-muted-foreground">{order.customer?.name || "Customer"}</p></div>
-              <span className="text-sm">{Number(order.total || 0).toLocaleString("en-IN", { style: "currency", currency: "INR" })}</span>
-              <span className="text-xs capitalize text-muted-foreground">{order.orderStatus}</span>
-              <Button variant="ghost" size="sm" onClick={() => window.open(`/admin/orders/${order._id}/invoice`, "_blank", "noopener,noreferrer")}>Print</Button>
-            </div>
-          ))}
-          {!recentOrders.length && <p className="text-sm text-muted-foreground">No paid orders yet.</p>}
-        </CardContent>
-      </Card>
 
       {/* Import History Modal Dialog */}
       <ImportHistoryModal

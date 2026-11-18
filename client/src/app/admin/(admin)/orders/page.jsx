@@ -9,13 +9,10 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import StatusBadge from "@/components/admin/StatusBadge";
 
 const money = (value) => `₹${Number(value || 0).toLocaleString("en-IN")}`;
 const statuses = ["placed", "packed", "shipped", "delivered", "cancelled"];
-
-function StatusBadge({ children }) {
-  return <Badge variant={children === "cancelled" ? "destructive" : children === "delivered" ? "default" : "secondary"} className="capitalize">{children}</Badge>;
-}
 
 export default function OrdersPage() {
   const { orders, stats, pagination, filters, selectedOrder, orderLoading, sheetOpen, loading, error, setSheetOpen, setFilter, openOrder, changeStatus } = useOrders();
@@ -42,7 +39,7 @@ export default function OrdersPage() {
         <Table><TableHeader><TableRow><TableHead>Order #</TableHead><TableHead>Customer</TableHead><TableHead>Items</TableHead><TableHead>Total</TableHead><TableHead>Payment</TableHead><TableHead>Status</TableHead><TableHead>Date</TableHead><TableHead /></TableRow></TableHeader>
           <TableBody>{loading ? <TableRow><TableCell colSpan={8}><Loader2 className="size-4 animate-spin" /></TableCell></TableRow> : orders.length === 0 ? <TableRow><TableCell colSpan={8} className="text-muted-foreground">No orders found.</TableCell></TableRow> : orders.map((order) => {
             const first = order.items?.[0];
-            return <TableRow key={order._id}><TableCell className="font-medium">{order.orderNumber}{!order.adminSeen && <Badge className="ml-2 bg-emerald-500 text-white">New</Badge>}</TableCell><TableCell><div>{order.customer?.name || "Customer"}</div><div className="text-xs text-muted-foreground">{order.customer?.phone || order.customer?.email}</div></TableCell><TableCell><div className="flex items-center gap-2">{first?.image && <img src={first.image} alt="" className="size-8 rounded object-cover" />}<span>{first?.name || "-"}{order.items?.length > 1 && ` +${order.items.length - 1} more`}</span></div></TableCell><TableCell>{money(order.total)}</TableCell><TableCell><Badge variant="outline" className="capitalize">{order.payment?.status}</Badge></TableCell><TableCell><StatusBadge>{order.orderStatus}</StatusBadge></TableCell><TableCell>{new Date(order.createdAt).toLocaleDateString("en-IN")}</TableCell><TableCell><div className="flex justify-end gap-1"><Button variant="ghost" size="icon" title="View" onClick={() => openOrder(order._id)}><Eye className="size-4" /></Button><Button variant="ghost" size="icon" title="Print invoice" onClick={() => window.open(`/admin/orders/${order._id}/invoice`, "_blank", "noopener,noreferrer")}><Printer className="size-4" /></Button></div></TableCell></TableRow>;
+            return <TableRow key={order._id}><TableCell className="font-medium">{order.orderNumber}{!order.adminSeen && <Badge className="ml-2 bg-emerald-500 text-white">New</Badge>}</TableCell><TableCell><div>{order.customer?.name || "Customer"}</div><div className="text-xs text-muted-foreground">{order.customer?.phone || order.customer?.email}</div></TableCell><TableCell><div className="flex items-center gap-2">{first?.image && <img src={first.image} alt="" className="size-8 rounded object-cover" />}<span>{first?.name || "-"}{order.items?.length > 1 && ` +${order.items.length - 1} more`}</span></div></TableCell><TableCell>{money(order.total)}</TableCell><TableCell><Badge variant="outline" className="capitalize">{order.payment?.status}</Badge></TableCell><TableCell><StatusBadge status={order.orderStatus} /></TableCell><TableCell>{new Date(order.createdAt).toLocaleDateString("en-IN")}</TableCell><TableCell><div className="flex justify-end gap-1"><Button variant="ghost" size="icon" title="View" onClick={() => openOrder(order._id)}><Eye className="size-4" /></Button><Button variant="ghost" size="icon" title="Print invoice" onClick={() => window.open(`/admin/orders/${order._id}/invoice`, "_blank", "noopener,noreferrer")}><Printer className="size-4" /></Button></div></TableCell></TableRow>;
           })}</TableBody>
         </Table>
       </div>

@@ -1,46 +1,65 @@
 "use client";
 
 import Link from "next/link";
-import { AlertTriangle, ArrowUpRight } from "lucide-react";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
-import { LowStockList } from "@/components/admin/dashboard/LowStockList";
+import { ArrowRight, TriangleAlert } from "lucide-react";
+import SectionCard from "@/components/admin/dashboard/SectionCard";
+import { cn } from "@/lib/utils";
 
-export function LowStockCard({ items = [], threshold = 5, count = 0 }) {
+export function LowStockCard({ items = [], count = 0 }) {
+  const sortedItems = [...(items || [])]
+    .sort((a, b) => (a.stock ?? 0) - (b.stock ?? 0))
+    .slice(0, 5);
+
+  const displayCount = count ?? items?.length ?? 0;
+
   return (
-    <Card className="flex flex-col border-border/80 shadow-xs h-[460px] sm:h-[500px] overflow-hidden w-full min-w-0 py-0 gap-0">
-      <CardHeader className="shrink-0 border-b px-4 py-3 gap-0 [.border-b]:pb-3">
-        <div className="flex items-center justify-between gap-2">
-          <div className="min-w-0">
-            <CardTitle className="text-xs sm:text-sm font-bold flex items-center gap-1.5">
-              <AlertTriangle className="size-3.5 text-amber-500 shrink-0" />
-              <span className="truncate">Low Stock Inventory</span>
-            </CardTitle>
-            <CardDescription className="text-[10px] sm:text-[11px] mt-0.5">
-              Below {threshold} units
-            </CardDescription>
-          </div>
-          <span
-            className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] sm:text-[11px] font-bold ${
-              count > 0
-                ? "bg-rose-500/10 text-rose-500 border border-rose-500/20"
-                : "bg-emerald-500/10 text-emerald-500"
-            }`}
-          >
-            {count}
-          </span>
-        </div>
-      </CardHeader>
-      <CardContent className="flex-1 min-h-0 p-3 overflow-hidden">
-        <LowStockList items={items} threshold={threshold} />
-      </CardContent>
-      <CardFooter className="shrink-0 border-t px-4 py-2.5 [.border-t]:pt-2.5">
+    <SectionCard
+      title={`Low stock · ${displayCount}`}
+      icon={TriangleAlert}
+      action={
         <Link
-          href="/admin/products"
-          className="text-[11px] font-medium text-muted-foreground hover:text-primary flex items-center gap-1 ml-auto transition-colors"
+          href="/admin/inventory"
+          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
         >
-          All products <ArrowUpRight className="size-3" />
+          <span>View all</span>
+          <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.75} />
         </Link>
-      </CardFooter>
-    </Card>
+      }
+    >
+      {sortedItems.length === 0 ? (
+        <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
+          <TriangleAlert className="h-4 w-4" strokeWidth={1.75} />
+          <span>No low stock items</span>
+        </div>
+      ) : (
+        <div className="space-y-0.5">
+          {sortedItems.map((item) => (
+            <div
+              key={item._id || item.sku}
+              className="flex items-center justify-between rounded-lg px-3 py-2.5 transition-colors hover:bg-black/[0.03] dark:hover:bg-white/5"
+            >
+              <div className="min-w-0 pr-2">
+                <p className="truncate text-sm font-medium text-foreground">
+                  {item.product?.name || "Product"}
+                </p>
+                <p className="truncate text-xs text-muted-foreground font-mono">
+                  {item.sku}
+                </p>
+              </div>
+              <span
+                className={cn(
+                  "shrink-0 inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium tabular-nums",
+                  item.stock === 0
+                    ? "bg-red-500/10 text-red-400"
+                    : "bg-amber-500/10 text-amber-400"
+                )}
+              >
+                {item.stock === 0 ? "Out of stock" : `${item.stock} left`}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </SectionCard>
   );
 }
