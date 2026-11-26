@@ -3,7 +3,10 @@ import Product from "../../models/admin/product.model.js";
 import ApiError from "../../utils/apiError.js";
 import mongoose from "mongoose";
 import { adjustStock } from "../../utils/inventory.js";
-import { notifyRestock } from "../../services/notificationTriggers.js";
+import notificationTriggers, {
+  notifyRestock,
+  getEffectiveVariantPrice,
+} from "../../services/notificationTriggers.js";
 
 // ---------------- ADD a variant to an existing product ----------------
 export const createVariant = async (req, res, next) => {
@@ -84,6 +87,12 @@ export const getVariantById = async (req, res, next) => {
 // ---------------- UPDATE a variant ----------------
 export const updateVariant = async (req, res, next) => {
   try {
+    const existing = await ProductVariant.findById(req.params.id)
+      .select("price salePrice product")
+      .lean();
+    if (!existing) throw new ApiError(404, "Variant not found");
+
+    const oldPrice = getEffectiveVariantPrice(existing);
     const updates = { ...req.body };
     delete updates.product; // enforced at the validation layer too, but double-guarded here
     delete updates.stock; // stock is ledger-only — use POST /inventory/movements instead
@@ -93,6 +102,18 @@ export const updateVariant = async (req, res, next) => {
       runValidators: true,
     });
     if (!variant) throw new ApiError(404, "Variant not found");
+
+    const newPrice = getEffectiveVariantPrice(variant);
+    if (oldPrice > 0 && newPrice <= oldPrice * 0.95) {
+      Product.findById(variant.product)
+        .lean()
+        .then((product) => {
+          if (product) {
+            return notificationTriggers.notifyPriceDrop(product, oldPrice, newPrice, variant._id);
+          }
+        })
+        .catch(console.error);
+    }
 
     res.status(200).json({ success: true, data: variant });
   } catch (err) {

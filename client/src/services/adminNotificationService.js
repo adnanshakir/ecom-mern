@@ -4,6 +4,8 @@ export const getNotifications = (params) => api.get("/admin/notifications", { pa
 
 export const createNotification = (payload) => api.post("/admin/notifications", payload);
 
+export const getAudienceCount = (payload) => api.post("/admin/notifications/audience-count", payload);
+
 export const cancelNotification = (id) => api.patch(`/admin/notifications/${id}/cancel`);
 
 export const endTicker = (id) => api.patch(`/admin/notifications/${id}/end-ticker`);

@@ -29,7 +29,9 @@ const COMMON_VARS = [
   "endDate",
   "code",
   "category",
+  "name",
   "product",
+  "count",
   "amount",
   "festival",
 ];

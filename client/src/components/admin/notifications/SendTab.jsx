@@ -4,6 +4,7 @@ import { SendStep1Template } from "./SendStep1Template";
 import { SendStep2Message } from "./SendStep2Message";
 import { SendStep3Delivery } from "./SendStep3Delivery";
 import { NotificationPreviewCard } from "./NotificationPreviewCard";
+import { PERSONAL_IMAGE_SEGMENTS } from "@/lib/notificationTpl";
 import { cn } from "@/lib/utils";
 
 export function SendTab({ notif }) {
@@ -46,6 +47,23 @@ export function SendTab({ notif }) {
     categoryLoading,
     selectedCategory,
     setSelectedCategory,
+    audienceType,
+    setAudienceType,
+    segment,
+    setSegment,
+    categoryId,
+    audienceCategorySearch,
+    setAudienceCategorySearch,
+    audienceCategoryResults,
+    selectedAudienceCategory,
+    setSelectedAudienceCategory,
+    audienceCount,
+    audienceCountLoading,
+    audienceCountError,
+    retryAudienceCount,
+    personalImage,
+    setPersonalImage,
+    hasAutoPlaceholdersInMsg,
     channel,
     setChannel,
     tickerDurationHours,
@@ -159,6 +177,24 @@ export function SendTab({ notif }) {
         {step === 3 && (
           <SendStep3Delivery
             sendError={sendError}
+            audienceType={audienceType}
+            setAudienceType={setAudienceType}
+            segment={segment}
+            setSegment={setSegment}
+            categoryId={categoryId}
+            audienceCategorySearch={audienceCategorySearch}
+            setAudienceCategorySearch={setAudienceCategorySearch}
+            audienceCategoryResults={audienceCategoryResults}
+            selectedAudienceCategory={selectedAudienceCategory}
+            setSelectedAudienceCategory={setSelectedAudienceCategory}
+            categoryLoading={categoryLoading}
+            audienceCount={audienceCount}
+            audienceCountLoading={audienceCountLoading}
+            audienceCountError={audienceCountError}
+            retryAudienceCount={retryAudienceCount}
+            personalImage={personalImage}
+            setPersonalImage={setPersonalImage}
+            hasAutoPlaceholdersInMsg={hasAutoPlaceholdersInMsg}
             channel={channel}
             setChannel={setChannel}
             tickerDurationHours={tickerDurationHours}
@@ -183,6 +219,11 @@ export function SendTab({ notif }) {
           imageUrl={imageUrl}
           previewTitle={previewTitle}
           previewBody={previewBody}
+          showPersonalImagePlaceholder={
+            audienceType === "segment" &&
+            PERSONAL_IMAGE_SEGMENTS.includes(segment) &&
+            personalImage
+          }
         />
       </div>
     </div>

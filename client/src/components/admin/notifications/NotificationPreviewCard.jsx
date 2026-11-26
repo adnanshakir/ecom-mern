@@ -8,6 +8,7 @@ export function NotificationPreviewCard({
   imageUrl,
   previewTitle,
   previewBody,
+  showPersonalImagePlaceholder = false,
 }) {
   return (
     <Card className="overflow-hidden">
@@ -18,18 +19,25 @@ export function NotificationPreviewCard({
         {/* Push preview */}
         {(channel === "app" || channel === "both") && (
           <div className="rounded-xl border bg-card p-3 shadow-xs space-y-2">
-            {imageUrl && /^https:\/\//i.test(imageUrl.trim()) && (
-              <div className="relative aspect-[2/1] w-full overflow-hidden rounded-lg bg-muted">
-                <img
-                  key={imageUrl.trim()}
-                  src={imageUrl.trim()}
-                  alt="Notification banner"
-                  className="h-full w-full object-cover"
-                  onError={(e) => {
-                    e.currentTarget.style.display = "none";
-                  }}
-                />
+            {showPersonalImagePlaceholder ? (
+              <div className="relative flex aspect-[2/1] w-full items-center justify-center rounded-lg bg-muted text-xs text-muted-foreground">
+                Customer&apos;s product
               </div>
+            ) : (
+              imageUrl &&
+              /^https:\/\//i.test(imageUrl.trim()) && (
+                <div className="relative aspect-[2/1] w-full overflow-hidden rounded-lg bg-muted">
+                  <img
+                    key={imageUrl.trim()}
+                    src={imageUrl.trim()}
+                    alt="Notification banner"
+                    className="h-full w-full object-cover"
+                    onError={(e) => {
+                      e.currentTarget.style.display = "none";
+                    }}
+                  />
+                </div>
+              )
             )}
             <div className="flex items-start gap-2.5">
               <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">

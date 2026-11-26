@@ -1,6 +1,39 @@
 import Notification from "../models/Notification.js";
 import NotificationTemplate from "../models/NotificationTemplate.js";
+import DeviceToken from "../models/DeviceToken.js";
 import { dispatch } from "../services/notificationService.js";
+import { resolveAudience, countAudience } from "../services/notificationAudience.js";
+
+const VALID_SEGMENTS = [
+  "cart",
+  "wishlist",
+  "category",
+  "inactive_30d",
+  "never_ordered",
+  "bought_before",
+];
+const AUTO_VARS_REGEX = /\{\{(?:name|product|count)\}\}/g;
+
+const hasUnallowedPlaceholders = (text, allowAutoVars) => {
+  const cleaned = allowAutoVars ? (text || "").replace(AUTO_VARS_REGEX, "") : text || "";
+  return /\{\{/.test(cleaned);
+};
+
+export const getAudienceCount = async (req, res) => {
+  try {
+    const { segment, categoryId } = req.body || {};
+    if (!VALID_SEGMENTS.includes(segment)) {
+      return res.status(400).json({ message: "Invalid audience segment" });
+    }
+    if (segment === "category" && !categoryId) {
+      return res.json({ total: 0, withApp: 0 });
+    }
+    const counts = await countAudience(segment, { categoryId });
+    res.json(counts);
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+};
 
 export const createNotification = async (req, res) => {
   try {
@@ -14,10 +47,24 @@ export const createNotification = async (req, res) => {
       sendNow = true,
       scheduledAt,
       tickerDurationHours = 24,
+      audience,
+      personalImage = false,
     } = req.body;
     if (!title || !title.trim()) return res.status(400).json({ message: "Title is required" });
-    if (/\{\{/.test(`${title} ${body}`))
+
+    const isSegment = audience?.type === "segment";
+    if (isSegment) {
+      if (!VALID_SEGMENTS.includes(audience.segment)) {
+        return res.status(400).json({ message: "Invalid audience segment" });
+      }
+      if (audience.segment === "category" && !audience.categoryId) {
+        return res.status(400).json({ message: "Category is required for category audience" });
+      }
+    }
+
+    if (hasUnallowedPlaceholders(`${title} ${body}`, isSegment)) {
       return res.status(400).json({ message: "Fill all {{placeholders}} before sending" });
+    }
 
     if (imageUrl && imageUrl.trim() && !/^https:\/\//i.test(imageUrl.trim())) {
       return res.status(400).json({ message: "Image URL must start with https://" });
@@ -32,19 +79,54 @@ export const createNotification = async (req, res) => {
           .json({ message: "Schedule time must be at least 1 minute in the future" });
       }
     }
+
+    const effectiveChannel = isSegment ? "app" : channel;
+    const normalizedAudience = isSegment
+      ? {
+          type: "segment",
+          segment: audience.segment,
+          ...(audience.categoryId ? { categoryId: String(audience.categoryId) } : {}),
+        }
+      : { type: "all" };
+
+    let preResolvedPeople = null;
+    if (isSegment && sendNow) {
+      preResolvedPeople = await resolveAudience(normalizedAudience.segment, {
+        categoryId: normalizedAudience.categoryId,
+      });
+      const ids = preResolvedPeople.map((p) => p.customerId);
+      const withDeviceCount = ids.length
+        ? (await DeviceToken.distinct("customer", { customer: { $in: ids } })).length
+        : 0;
+      if (withDeviceCount === 0) {
+        return res
+          .status(400)
+          .json({ message: "No customers in this audience have the app installed" });
+      }
+    }
+
     let n = await Notification.create({
       title: title.trim(),
       body: body.trim(),
       type,
-      channel,
+      channel: effectiveChannel,
       link,
       imageUrl: imageUrl.trim(),
       tickerDurationHours,
+      audience: normalizedAudience,
+      personalImage: isSegment ? Boolean(personalImage) : false,
       status: sendNow ? "sending" : "scheduled",
       claimExpiresAt: sendNow ? new Date(Date.now() + 5 * 60 * 1000) : undefined,
       scheduledAt: when,
     });
-    if (sendNow) n = await dispatch(n);
+
+    if (sendNow) {
+      if (isSegment && preResolvedPeople && preResolvedPeople.length > 2000) {
+        dispatch(n, preResolvedPeople).catch(console.error);
+        return res.status(201).json({ notification: n });
+      }
+      n = await dispatch(n, preResolvedPeople);
+    }
     res.status(201).json({ notification: n });
   } catch (e) {
     res.status(500).json({ message: e.message });
@@ -165,7 +247,7 @@ export const createTemplate = async (req, res) => {
 
 export const updateTemplate = async (req, res) => {
   try {
-    const { name, type, titleTpl, bodyTpl, channel } = req.body;
+    const { name, type, titleTpl, bodyTpl, channel, enabled } = req.body;
     const tpl = await NotificationTemplate.findById(req.params.id);
     if (!tpl) return res.status(404).json({ message: "Template not found" });
 
@@ -173,6 +255,7 @@ export const updateTemplate = async (req, res) => {
     if (type !== undefined) tpl.type = type;
     if (titleTpl !== undefined) tpl.titleTpl = titleTpl.trim();
     if (bodyTpl !== undefined) tpl.bodyTpl = (bodyTpl || "").trim();
+    if (enabled !== undefined) tpl.enabled = Boolean(enabled);
     if (channel !== undefined) {
       if (!["web", "app", "both"].includes(channel)) {
         return res.status(400).json({ message: "Invalid channel" });
@@ -207,6 +290,7 @@ export const deleteTemplate = async (req, res) => {
 };
 
 export default {
+  getAudienceCount,
   createNotification,
   cancelNotification,
   endTicker,

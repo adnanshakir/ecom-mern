@@ -10,6 +10,7 @@ const templateSchema = new mongoose.Schema(
     channel: { type: String, enum: ["web", "app", "both"], default: "both" },
     auto: { type: Boolean, default: false }, // fired automatically by backend
     isSystem: { type: Boolean, default: false }, // cannot be deleted
+    enabled: { type: Boolean, default: true },
   },
   { timestamps: true }
 );

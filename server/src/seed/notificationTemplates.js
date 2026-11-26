@@ -93,6 +93,26 @@ const TEMPLATES = [
     titleTpl: "✅ Order delivered",
     bodyTpl: "Order {{orderNumber}} was delivered. Enjoy!",
   },
+  {
+    key: "cart_reminder",
+    name: "Abandoned Cart Reminder",
+    type: "custom",
+    channel: "app",
+    auto: true,
+    enabled: false,
+    titleTpl: "Still thinking it over? 🛒",
+    bodyTpl: "{{product}}{{more}} is waiting in your cart.",
+  },
+  {
+    key: "price_drop",
+    name: "Price Drop",
+    type: "custom",
+    channel: "app",
+    auto: true,
+    enabled: false,
+    titleTpl: "📉 Price drop: {{product}}",
+    bodyTpl: "Now ₹{{price}} (was ₹{{oldPrice}}). Grab it before it changes.",
+  },
 ];
 
 export async function seedNotificationTemplates() {

@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import {
   getNotifications,
   createNotification,
+  getAudienceCount,
   cancelNotification,
   endTicker,
   getTemplates,
@@ -15,9 +16,14 @@ import {
 import { getProducts } from "@/services/admin/products";
 import { getCategories } from "@/services/admin/categories";
 import {
+  AUTO_VARS,
+  AUTO_VAR_SAMPLES,
+  PERSONAL_IMAGE_SEGMENTS,
   extractVars,
   fillTpl,
   hasPlaceholders,
+  hasAutoPlaceholders,
+  hasNonAutoPlaceholders,
 } from "@/lib/notificationTpl";
 import { useConfirm } from "@/hooks/useConfirm";
 
@@ -59,13 +65,25 @@ export function useNotifications() {
   const [categoryLoading, setCategoryLoading] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState(null); // { _id, name, slug }
 
-  // Step 3 Channel & Timing
+  // Step 3 Audience, Channel & Timing
+  const [audienceType, setAudienceTypeState] = useState("all"); // "all" | "segment"
+  const [segment, setSegment] = useState("cart");
+  const [audienceCategorySearch, setAudienceCategorySearch] = useState("");
+  const [selectedAudienceCategory, setSelectedAudienceCategory] = useState(null);
+  const [audienceCount, setAudienceCount] = useState(null);
+  const [audienceCountLoading, setAudienceCountLoading] = useState(false);
+  const [audienceCountError, setAudienceCountError] = useState("");
+  const [audienceCountRetryKey, setAudienceCountRetryKey] = useState(0);
+  const [personalImage, setPersonalImage] = useState(true);
+
   const [channel, setChannel] = useState("both"); // "both" | "app" | "web"
   const [tickerDurationHours, setTickerDurationHours] = useState(24);
   const [sendMode, setSendMode] = useState("now"); // "now" | "schedule"
   const [scheduledAt, setScheduledAt] = useState("");
   const [sendLoading, setSendLoading] = useState(false);
   const [sendError, setSendError] = useState("");
+
+  const categoryId = selectedAudienceCategory?._id || "";
 
   // ---------------- TEMPLATES TAB STATE ----------------
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
@@ -80,6 +98,8 @@ export function useNotifications() {
   });
   const [templateSubmitting, setTemplateSubmitting] = useState(false);
   const [templateFormError, setTemplateFormError] = useState("");
+  const [pendingTemplateIds, setPendingTemplateIds] = useState([]);
+  const pendingTemplateIdsRef = useRef(new Set());
 
   // ---------------- HISTORY TAB STATE ----------------
   const [notifications, setNotifications] = useState([]);
@@ -196,9 +216,11 @@ export function useNotifications() {
     };
   }, [openScreen, productSearch]);
 
-  // Category load effect when openScreen === "category"
+  // Category load effect when openScreen === "category" or segment === "category"
   useEffect(() => {
-    if (openScreen !== "category") return;
+    const needsCategories =
+      openScreen === "category" || (audienceType === "segment" && segment === "category");
+    if (!needsCategories) return;
     let alive = true;
     if (allCategories.length === 0) {
       const timer = setTimeout(() => {
@@ -217,13 +239,90 @@ export function useNotifications() {
         clearTimeout(timer);
       };
     }
-  }, [openScreen, allCategories.length]);
+  }, [openScreen, audienceType, segment, allCategories.length]);
 
   const categoryResults = useMemo(() => {
     if (!categorySearch.trim()) return allCategories.slice(0, 10);
     const q = categorySearch.toLowerCase().trim();
     return allCategories.filter((c) => c.name.toLowerCase().includes(q)).slice(0, 10);
   }, [allCategories, categorySearch]);
+
+  const audienceCategoryResults = useMemo(() => {
+    if (!audienceCategorySearch.trim()) return allCategories.slice(0, 10);
+    const q = audienceCategorySearch.toLowerCase().trim();
+    return allCategories.filter((c) => c.name.toLowerCase().includes(q)).slice(0, 10);
+  }, [allCategories, audienceCategorySearch]);
+
+  const setAudienceType = (nextType) => {
+    if (nextType === audienceType) return;
+    setAudienceTypeState(nextType);
+    setAudienceCount(null);
+    setAudienceCountError("");
+    setSendError("");
+    if (nextType === "segment") {
+      setChannel("app");
+    } else {
+      setChannel(template?.channel || "both");
+    }
+  };
+
+  const handleSegmentChange = (nextSegment) => {
+    if (nextSegment === segment) return;
+    setSegment(nextSegment);
+    setAudienceCount(null);
+    setAudienceCountError("");
+  };
+
+  const handleSelectedAudienceCategoryChange = (nextCat) => {
+    setSelectedAudienceCategory(nextCat);
+    setAudienceCount(null);
+    setAudienceCountError("");
+  };
+
+  const retryAudienceCount = useCallback(() => {
+    setAudienceCountError("");
+    setAudienceCountRetryKey((k) => k + 1);
+  }, []);
+
+  // Debounced live audience count (400ms)
+  useEffect(() => {
+    if (step !== 3 || audienceType !== "segment" || !segment) {
+      return;
+    }
+    if (segment === "category" && !categoryId) {
+      return;
+    }
+    let alive = true;
+    const timer = setTimeout(() => {
+      setAudienceCountLoading(true);
+      setAudienceCountError("");
+      getAudienceCount({
+        segment,
+        ...(segment === "category" ? { categoryId } : {}),
+      })
+        .then((res) => {
+          if (alive) {
+            setAudienceCount(res.data);
+            setAudienceCountError("");
+          }
+        })
+        .catch((err) => {
+          if (alive) {
+            setAudienceCount(null);
+            setAudienceCountError(
+              err.response?.data?.message || "Failed to check matching customers."
+            );
+          }
+        })
+        .finally(() => {
+          if (alive) setAudienceCountLoading(false);
+        });
+    }, 400);
+    return () => {
+      alive = false;
+      clearTimeout(timer);
+    };
+  }, [step, audienceType, segment, categoryId, audienceCountRetryKey]);
 
   // Derived Link String
   const computedLink = useMemo(() => {
@@ -254,7 +353,7 @@ export function useNotifications() {
     setVars({});
     setTitleTpl(t ? t.titleTpl : "");
     setBodyTpl(t ? t.bodyTpl || "" : "");
-    setChannel(t ? t.channel || "both" : "both");
+    setChannel(audienceType === "segment" ? "app" : t ? t.channel || "both" : "both");
     setEditText(!t);
     setStep(2);
     setSendError("");
@@ -274,9 +373,9 @@ export function useNotifications() {
     setVars((prev) => ({ ...prev, [varName]: value }));
   };
 
-  // Variable names from current title/body templates
+  // Variable names from current title/body templates (excluding auto-filled personal variables)
   const varNames = useMemo(() => {
-    return extractVars(titleTpl, bodyTpl);
+    return extractVars(titleTpl, bodyTpl).filter((k) => !AUTO_VARS.includes(k));
   }, [titleTpl, bodyTpl]);
 
   // Final strings for sending & validation
@@ -288,13 +387,13 @@ export function useNotifications() {
     return fillTpl(bodyTpl, vars, "strict");
   }, [bodyTpl, vars]);
 
-  // Preview strings (unfilled variables shown as [Label])
+  // Preview strings (auto variables shown as sample values; manual unfilled variables shown as [Label])
   const previewTitle = useMemo(() => {
-    return fillTpl(titleTpl, vars, "label");
+    return fillTpl(titleTpl, { ...AUTO_VAR_SAMPLES, ...vars }, "label");
   }, [titleTpl, vars]);
 
   const previewBody = useMemo(() => {
-    return fillTpl(bodyTpl, vars, "label");
+    return fillTpl(bodyTpl, { ...AUTO_VAR_SAMPLES, ...vars }, "label");
   }, [bodyTpl, vars]);
 
   // Min datetime-local string (now + 1 min), initialized via effect
@@ -316,7 +415,8 @@ export function useNotifications() {
     });
   }, [varNames, vars]);
 
-  const placeholdersRemaining = hasPlaceholders(finalTitle, finalBody);
+  const placeholdersRemaining = hasNonAutoPlaceholders(finalTitle, finalBody);
+  const hasAutoPlaceholdersInMsg = hasAutoPlaceholders(finalTitle, finalBody);
   const isTitleEmpty = !finalTitle.trim();
   const isTitleTooLong = finalTitle.length > 65;
   const isBodyTooLong = finalBody.length > 240;
@@ -336,7 +436,16 @@ export function useNotifications() {
     !isImageUrlInvalid &&
     !isScreenSelectionIncomplete;
 
-  const canSubmitSend = canNext2 && !isScheduleInvalid;
+  const isAudienceInvalid =
+    audienceType === "segment"
+      ? (segment === "category" && !categoryId) ||
+        audienceCountLoading ||
+        Boolean(audienceCountError) ||
+        !audienceCount ||
+        audienceCount.withApp === 0
+      : hasAutoPlaceholdersInMsg;
+
+  const canSubmitSend = canNext2 && !isScheduleInvalid && !isAudienceInvalid;
 
   // ---------------- SEND SUBMISSION ----------------
   const submitSend = async () => {
@@ -344,16 +453,26 @@ export function useNotifications() {
     setSendLoading(true);
     setSendError("");
     try {
+      const isSegment = audienceType === "segment";
       const payload = {
         title: finalTitle.trim(),
         body: finalBody.trim(),
         type: template?.type || "custom",
-        channel,
+        channel: isSegment ? "app" : channel,
         link: computedLink,
         imageUrl: imageUrl.trim(),
         tickerDurationHours: Number(tickerDurationHours) || 24,
         sendNow: sendMode === "now",
         scheduledAt: sendMode === "schedule" ? new Date(scheduledAt).toISOString() : undefined,
+        audience: isSegment
+          ? {
+              type: "segment",
+              segment,
+              ...(segment === "category" ? { categoryId } : {}),
+            }
+          : { type: "all" },
+        personalImage:
+          isSegment && PERSONAL_IMAGE_SEGMENTS.includes(segment) ? personalImage : false,
       };
 
       await createNotification(payload);
@@ -372,6 +491,13 @@ export function useNotifications() {
       setSelectedProduct(null);
       setSelectedCategory(null);
       setCustomLink("");
+      setAudienceTypeState("all");
+      setSegment("cart");
+      setAudienceCategorySearch("");
+      setSelectedAudienceCategory(null);
+      setAudienceCount(null);
+      setAudienceCountError("");
+      setPersonalImage(true);
       setChannel("both");
       setTickerDurationHours(24);
       setSendMode("now");
@@ -462,6 +588,28 @@ export function useNotifications() {
     }
   };
 
+  const toggleTemplateEnabled = async (tpl, enabled) => {
+    const id = tpl._id;
+    if (pendingTemplateIdsRef.current.has(id)) return;
+    pendingTemplateIdsRef.current.add(id);
+    setPendingTemplateIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
+
+    const previousEnabled = tpl.enabled;
+    setTemplates((prev) => prev.map((t) => (t._id === id ? { ...t, enabled } : t)));
+    try {
+      await updateTemplate(id, { enabled });
+      toast.success(enabled ? `${tpl.name} enabled` : `${tpl.name} disabled`);
+    } catch (err) {
+      setTemplates((prev) =>
+        prev.map((t) => (t._id === id ? { ...t, enabled: previousEnabled } : t))
+      );
+      toast.error(err.response?.data?.message || "Failed to update template");
+    } finally {
+      pendingTemplateIdsRef.current.delete(id);
+      setPendingTemplateIds((prev) => prev.filter((item) => item !== id));
+    }
+  };
+
   const removeTemplate = (tpl) => {
     if (tpl.isSystem) return;
     requestConfirm({
@@ -527,7 +675,14 @@ export function useNotifications() {
     setEditText(true);
     setImageUrl(n.imageUrl || "");
     setShowMore(Boolean(n.imageUrl || (n.link && n.link !== "/")));
-    setChannel(n.channel || "both");
+    setChannel(n.audience?.type === "segment" ? "app" : n.channel || "both");
+    setAudienceTypeState(n.audience?.type === "segment" ? "segment" : "all");
+    setSegment(n.audience?.segment || "cart");
+    setPersonalImage(n.personalImage !== undefined ? Boolean(n.personalImage) : true);
+    setSelectedAudienceCategory(null);
+    setAudienceCategorySearch("");
+    setAudienceCount(null);
+    setAudienceCountError("");
     setTickerDurationHours(n.tickerDurationHours || 24);
     setSendMode("now");
     setScheduledAt("");
@@ -619,6 +774,23 @@ export function useNotifications() {
     selectedCategory,
     setSelectedCategory,
     computedLink,
+    audienceType,
+    setAudienceType,
+    segment,
+    setSegment: handleSegmentChange,
+    categoryId,
+    audienceCategorySearch,
+    setAudienceCategorySearch,
+    audienceCategoryResults,
+    selectedAudienceCategory,
+    setSelectedAudienceCategory: handleSelectedAudienceCategoryChange,
+    audienceCount,
+    audienceCountLoading,
+    audienceCountError,
+    retryAudienceCount,
+    personalImage,
+    setPersonalImage,
+    hasAutoPlaceholdersInMsg,
     channel,
     setChannel,
     tickerDurationHours,
@@ -659,6 +831,8 @@ export function useNotifications() {
     openEditTemplateDialog,
     closeTemplateDialog,
     submitTemplate,
+    toggleTemplateEnabled,
+    pendingTemplateIds,
     removeTemplate,
 
     // History Tab
