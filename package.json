@@ -1,0 +1,17 @@
+{
+  "name": "ecom-mern",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "prepare": "node -e \"if(process.env.NODE_ENV!=='production'){require('child_process').execSync('husky',{stdio:'inherit'})}\"",
+    "lint": "npm --prefix client run lint && npm --prefix server run lint",
+    "lint:fix": "npm --prefix client run lint:fix && npm --prefix server run lint:fix",
+    "format": "prettier . --write",
+    "format:check": "prettier . --check"
+  },
+  "devDependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^17.3.0",
+    "prettier": "^3.9.6"
+  }
+}
