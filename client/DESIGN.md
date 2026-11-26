@@ -149,7 +149,7 @@ React Hook Form + Zod. Schemas live in `src/schemas/` (admin: auth, brand, categ
 `*View` (page content), `*Client` (SSR hydration wrappers), `use*` (hooks own all state and data fetching), `*Slice`, `*Schema`, `*Service` (pure HTTP calls).
 
 ## Images
-All images are hosted on ImageKit and allowed in `next.config.mjs`. Add `?w=800&q=70` style sizing for notification images.
+All images are hosted on ImageKit and allowed in `next.config.mjs`. Push notification images must go through `pushImage()` in `notificationService.js`, which appends `?tr=w-800,h-400,fo-auto,q-70`. Never use `?w=...&q=...` on ImageKit URLs, because that format is not ImageKit's.
 
 ## Code quality
 ESLint (`eslint-config-next`, `eslint-config-prettier`), Prettier, Husky pre-commit, lint-staged.

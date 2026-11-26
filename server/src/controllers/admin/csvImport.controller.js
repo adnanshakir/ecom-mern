@@ -18,7 +18,11 @@ import ApiError from "../../utils/apiError.js";
 import { adjustStock } from "../../utils/inventory.js";
 import InventoryMovement from "../../models/admin/inventoryMovement.model.js";
 import imagekit from "../../utils/imagekit.js";
-import { notifyRestock } from "../../services/notificationTriggers.js";
+import {
+  notifyRestock,
+  notifyPriceDropsBulk,
+  getProductMinEffectivePrice,
+} from "../../services/notificationTriggers.js";
 
 async function uploadExternalImageToImageKit(imageUrl) {
   const controller = new AbortController();
@@ -209,6 +213,76 @@ export const confirmCsvImport = async (req, res, next) => {
     })
   );
 
+  // Snapshot current effective selling prices before any DB writes for existing products/variants
+  const preImportSnapshots = [];
+  try {
+    const validPrepared = preparedItems.filter(
+      ({ item }) => item.valid && item.product?.name && item.variants?.length
+    );
+    const skus = [
+      ...new Set(
+        validPrepared.flatMap(({ item }) => item.variants.map((v) => v.sku).filter(Boolean))
+      ),
+    ];
+    const slugs = [
+      ...new Set(
+        validPrepared
+          .flatMap(({ item }) => [item.handle, item.product?.slug])
+          .filter(Boolean)
+          .map((s) => String(s).trim().toLowerCase())
+      ),
+    ];
+
+    if (skus.length || slugs.length) {
+      const matchedVariants = skus.length
+        ? await ProductVariant.find({ sku: { $in: skus } }).select("product").lean()
+        : [];
+      const variantProductIds = matchedVariants.map((v) => v.product).filter(Boolean);
+
+      const productFilters = [];
+      if (variantProductIds.length) productFilters.push({ _id: { $in: variantProductIds } });
+      if (slugs.length) productFilters.push({ slug: { $in: slugs } });
+
+      const existingProducts = productFilters.length
+        ? await Product.find({ $or: productFilters }).select("_id name slug images").lean()
+        : [];
+
+      if (existingProducts.length) {
+        const existingProductIds = existingProducts.map((p) => p._id);
+        const existingVariants = await ProductVariant.find({
+          product: { $in: existingProductIds },
+        })
+          .select("product price salePrice images")
+          .lean();
+
+        const variantsByProduct = new Map();
+        for (const v of existingVariants) {
+          const key = String(v.product);
+          if (!variantsByProduct.has(key)) variantsByProduct.set(key, []);
+          variantsByProduct.get(key).push(v);
+        }
+
+        for (const p of existingProducts) {
+          const pVariants = variantsByProduct.get(String(p._id)) || [];
+          const oldPrice = getProductMinEffectivePrice(pVariants);
+          if (oldPrice > 0) {
+            const image =
+              p.images?.[0]?.url || pVariants.find((v) => v.images?.[0]?.url)?.images?.[0]?.url || "";
+            preImportSnapshots.push({
+              productId: p._id,
+              name: p.name,
+              slug: p.slug,
+              image,
+              oldPrice,
+            });
+          }
+        }
+      }
+    }
+  } catch (snapshotErr) {
+    console.error("CSV import pre-snapshot price error:", snapshotErr);
+  }
+
   // PHASE 2: Perform DB writes inside MongoDB transaction (completes in <1 sec)
   const session = await mongoose.startSession();
   session.startTransaction();
@@ -325,6 +399,45 @@ export const confirmCsvImport = async (req, res, next) => {
     }
   } catch (notifyErr) {
     console.error("CSV import restock notification error:", notifyErr);
+  }
+
+  try {
+    if (preImportSnapshots.length > 0) {
+      const productIds = preImportSnapshots.map((s) => s.productId);
+      const currentVariants = await ProductVariant.find({ product: { $in: productIds } })
+        .select("product price salePrice images")
+        .lean();
+
+      const variantsByProduct = new Map();
+      for (const v of currentVariants) {
+        const key = String(v.product);
+        if (!variantsByProduct.has(key)) variantsByProduct.set(key, []);
+        variantsByProduct.get(key).push(v);
+      }
+
+      const drops = [];
+      for (const snap of preImportSnapshots) {
+        const pVariants = variantsByProduct.get(String(snap.productId)) || [];
+        if (!pVariants.length) continue;
+        const newPrice = getProductMinEffectivePrice(pVariants);
+        if (snap.oldPrice > 0 && Number.isFinite(newPrice) && newPrice <= snap.oldPrice * 0.95) {
+          drops.push({
+            productId: snap.productId,
+            name: snap.name,
+            slug: snap.slug,
+            image: snap.image || pVariants.find((v) => v.images?.[0]?.url)?.images?.[0]?.url || "",
+            oldPrice: snap.oldPrice,
+            newPrice,
+          });
+        }
+      }
+
+      if (drops.length > 0) {
+        notifyPriceDropsBulk(drops).catch(console.error);
+      }
+    }
+  } catch (notifyErr) {
+    console.error("CSV import price-drop notification error:", notifyErr);
   }
 
   const importJob = await ImportJob.create({

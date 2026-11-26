@@ -1,5 +1,6 @@
 import express from "express";
 import {
+  getAudienceCount,
   createNotification,
   cancelNotification,
   endTicker,
@@ -11,6 +12,7 @@ const router = express.Router();
 
 router.get("/", authenticate, listNotifications);
 router.post("/", authenticate, createNotification);
+router.post("/audience-count", authenticate, getAudienceCount);
 router.patch("/:id/cancel", authenticate, cancelNotification);
 router.patch("/:id/end-ticker", authenticate, endTicker);
 

@@ -3,6 +3,7 @@
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import {
   Table,
   TableHeader,
@@ -13,7 +14,7 @@ import {
 } from "@/components/ui/table";
 import { ApiErrorSummary } from "@/components/shared/ApiErrorSummary";
 import { Plus, Pencil, Trash2, Loader2 } from "lucide-react";
-import { TYPE_LABELS, CHANNEL_LABELS } from "@/lib/notificationTpl";
+import { TYPE_LABELS, CHANNEL_LABELS, AUTO_TEMPLATE_DESCRIPTIONS } from "@/lib/notificationTpl";
 
 export function TemplatesTab({ notif }) {
   const {
@@ -23,6 +24,7 @@ export function TemplatesTab({ notif }) {
     openCreateTemplateDialog,
     openEditTemplateDialog,
     removeTemplate,
+    toggleTemplateEnabled,
   } = notif;
 
   return (
@@ -71,11 +73,18 @@ export function TemplatesTab({ notif }) {
                   templates.map((tpl) => (
                     <TableRow key={tpl._id}>
                       <TableCell className="font-medium">
-                        {tpl.name}
-                        {tpl.isSystem && (
-                          <span className="ml-2 text-[10px] text-muted-foreground font-normal">
-                            (System)
-                          </span>
+                        <div>
+                          <span>{tpl.name}</span>
+                          {tpl.isSystem && (
+                            <span className="ml-2 text-[10px] text-muted-foreground font-normal">
+                              (System)
+                            </span>
+                          )}
+                        </div>
+                        {AUTO_TEMPLATE_DESCRIPTIONS[tpl.key] && (
+                          <p className="text-xs text-muted-foreground font-normal mt-0.5">
+                            {AUTO_TEMPLATE_DESCRIPTIONS[tpl.key]}
+                          </p>
                         )}
                       </TableCell>
                       <TableCell>
@@ -106,7 +115,18 @@ export function TemplatesTab({ notif }) {
                         {tpl.titleTpl}
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-1">
+                        <div className="flex items-center justify-end gap-2">
+                          {tpl.auto && (
+                            <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer mr-1">
+                              <span>Active</span>
+                              <Switch
+                                size="sm"
+                                checked={tpl.enabled !== false}
+                                onCheckedChange={(checked) => toggleTemplateEnabled(tpl, checked)}
+                                aria-label={`Toggle ${tpl.name}`}
+                              />
+                            </label>
+                          )}
                           <Button
                             variant="ghost"
                             size="icon"

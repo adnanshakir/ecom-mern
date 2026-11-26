@@ -105,6 +105,7 @@ export function HistoryTab({ notif }) {
                 <TableHead>Title</TableHead>
                 <TableHead>Channel</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Reach</TableHead>
                 <TableHead>Date & Time</TableHead>
                 <TableHead>Web Ticker</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
@@ -113,7 +114,7 @@ export function HistoryTab({ notif }) {
             <TableBody>
               {notificationsLoading && notifications.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="py-12 text-center text-muted-foreground">
+                  <TableCell colSpan={7} className="py-12 text-center text-muted-foreground">
                     <div className="flex items-center justify-center gap-2 text-sm">
                       <Loader2 className="size-4 animate-spin text-primary" />
                       <span>Loading notifications...</span>
@@ -122,7 +123,7 @@ export function HistoryTab({ notif }) {
                 </TableRow>
               ) : notifications.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
+                  <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
                     No notifications found.
                   </TableCell>
                 </TableRow>
@@ -187,6 +188,21 @@ export function HistoryTab({ notif }) {
                         <Badge variant="destructive" className="text-[11px]">
                           Failed
                         </Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-xs whitespace-nowrap">
+                      {n.audience?.type === "segment" ? (
+                        n.stats &&
+                        typeof n.stats.delivered === "number" &&
+                        typeof n.stats.targeted === "number" ? (
+                          <span className="tabular-nums text-foreground">
+                            {n.stats.delivered} of {n.stats.targeted}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )
+                      ) : (
+                        <span className="text-muted-foreground">All app users</span>
                       )}
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground whitespace-nowrap">

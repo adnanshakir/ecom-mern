@@ -20,7 +20,7 @@ const notificationSchema = new mongoose.Schema(
       default: "custom",
     },
     channel: { type: String, enum: ["web", "app", "both"], default: "both" },
-    link: { type: String, default: "" }, // e.g. /products/some-slug or /sale
+    link: { type: String, default: "" }, // e.g. /product/some-slug or /sale
     imageUrl: { type: String, trim: true, default: "" }, // optional, https only
     status: {
       type: String,
@@ -32,6 +32,18 @@ const notificationSchema = new mongoose.Schema(
     claimExpiresAt: Date,
     tickerDurationHours: { type: Number, default: 24 },
     tickerEndsAt: Date,
+    audience: {
+      type: { type: String, enum: ["all", "segment"], default: "all" },
+      segment: String,
+      categoryId: String,
+    },
+    personalImage: { type: Boolean, default: false },
+    stats: {
+      targeted: Number,
+      withDevice: Number,
+      delivered: Number,
+      failed: Number,
+    },
     result: { ok: Boolean, error: String },
   },
   { timestamps: true }

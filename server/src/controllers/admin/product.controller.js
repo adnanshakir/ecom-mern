@@ -7,7 +7,11 @@ import { generateUniqueSlug } from "../../utils/slugify.js";
 import { escapeRegex } from "../../utils/escapeRegex.js";
 import { logActivity } from "../../utils/activityLogger.js";
 import { adjustStock } from "../../utils/inventory.js";
-import { notifyRestock } from "../../services/notificationTriggers.js";
+import {
+  notifyRestock,
+  notifyPriceDrop,
+  getProductMinEffectivePrice,
+} from "../../services/notificationTriggers.js";
 import mongoose from "mongoose";
 
 // ---------------- CREATE ----------------
@@ -196,6 +200,11 @@ export const updateProduct = async (req, res, next) => {
       updates.slug = await generateUniqueSlug(Product, updates.name);
     }
 
+    const oldVariants = await ProductVariant.find({ product: req.params.id })
+      .select("price salePrice")
+      .lean();
+    const oldMinPrice = getProductMinEffectivePrice(oldVariants);
+
     const product = await Product.findByIdAndUpdate(req.params.id, updates, {
       returnDocument: "after",
       runValidators: true,
@@ -203,6 +212,10 @@ export const updateProduct = async (req, res, next) => {
     if (!product) throw new ApiError(404, "Product not found");
 
     const variants = await ProductVariant.find({ product: product._id });
+    const newMinPrice = getProductMinEffectivePrice(variants);
+    if (oldMinPrice > 0 && newMinPrice <= oldMinPrice * 0.95) {
+      notifyPriceDrop(product, oldMinPrice, newMinPrice).catch(console.error);
+    }
 
     await logActivity({
       userId: req.user.id,

@@ -1,16 +1,252 @@
 import Wishlist from "../models/customer/wishlist.model.js";
-import { sendTemplateToCustomer } from "./notificationService.js";
+import Cart from "../models/customer/cart.model.js";
+import ProductVariant from "../models/admin/productVariant.model.js";
+import NotificationTemplate from "../models/NotificationTemplate.js";
+import {
+  sendTemplateToCustomer,
+  fill,
+  pushImage,
+  applyCooldown,
+  sendPersonalBatch,
+} from "./notificationService.js";
+import { getActiveCustomerMeta } from "./notificationAudience.js";
+
+const formatInrNoDecimals = (amount) =>
+  new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(Math.round(amount));
+
+export const getEffectiveVariantPrice = (variant) =>
+  typeof variant?.salePrice === "number" && variant.salePrice > 0
+    ? variant.salePrice
+    : variant?.price ?? 0;
+
+export const getProductMinEffectivePrice = (variants = []) => {
+  if (!variants.length) return 0;
+  return Math.min(...variants.map(getEffectiveVariantPrice));
+};
 
 export async function notifyRestock(product) {
+  const t = await NotificationTemplate.findOne({ key: "restock" }).lean();
+  if (!t || t.enabled === false) return;
+
   const wishlists = await Wishlist.find({ products: product._id }).select("customer").lean();
   await Promise.allSettled(
     wishlists.map((w) =>
       sendTemplateToCustomer("restock", w.customer, {
         product: product.name,
-        link: `/products/${product.slug}`,
+        link: `/product/${product.slug}`,
       })
     )
   );
 }
 
-export default { notifyRestock };
+export async function notifyPriceDrop(product, oldPrice, newPrice) {
+  if (
+    !product ||
+    !Number.isFinite(oldPrice) ||
+    !Number.isFinite(newPrice) ||
+    oldPrice <= 0 ||
+    newPrice > oldPrice * 0.95
+  ) {
+    return;
+  }
+
+  const t = await NotificationTemplate.findOne({ key: "price_drop" }).lean();
+  if (!t || t.enabled === false) return;
+
+  const variants = await ProductVariant.find({ product: product._id })
+    .select("_id images")
+    .lean();
+  const variantIds = variants.map((v) => v._id);
+
+  const [carts, wishlists] = await Promise.all([
+    variantIds.length
+      ? Cart.find({ "items.variant": { $in: variantIds } }).select("customer").lean()
+      : [],
+    Wishlist.find({ products: product._id }).select("customer").lean(),
+  ]);
+
+  const candidateIds = new Set([
+    ...carts.map((c) => c.customer),
+    ...wishlists.map((w) => w.customer),
+  ]);
+  if (!candidateIds.size) return;
+
+  const activeMap = await getActiveCustomerMeta(candidateIds);
+  if (!activeMap.size) return;
+
+  const rawImage =
+    product.images?.[0]?.url || variants.find((v) => v.images?.[0]?.url)?.images?.[0]?.url || "";
+  const imageUrl = pushImage(rawImage);
+  const link = `/product/${product.slug}`;
+  const vars = {
+    product: product.name,
+    price: formatInrNoDecimals(newPrice),
+    oldPrice: formatInrNoDecimals(oldPrice),
+  };
+  const title = fill(t.titleTpl, vars);
+  const body = fill(t.bodyTpl, vars);
+
+  let items = [...activeMap.values()].map((meta) => ({
+    customerId: meta.customerId,
+    title,
+    body,
+    link,
+    imageUrl,
+  }));
+
+  items = await applyCooldown(items, { key: "price_drop", cooldownHours: 168 });
+  await sendPersonalBatch(items, { key: "price_drop" });
+}
+
+export async function notifyPriceDropsBulk(drops = []) {
+  if (!Array.isArray(drops) || !drops.length) return;
+
+  const t = await NotificationTemplate.findOne({ key: "price_drop" }).lean();
+  if (!t || t.enabled === false) return;
+
+  const validDrops = [];
+  const seenProducts = new Map();
+  for (const d of drops) {
+    if (
+      !d ||
+      !d.productId ||
+      !Number.isFinite(d.oldPrice) ||
+      !Number.isFinite(d.newPrice) ||
+      d.oldPrice <= 0 ||
+      d.newPrice > d.oldPrice * 0.95
+    ) {
+      continue;
+    }
+    const dropPct = (d.oldPrice - d.newPrice) / d.oldPrice;
+    const pid = String(d.productId);
+    const existing = seenProducts.get(pid);
+    if (!existing || dropPct > existing.dropPct) {
+      seenProducts.set(pid, { ...d, dropPct });
+    }
+  }
+
+  validDrops.push(...seenProducts.values());
+  if (!validDrops.length) return;
+
+  validDrops.sort((a, b) => b.dropPct - a.dropPct);
+  const cappedDrops = validDrops.slice(0, 100);
+  const dropByProductId = new Map(cappedDrops.map((d) => [String(d.productId), d]));
+  const productIds = cappedDrops.map((d) => d.productId);
+
+  const variants = await ProductVariant.find({ product: { $in: productIds } })
+    .select("_id product images")
+    .lean();
+
+  const variantToProduct = new Map();
+  const fallbackImageByProduct = new Map();
+  const variantIds = [];
+  for (const v of variants) {
+    variantIds.push(v._id);
+    const pid = String(v.product);
+    variantToProduct.set(String(v._id), pid);
+    if (!fallbackImageByProduct.has(pid) && v.images?.[0]?.url) {
+      fallbackImageByProduct.set(pid, v.images[0].url);
+    }
+  }
+
+  const [carts, wishlists] = await Promise.all([
+    variantIds.length
+      ? Cart.find({ "items.variant": { $in: variantIds } })
+          .select("customer items.variant")
+          .lean()
+      : [],
+    Wishlist.find({ products: { $in: productIds } }).select("customer products").lean(),
+  ]);
+
+  const candidateIds = new Set([
+    ...carts.map((c) => c.customer),
+    ...wishlists.map((w) => w.customer),
+  ]);
+  if (!candidateIds.size) return;
+
+  const activeMap = await getActiveCustomerMeta(candidateIds);
+  if (!activeMap.size) return;
+
+  const byCustomer = new Map();
+  const addCustomerDrop = (customerId, pid, source) => {
+    const cKey = String(customerId);
+    const meta = activeMap.get(cKey);
+    if (!meta) return;
+    const drop = dropByProductId.get(pid);
+    if (!drop) return;
+
+    if (!byCustomer.has(cKey)) {
+      byCustomer.set(cKey, { customerId: meta.customerId, drops: new Map() });
+    }
+    const custDrops = byCustomer.get(cKey).drops;
+    if (!custDrops.has(pid)) {
+      custDrops.set(pid, { drop, fromWishlist: false, fromCart: false });
+    }
+    const entry = custDrops.get(pid);
+    if (source === "wishlist") entry.fromWishlist = true;
+    if (source === "cart") entry.fromCart = true;
+  };
+
+  for (const cart of carts) {
+    for (const it of cart.items || []) {
+      const pid = variantToProduct.get(String(it.variant));
+      if (pid) addCustomerDrop(cart.customer, pid, "cart");
+    }
+  }
+
+  for (const w of wishlists) {
+    for (const p of w.products || []) {
+      addCustomerDrop(w.customer, String(p), "wishlist");
+    }
+  }
+
+  if (!byCustomer.size) return;
+
+  let items = [];
+  for (const { customerId, drops: custDropMap } of byCustomer.values()) {
+    const entries = [...custDropMap.values()].sort((a, b) => b.drop.dropPct - a.drop.dropPct);
+    if (!entries.length) continue;
+
+    if (entries.length === 1) {
+      const { drop } = entries[0];
+      const rawImage = drop.image || fallbackImageByProduct.get(String(drop.productId)) || "";
+      const vars = {
+        product: drop.name,
+        price: formatInrNoDecimals(drop.newPrice),
+        oldPrice: formatInrNoDecimals(drop.oldPrice),
+      };
+      items.push({
+        customerId,
+        title: fill(t.titleTpl, vars),
+        body: fill(t.bodyTpl, vars),
+        link: `/product/${drop.slug}`,
+        imageUrl: pushImage(rawImage),
+      });
+    } else {
+      const biggest = entries[0].drop;
+      const anyFromWishlist = entries.some((e) => e.fromWishlist);
+      const rawImage = biggest.image || fallbackImageByProduct.get(String(biggest.productId)) || "";
+      items.push({
+        customerId,
+        title: "📉 Prices dropped on items you like",
+        body: fill("{{product}} and {{n}} more are cheaper now.", {
+          product: biggest.name,
+          n: entries.length - 1,
+        }),
+        link: anyFromWishlist ? "/wishlist" : "/cart",
+        imageUrl: pushImage(rawImage),
+      });
+    }
+  }
+
+  items = await applyCooldown(items, { key: "price_drop", cooldownHours: 168 });
+  await sendPersonalBatch(items, { key: "price_drop" });
+}
+
+export default {
+  notifyRestock,
+  notifyPriceDrop,
+  notifyPriceDropsBulk,
+  getEffectiveVariantPrice,
+  getProductMinEffectivePrice,
+};
