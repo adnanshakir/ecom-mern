@@ -202,7 +202,13 @@ export function HistoryTab({ notif }) {
                           <span className="text-muted-foreground">—</span>
                         )
                       ) : (
-                        <span className="text-muted-foreground">All app users</span>
+                        <span className="text-muted-foreground">
+                          {n.channel === "web"
+                            ? "Website visitors"
+                            : n.channel === "app"
+                            ? "All app users"
+                            : "Everyone"}
+                        </span>
                       )}
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground whitespace-nowrap">

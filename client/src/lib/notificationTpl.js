@@ -40,12 +40,12 @@ export const fillTpl = (tpl, vars = {}, mode = "strict") =>
     return `{{${k}}}`;
   });
 
+const AUTO_VARS_REGEX = new RegExp(`\\{\\{(?:${AUTO_VARS.join("|")})\\}\\}`, "g");
+
 export const hasPlaceholders = (...texts) => texts.some((t) => /\{\{/.test(t || ""));
 
 export const hasNonAutoPlaceholders = (...texts) =>
-  texts.some((t) =>
-    [...(t || "").matchAll(/\{\{(\w*)\}\}/g)].some((m) => !AUTO_VARS.includes(m[1]))
-  );
+  texts.some((t) => /\{\{/.test((t || "").replace(AUTO_VARS_REGEX, "")));
 
 export const hasAutoPlaceholders = (...texts) =>
   texts.some((t) =>

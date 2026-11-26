@@ -39,7 +39,7 @@ export async function notifyRestock(product) {
   );
 }
 
-export async function notifyPriceDrop(product, oldPrice, newPrice) {
+export async function notifyPriceDrop(product, oldPrice, newPrice, variantId = null) {
   if (
     !product ||
     !Number.isFinite(oldPrice) ||
@@ -54,45 +54,94 @@ export async function notifyPriceDrop(product, oldPrice, newPrice) {
   if (!t || t.enabled === false) return;
 
   const variants = await ProductVariant.find({ product: product._id })
-    .select("_id images")
+    .select("_id images price salePrice")
     .lean();
   const variantIds = variants.map((v) => v._id);
 
   const [carts, wishlists] = await Promise.all([
-    variantIds.length
+    variantId
+      ? Cart.find({ "items.variant": variantId }).select("customer").lean()
+      : variantIds.length
       ? Cart.find({ "items.variant": { $in: variantIds } }).select("customer").lean()
       : [],
     Wishlist.find({ products: product._id }).select("customer").lean(),
   ]);
 
+  const cartCustomerIds = new Set(carts.map((c) => String(c.customer)));
+  const wishlistCustomerIds = new Set(wishlists.map((w) => String(w.customer)));
+
+  // Wishlist is product-level, so use the product's minimum effective variant price
+  let wishlistOldPrice = oldPrice;
+  let wishlistNewPrice = newPrice;
+  let notifyWishlist = wishlistCustomerIds.size > 0;
+  if (variantId && notifyWishlist) {
+    if (!variants.length) {
+      notifyWishlist = false;
+    } else {
+      const targetIdStr = String(variantId);
+      wishlistOldPrice = Math.min(
+        ...variants.map((v) =>
+          String(v._id) === targetIdStr ? oldPrice : getEffectiveVariantPrice(v)
+        )
+      );
+      wishlistNewPrice = Math.min(
+        ...variants.map((v) =>
+          String(v._id) === targetIdStr ? newPrice : getEffectiveVariantPrice(v)
+        )
+      );
+      notifyWishlist = wishlistOldPrice > 0 && wishlistNewPrice <= wishlistOldPrice * 0.95;
+    }
+  }
+
   const candidateIds = new Set([
     ...carts.map((c) => c.customer),
-    ...wishlists.map((w) => w.customer),
+    ...(notifyWishlist ? wishlists.map((w) => w.customer) : []),
   ]);
   if (!candidateIds.size) return;
 
   const activeMap = await getActiveCustomerMeta(candidateIds);
   if (!activeMap.size) return;
 
+  const targetVariant = variantId
+    ? variants.find((v) => String(v._id) === String(variantId))
+    : null;
   const rawImage =
-    product.images?.[0]?.url || variants.find((v) => v.images?.[0]?.url)?.images?.[0]?.url || "";
+    product.images?.[0]?.url ||
+    targetVariant?.images?.[0]?.url ||
+    variants.find((v) => v.images?.[0]?.url)?.images?.[0]?.url ||
+    "";
   const imageUrl = pushImage(rawImage);
   const link = `/product/${product.slug}`;
-  const vars = {
-    product: product.name,
-    price: formatInrNoDecimals(newPrice),
-    oldPrice: formatInrNoDecimals(oldPrice),
-  };
-  const title = fill(t.titleTpl, vars);
-  const body = fill(t.bodyTpl, vars);
 
-  let items = [...activeMap.values()].map((meta) => ({
-    customerId: meta.customerId,
-    title,
-    body,
-    link,
-    imageUrl,
-  }));
+  const buildMsg = (fromPrice, toPrice) => {
+    const vars = {
+      product: product.name,
+      price: formatInrNoDecimals(toPrice),
+      oldPrice: formatInrNoDecimals(fromPrice),
+    };
+    return {
+      title: fill(t.titleTpl, vars),
+      body: fill(t.bodyTpl, vars),
+    };
+  };
+
+  const cartMsg = buildMsg(oldPrice, newPrice);
+  const wishlistMsg =
+    wishlistOldPrice === oldPrice && wishlistNewPrice === newPrice
+      ? cartMsg
+      : buildMsg(wishlistOldPrice, wishlistNewPrice);
+
+  let items = [...activeMap.values()].map((meta) => {
+    const inCart = cartCustomerIds.has(String(meta.customerId));
+    const msg = inCart ? cartMsg : wishlistMsg;
+    return {
+      customerId: meta.customerId,
+      title: msg.title,
+      body: msg.body,
+      link,
+      imageUrl,
+    };
+  });
 
   items = await applyCooldown(items, { key: "price_drop", cooldownHours: 168 });
   await sendPersonalBatch(items, { key: "price_drop" });

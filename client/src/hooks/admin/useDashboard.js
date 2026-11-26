@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import api from "@/services/admin/axios";
 import { getAdminOrders, getAdminOrderStats } from "@/services/adminOrderService";
 import { useRecentImports } from "@/hooks/admin/useRecentImports";
@@ -20,8 +20,10 @@ export function useDashboard() {
   const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
 
   const recentImports = useRecentImports();
+  const requestIdRef = useRef(0);
 
   const fetchDashboardData = useCallback(async (isManual = false) => {
+    const requestId = ++requestIdRef.current;
     if (isManual) setRefreshing(true);
     try {
       const [dashRes, ordersRes, orderStatsRes] = await Promise.all([
@@ -29,6 +31,7 @@ export function useDashboard() {
         getAdminOrders({ limit: 5 }),
         getAdminOrderStats(),
       ]);
+      if (requestId !== requestIdRef.current) return;
       setStats(dashRes.data?.data || null);
       setRecentOrders(ordersRes.data?.data || []);
       setOrderStats(
@@ -41,10 +44,13 @@ export function useDashboard() {
       );
       setError(null);
     } catch (err) {
+      if (requestId !== requestIdRef.current) return;
       setError(err.response?.data?.message || "Failed to load dashboard statistics.");
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (requestId === requestIdRef.current) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   }, []);
 

@@ -5,7 +5,7 @@ import mongoose from "mongoose";
 // Load config (which loads .env) first, then clear Firebase creds so push stub runs cleanly
 await import("../config/config.js");
 delete process.env.FIREBASE_SERVICE_ACCOUNT_B64;
-process.env.ALLOW_PUSH_STUB = "true";
+process.env.ENABLE_PUSH_STUB = "true";
 
 const { default: app } = await import("../app.js");
 const { default: User } = await import("../models/admin/user.model.js");
@@ -34,7 +34,9 @@ const {
   startNotificationScheduler,
 } = await import("../services/notificationService.js");
 const { resolveAudience } = await import("../services/notificationAudience.js");
-const { notifyRestock, notifyPriceDropsBulk } = await import("../services/notificationTriggers.js");
+const { default: notificationTriggers, notifyRestock, notifyPriceDropsBulk } = await import(
+  "../services/notificationTriggers.js"
+);
 const { connectTestDB, closeTestDB, clearTestDB } = await import("./setup.js");
 const { createCustomerAuth } = await import("../config/customerAuth.js");
 
@@ -48,7 +50,7 @@ let cust2Profile;
 let custBlockedProfile;
 
 beforeAll(async () => {
-  process.env.ALLOW_PUSH_STUB = "true";
+  process.env.ENABLE_PUSH_STUB = "true";
   await connectTestDB();
   await createCustomerAuth();
 }, 30000);
@@ -59,7 +61,7 @@ afterEach(async () => {
 });
 
 afterAll(async () => {
-  delete process.env.ALLOW_PUSH_STUB;
+  delete process.env.ENABLE_PUSH_STUB;
   await closeTestDB();
 });
 
@@ -143,6 +145,21 @@ beforeEach(async () => {
     createdAt: new Date(Date.now() - 40 * 24 * 3600 * 1000),
   });
 });
+
+async function waitFor(assertion, { timeoutMs = 2000, intervalMs = 10 } = {}) {
+  const deadline = Date.now() + timeoutMs;
+  let lastErr;
+  while (Date.now() < deadline) {
+    try {
+      assertion();
+      return;
+    } catch (err) {
+      lastErr = err;
+      await new Promise((r) => setTimeout(r, intervalMs));
+    }
+  }
+  throw lastErr;
+}
 
 describe("Targeted push notifications", () => {
   it("resolves all audience segments, excludes blocked customers, and counts device tokens", async () => {
@@ -317,6 +334,7 @@ describe("Targeted push notifications", () => {
       customer: cust1Profile._id,
       products: [product._id],
     });
+    const priceDropSpy = jest.spyOn(notificationTriggers, "notifyPriceDrop");
     const logSpy = jest.spyOn(console, "log").mockImplementation(() => {});
 
     // 3% drop -> should NOT notify
@@ -325,7 +343,11 @@ describe("Targeted push notifications", () => {
       .set("Authorization", `Bearer ${adminToken}`)
       .send({ price: 1940 });
     expect(smallRes.status).toBe(200);
-    await new Promise((r) => setTimeout(r, 50));
+    await new Promise((r) => setImmediate(r));
+    if (priceDropSpy.mock.results.length) {
+      await Promise.all(priceDropSpy.mock.results.map((r) => r.value));
+    }
+    expect(priceDropSpy).not.toHaveBeenCalled();
     expect(logSpy).not.toHaveBeenCalledWith("[push stub:batch]", "price_drop", 1, "customers");
 
     // >=5% drop via salePrice (1940 -> 1500) -> SHOULD notify
@@ -334,8 +356,13 @@ describe("Targeted push notifications", () => {
       .set("Authorization", `Bearer ${adminToken}`)
       .send({ price: 1940, salePrice: 1500 });
     expect(dropRes.status).toBe(200);
-    await new Promise((r) => setTimeout(r, 100));
-    expect(logSpy).toHaveBeenCalledWith("[push stub:batch]", "price_drop", 1, "customers");
+    await waitFor(() => {
+      expect(priceDropSpy).toHaveBeenCalledTimes(1);
+    });
+    await Promise.all(priceDropSpy.mock.results.map((r) => r.value));
+    await waitFor(() => {
+      expect(logSpy).toHaveBeenCalledWith("[push stub:batch]", "price_drop", 1, "customers");
+    });
 
     // Disable restock & order_shipped templates -> should skip
     await DeviceToken.create({ customer: cust1Profile._id, token: "tok-restock" });
@@ -492,5 +519,101 @@ describe("Targeted push notifications", () => {
     } finally {
       delete process.env.DISABLE_SCHEDULER;
     }
+  });
+
+  it("rejects unclosed or non-auto {{placeholders}} in broadcasts and segments while accepting {{name}}", async () => {
+    await Cart.create({
+      customer: cust1Profile._id,
+      items: [{ variant: variant._id, quantity: 1 }],
+    });
+    await DeviceToken.create({ customer: cust1Profile._id, token: "tok-ph" });
+
+    // Broadcast rejects {{name}}, malformed {{foo bar}}, and unclosed {{
+    for (const title of ["Hi {{name}}", "Sale {{foo bar}}", "Sale {{unclosed"]) {
+      const res = await request(app)
+        .post("/api/admin/notifications")
+        .set("Authorization", `Bearer ${adminToken}`)
+        .send({ title, audience: { type: "all" }, sendNow: true });
+      expect(res.status).toBe(400);
+    }
+
+    // Segment rejects malformed/non-auto placeholders
+    for (const title of ["Hi {{name}} {{foo bar}}", "Hi {{name}} {{unclosed", "Hi {{discount}}"]) {
+      const res = await request(app)
+        .post("/api/admin/notifications")
+        .set("Authorization", `Bearer ${adminToken}`)
+        .send({ title, audience: { type: "segment", segment: "cart" }, sendNow: true });
+      expect(res.status).toBe(400);
+    }
+
+    // Segment accepts supported auto tokens like {{name}}
+    const okRes = await request(app)
+      .post("/api/admin/notifications")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({
+        title: "Hi {{name}}",
+        body: "{{product}} ({{count}})",
+        audience: { type: "segment", segment: "cart" },
+        sendNow: true,
+      });
+    expect(okRes.status).toBe(201);
+  });
+
+  it("restricts variant price-drop cart notifications to carts with that variant and uses product min price for wishlists", async () => {
+    await NotificationTemplate.updateOne({ key: "price_drop" }, { enabled: true });
+    const cheaperVariant = await ProductVariant.create({
+      product: product._id,
+      sku: "DJ-002",
+      price: 1000,
+      stock: 10,
+      isActive: true,
+    });
+
+    // cust1 has the updated variant in cart; cust2 has the cheaper variant in cart + product in wishlist
+    await Cart.create({
+      customer: cust1Profile._id,
+      items: [{ variant: variant._id, quantity: 1 }],
+    });
+    await Cart.create({
+      customer: cust2Profile._id,
+      items: [{ variant: cheaperVariant._id, quantity: 1 }],
+    });
+    await Wishlist.create({
+      customer: cust2Profile._id,
+      products: [product._id],
+    });
+
+    const priceDropSpy = jest.spyOn(notificationTriggers, "notifyPriceDrop");
+    const logSpy = jest.spyOn(console, "log").mockImplementation(() => {});
+
+    // Drop variant (2000 -> 1500). Product min price stays 1000 (cheaperVariant), so only cust1 (cart with variant) should be notified.
+    const dropRes = await request(app)
+      .put(`/api/products/${product._id}/variants/${variant._id}`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ price: 1500 });
+    expect(dropRes.status).toBe(200);
+
+    await waitFor(() => expect(priceDropSpy).toHaveBeenCalledTimes(1));
+    await Promise.all(priceDropSpy.mock.results.map((r) => r.value));
+    await waitFor(() => {
+      expect(logSpy).toHaveBeenCalledWith("[push stub:batch]", "price_drop", 1, "customers");
+    });
+  });
+
+  it("includes customers with any previous order status in bought_before audience", async () => {
+    await Order.create({
+      orderNumber: "ORD-PLACED",
+      customer: cust1Profile._id,
+      items: [{ product: product._id, variantId: variant._id, name: "Denim Jacket", quantity: 1, unitPrice: 2000 }],
+      shippingAddress: { line1: "123 St", city: "Mumbai", postalCode: "400001" },
+      subtotal: 2000,
+      total: 2000,
+      orderStatus: "placed",
+      payment: { status: "paid" },
+    });
+
+    const boughtAud = await resolveAudience("bought_before");
+    expect(boughtAud).toHaveLength(1);
+    expect(String(boughtAud[0].customerId)).toBe(String(cust1Profile._id));
   });
 });

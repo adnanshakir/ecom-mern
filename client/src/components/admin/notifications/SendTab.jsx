@@ -59,6 +59,8 @@ export function SendTab({ notif }) {
     setSelectedAudienceCategory,
     audienceCount,
     audienceCountLoading,
+    audienceCountError,
+    retryAudienceCount,
     personalImage,
     setPersonalImage,
     hasAutoPlaceholdersInMsg,
@@ -188,6 +190,8 @@ export function SendTab({ notif }) {
             categoryLoading={categoryLoading}
             audienceCount={audienceCount}
             audienceCountLoading={audienceCountLoading}
+            audienceCountError={audienceCountError}
+            retryAudienceCount={retryAudienceCount}
             personalImage={personalImage}
             setPersonalImage={setPersonalImage}
             hasAutoPlaceholdersInMsg={hasAutoPlaceholdersInMsg}

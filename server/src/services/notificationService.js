@@ -38,10 +38,7 @@ if (!getApps().length) {
 
 const pushEnabled = () => getApps().length > 0;
 const pushStubEnabled = () =>
-  process.env.NODE_ENV !== "production" &&
-  (process.env.ALLOW_PUSH_STUB === "true" ||
-    process.env.ENABLE_PUSH_STUB === "true" ||
-    process.env.PUSH_STUB === "true");
+  process.env.NODE_ENV !== "production" && process.env.ENABLE_PUSH_STUB === "true";
 
 // ImageKit resize so push images stay small
 export const pushImage = (url) =>
@@ -161,24 +158,40 @@ export async function sendPersonalBatch(items, { key, marketing = true }) {
     failed = 0;
   const bad = [];
   const reached = new Set();
-  for (let i = 0; i < messages.length; i += 500) {
-    const res = await getMessaging().sendEach(messages.slice(i, i + 500));
-    res.responses.forEach((r, j) => {
-      if (r.success) {
-        delivered++;
-        reached.add(owners[i + j]);
-      } else {
-        failed++;
-        if (isInvalidOrUnregisteredTokenError(r.error)) bad.push(messages[i + j].token);
-      }
-    });
+  let sendError = null;
+  try {
+    for (let i = 0; i < messages.length; i += 500) {
+      const res = await getMessaging().sendEach(messages.slice(i, i + 500));
+      res.responses.forEach((r, j) => {
+        if (r.success) {
+          delivered++;
+          reached.add(owners[i + j]);
+        } else {
+          failed++;
+          if (isInvalidOrUnregisteredTokenError(r.error)) bad.push(messages[i + j].token);
+        }
+      });
+    }
+  } catch (err) {
+    sendError = err;
   }
-  if (bad.length) await DeviceToken.deleteMany({ token: { $in: bad } });
-  if (reached.size) {
-    await NotificationLog.insertMany(
-      [...reached].map((id) => ({ customer: id, key, marketing, sentAt: new Date() }))
-    );
+
+  try {
+    if (bad.length) await DeviceToken.deleteMany({ token: { $in: bad } });
+    if (reached.size) {
+      await NotificationLog.insertMany(
+        [...reached].map((id) => ({ customer: id, key, marketing, sentAt: new Date() }))
+      );
+    }
+  } catch (cleanupErr) {
+    if (sendError) {
+      console.error("sendPersonalBatch cleanup error after send failure:", cleanupErr);
+    } else {
+      throw cleanupErr;
+    }
   }
+
+  if (sendError) throw sendError;
   return { targeted: allowedItems.length, withDevice: new Set(owners).size, delivered, failed };
 }
 

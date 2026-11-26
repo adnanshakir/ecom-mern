@@ -367,10 +367,10 @@ async function resolveNeverOrderedAudience() {
 }
 
 async function resolveBoughtBeforeAudience() {
-  const deliveredIds = await Order.distinct("customer", { orderStatus: "delivered" });
-  if (!deliveredIds.length) return [];
+  const orderedIds = await Order.distinct("customer");
+  if (!orderedIds.length) return [];
 
-  const activeMap = await getActiveCustomerMeta(deliveredIds);
+  const activeMap = await getActiveCustomerMeta(orderedIds);
   return [...activeMap.values()].map((meta) => ({
     customerId: meta.customerId,
     name: meta.name,

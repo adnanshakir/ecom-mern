@@ -25,6 +25,7 @@ export function TemplatesTab({ notif }) {
     openEditTemplateDialog,
     removeTemplate,
     toggleTemplateEnabled,
+    pendingTemplateIds = [],
   } = notif;
 
   return (
@@ -122,6 +123,7 @@ export function TemplatesTab({ notif }) {
                               <Switch
                                 size="sm"
                                 checked={tpl.enabled !== false}
+                                disabled={pendingTemplateIds.includes(tpl._id)}
                                 onCheckedChange={(checked) => toggleTemplateEnabled(tpl, checked)}
                                 aria-label={`Toggle ${tpl.name}`}
                               />

@@ -3,9 +3,8 @@ import Product from "../../models/admin/product.model.js";
 import ApiError from "../../utils/apiError.js";
 import mongoose from "mongoose";
 import { adjustStock } from "../../utils/inventory.js";
-import {
+import notificationTriggers, {
   notifyRestock,
-  notifyPriceDrop,
   getEffectiveVariantPrice,
 } from "../../services/notificationTriggers.js";
 
@@ -109,7 +108,9 @@ export const updateVariant = async (req, res, next) => {
       Product.findById(variant.product)
         .lean()
         .then((product) => {
-          if (product) return notifyPriceDrop(product, oldPrice, newPrice);
+          if (product) {
+            return notificationTriggers.notifyPriceDrop(product, oldPrice, newPrice, variant._id);
+          }
         })
         .catch(console.error);
     }

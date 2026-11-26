@@ -35,6 +35,8 @@ export function SendStep3Delivery({
   categoryLoading,
   audienceCount,
   audienceCountLoading,
+  audienceCountError,
+  retryAudienceCount,
   personalImage,
   setPersonalImage,
   hasAutoPlaceholdersInMsg,
@@ -170,6 +172,17 @@ export function SendStep3Delivery({
             <p className="text-xs text-muted-foreground">
               {segment === "category" && !categoryId ? (
                 "Select a category to see matching customers."
+              ) : audienceCountError ? (
+                <span className="inline-flex items-center gap-2 text-destructive">
+                  <span>{audienceCountError}</span>
+                  <button
+                    type="button"
+                    onClick={retryAudienceCount}
+                    className="underline font-medium hover:text-destructive/80 cursor-pointer"
+                  >
+                    Retry
+                  </button>
+                </span>
               ) : audienceCountLoading || !audienceCount ? (
                 "Checking matching customers..."
               ) : audienceCount.total === 0 ? (

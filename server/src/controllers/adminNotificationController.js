@@ -12,13 +12,11 @@ const VALID_SEGMENTS = [
   "never_ordered",
   "bought_before",
 ];
-const AUTO_VARS_SET = new Set(["name", "product", "count"]);
+const AUTO_VARS_REGEX = /\{\{(?:name|product|count)\}\}/g;
 
 const hasUnallowedPlaceholders = (text, allowAutoVars) => {
-  const matches = [...(text || "").matchAll(/\{\{(\w*)\}\}/g)];
-  if (!matches.length) return false;
-  if (!allowAutoVars) return true;
-  return matches.some((m) => !AUTO_VARS_SET.has(m[1]));
+  const cleaned = allowAutoVars ? (text || "").replace(AUTO_VARS_REGEX, "") : text || "";
+  return /\{\{/.test(cleaned);
 };
 
 export const getAudienceCount = async (req, res) => {

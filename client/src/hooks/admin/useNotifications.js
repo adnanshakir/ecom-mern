@@ -72,6 +72,8 @@ export function useNotifications() {
   const [selectedAudienceCategory, setSelectedAudienceCategory] = useState(null);
   const [audienceCount, setAudienceCount] = useState(null);
   const [audienceCountLoading, setAudienceCountLoading] = useState(false);
+  const [audienceCountError, setAudienceCountError] = useState("");
+  const [audienceCountRetryKey, setAudienceCountRetryKey] = useState(0);
   const [personalImage, setPersonalImage] = useState(true);
 
   const [channel, setChannel] = useState("both"); // "both" | "app" | "web"
@@ -96,6 +98,8 @@ export function useNotifications() {
   });
   const [templateSubmitting, setTemplateSubmitting] = useState(false);
   const [templateFormError, setTemplateFormError] = useState("");
+  const [pendingTemplateIds, setPendingTemplateIds] = useState([]);
+  const pendingTemplateIdsRef = useRef(new Set());
 
   // ---------------- HISTORY TAB STATE ----------------
   const [notifications, setNotifications] = useState([]);
@@ -250,8 +254,10 @@ export function useNotifications() {
   }, [allCategories, audienceCategorySearch]);
 
   const setAudienceType = (nextType) => {
+    if (nextType === audienceType) return;
     setAudienceTypeState(nextType);
     setAudienceCount(null);
+    setAudienceCountError("");
     setSendError("");
     if (nextType === "segment") {
       setChannel("app");
@@ -261,14 +267,22 @@ export function useNotifications() {
   };
 
   const handleSegmentChange = (nextSegment) => {
+    if (nextSegment === segment) return;
     setSegment(nextSegment);
     setAudienceCount(null);
+    setAudienceCountError("");
   };
 
   const handleSelectedAudienceCategoryChange = (nextCat) => {
     setSelectedAudienceCategory(nextCat);
     setAudienceCount(null);
+    setAudienceCountError("");
   };
+
+  const retryAudienceCount = useCallback(() => {
+    setAudienceCountError("");
+    setAudienceCountRetryKey((k) => k + 1);
+  }, []);
 
   // Debounced live audience count (400ms)
   useEffect(() => {
@@ -281,15 +295,24 @@ export function useNotifications() {
     let alive = true;
     const timer = setTimeout(() => {
       setAudienceCountLoading(true);
+      setAudienceCountError("");
       getAudienceCount({
         segment,
         ...(segment === "category" ? { categoryId } : {}),
       })
         .then((res) => {
-          if (alive) setAudienceCount(res.data);
+          if (alive) {
+            setAudienceCount(res.data);
+            setAudienceCountError("");
+          }
         })
-        .catch(() => {
-          if (alive) setAudienceCount(null);
+        .catch((err) => {
+          if (alive) {
+            setAudienceCount(null);
+            setAudienceCountError(
+              err.response?.data?.message || "Failed to check matching customers."
+            );
+          }
         })
         .finally(() => {
           if (alive) setAudienceCountLoading(false);
@@ -299,7 +322,7 @@ export function useNotifications() {
       alive = false;
       clearTimeout(timer);
     };
-  }, [step, audienceType, segment, categoryId]);
+  }, [step, audienceType, segment, categoryId, audienceCountRetryKey]);
 
   // Derived Link String
   const computedLink = useMemo(() => {
@@ -417,6 +440,7 @@ export function useNotifications() {
     audienceType === "segment"
       ? (segment === "category" && !categoryId) ||
         audienceCountLoading ||
+        Boolean(audienceCountError) ||
         !audienceCount ||
         audienceCount.withApp === 0
       : hasAutoPlaceholdersInMsg;
@@ -472,6 +496,7 @@ export function useNotifications() {
       setAudienceCategorySearch("");
       setSelectedAudienceCategory(null);
       setAudienceCount(null);
+      setAudienceCountError("");
       setPersonalImage(true);
       setChannel("both");
       setTickerDurationHours(24);
@@ -564,15 +589,24 @@ export function useNotifications() {
   };
 
   const toggleTemplateEnabled = async (tpl, enabled) => {
-    setTemplates((prev) => prev.map((t) => (t._id === tpl._id ? { ...t, enabled } : t)));
+    const id = tpl._id;
+    if (pendingTemplateIdsRef.current.has(id)) return;
+    pendingTemplateIdsRef.current.add(id);
+    setPendingTemplateIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
+
+    const previousEnabled = tpl.enabled;
+    setTemplates((prev) => prev.map((t) => (t._id === id ? { ...t, enabled } : t)));
     try {
-      await updateTemplate(tpl._id, { enabled });
+      await updateTemplate(id, { enabled });
       toast.success(enabled ? `${tpl.name} enabled` : `${tpl.name} disabled`);
     } catch (err) {
       setTemplates((prev) =>
-        prev.map((t) => (t._id === tpl._id ? { ...t, enabled: tpl.enabled } : t))
+        prev.map((t) => (t._id === id ? { ...t, enabled: previousEnabled } : t))
       );
       toast.error(err.response?.data?.message || "Failed to update template");
+    } finally {
+      pendingTemplateIdsRef.current.delete(id);
+      setPendingTemplateIds((prev) => prev.filter((item) => item !== id));
     }
   };
 
@@ -647,6 +681,8 @@ export function useNotifications() {
     setPersonalImage(n.personalImage !== undefined ? Boolean(n.personalImage) : true);
     setSelectedAudienceCategory(null);
     setAudienceCategorySearch("");
+    setAudienceCount(null);
+    setAudienceCountError("");
     setTickerDurationHours(n.tickerDurationHours || 24);
     setSendMode("now");
     setScheduledAt("");
@@ -750,6 +786,8 @@ export function useNotifications() {
     setSelectedAudienceCategory: handleSelectedAudienceCategoryChange,
     audienceCount,
     audienceCountLoading,
+    audienceCountError,
+    retryAudienceCount,
     personalImage,
     setPersonalImage,
     hasAutoPlaceholdersInMsg,
@@ -794,6 +832,7 @@ export function useNotifications() {
     closeTemplateDialog,
     submitTemplate,
     toggleTemplateEnabled,
+    pendingTemplateIds,
     removeTemplate,
 
     // History Tab
