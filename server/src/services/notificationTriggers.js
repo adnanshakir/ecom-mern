@@ -17,7 +17,7 @@ const formatInrNoDecimals = (amount) =>
 export const getEffectiveVariantPrice = (variant) =>
   typeof variant?.salePrice === "number" && variant.salePrice > 0
     ? variant.salePrice
-    : variant?.price ?? 0;
+    : (variant?.price ?? 0);
 
 export const getProductMinEffectivePrice = (variants = []) => {
   if (!variants.length) return 0;
@@ -28,12 +28,24 @@ export async function notifyRestock(product) {
   const t = await NotificationTemplate.findOne({ key: "restock" }).lean();
   if (!t || t.enabled === false) return;
 
+  let rawImage = product.images?.[0]?.url || "";
+  if (!rawImage) {
+    const variants = await ProductVariant.find({
+      product: product._id,
+      isActive: { $ne: false },
+    })
+      .select("images")
+      .lean();
+    rawImage = variants.find((v) => v.images?.[0]?.url)?.images?.[0]?.url || "";
+  }
+
   const wishlists = await Wishlist.find({ products: product._id }).select("customer").lean();
   await Promise.allSettled(
     wishlists.map((w) =>
       sendTemplateToCustomer("restock", w.customer, {
         product: product.name,
         link: `/product/${product.slug}`,
+        imageUrl: rawImage,
       })
     )
   );
@@ -62,8 +74,10 @@ export async function notifyPriceDrop(product, oldPrice, newPrice, variantId = n
     variantId
       ? Cart.find({ "items.variant": variantId }).select("customer").lean()
       : variantIds.length
-      ? Cart.find({ "items.variant": { $in: variantIds } }).select("customer").lean()
-      : [],
+        ? Cart.find({ "items.variant": { $in: variantIds } })
+            .select("customer")
+            .lean()
+        : [],
     Wishlist.find({ products: product._id }).select("customer").lean(),
   ]);
 
@@ -105,12 +119,12 @@ export async function notifyPriceDrop(product, oldPrice, newPrice, variantId = n
   const targetVariant = variantId
     ? variants.find((v) => String(v._id) === String(variantId))
     : null;
-  const rawImage =
-    product.images?.[0]?.url ||
-    targetVariant?.images?.[0]?.url ||
-    variants.find((v) => v.images?.[0]?.url)?.images?.[0]?.url ||
-    "";
-  const imageUrl = pushImage(rawImage);
+  const fallbackVariantImg = variants.find((v) => v.images?.[0]?.url)?.images?.[0]?.url || "";
+  const productFirstImg = product.images?.[0]?.url || "";
+  const cartRawImage = targetVariant?.images?.[0]?.url || productFirstImg || fallbackVariantImg;
+  const wishlistRawImage = productFirstImg || targetVariant?.images?.[0]?.url || fallbackVariantImg;
+  const cartImageUrl = pushImage(cartRawImage);
+  const wishlistImageUrl = pushImage(wishlistRawImage);
   const link = `/product/${product.slug}`;
 
   const buildMsg = (fromPrice, toPrice) => {
@@ -139,7 +153,7 @@ export async function notifyPriceDrop(product, oldPrice, newPrice, variantId = n
       title: msg.title,
       body: msg.body,
       link,
-      imageUrl,
+      imageUrl: inCart ? cartImageUrl : wishlistImageUrl,
     };
   });
 
@@ -204,7 +218,9 @@ export async function notifyPriceDropsBulk(drops = []) {
           .select("customer items.variant")
           .lean()
       : [],
-    Wishlist.find({ products: { $in: productIds } }).select("customer products").lean(),
+    Wishlist.find({ products: { $in: productIds } })
+      .select("customer products")
+      .lean(),
   ]);
 
   const candidateIds = new Set([

@@ -1,6 +1,5 @@
 "use client";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import Link from "next/link";
 import api from "@/lib/customerApi";
 
 const SPEED = 60; // pixels per second
@@ -16,7 +15,10 @@ export default function TickerBar() {
   useEffect(() => {
     let alive = true;
     const load = () =>
-      api.get("/public/ticker").then((r) => alive && setItems(r.data.items || [])).catch(() => {});
+      api
+        .get("/public/ticker")
+        .then((r) => alive && setItems(r.data.items || []))
+        .catch(() => {});
     load();
     const id = setInterval(load, 5 * 60 * 1000);
     return () => {
@@ -62,20 +64,29 @@ export default function TickerBar() {
       aria-hidden={dup ? "true" : undefined}
       className={`flex shrink-0 items-center motion-reduce:shrink motion-reduce:min-w-0 motion-reduce:flex-wrap motion-reduce:whitespace-normal motion-reduce:justify-center${extra ? " ticker-repeat" : ""}`}
     >
-      {items.map((i) => (
-        <span key={i._id} className="flex items-center">
-          <span className="mx-6">
-            {i.link ? (
-              <Link href={i.link} tabIndex={dup ? -1 : undefined} className="hover:underline">
-                {i.text}
-              </Link>
-            ) : (
-              i.text
-            )}
+      {items.map((i) => {
+        const isExternal = Boolean(i.link && /^https?:\/\//i.test(i.link));
+        return (
+          <span key={i._id} className="flex items-center">
+            <span className="mx-6">
+              {i.link ? (
+                <a
+                  href={i.link}
+                  tabIndex={dup ? -1 : undefined}
+                  target={isExternal ? "_blank" : undefined}
+                  rel={isExternal ? "noopener noreferrer" : undefined}
+                  className="hover:underline"
+                >
+                  {i.text}
+                </a>
+              ) : (
+                i.text
+              )}
+            </span>
+            <span className="opacity-50">•</span>
           </span>
-          <span className="opacity-50">•</span>
-        </span>
-      ))}
+        );
+      })}
     </div>
   );
 
@@ -83,8 +94,15 @@ export default function TickerBar() {
   const duration = Math.max(10, Math.round((setWidth * copies) / SPEED));
 
   return (
-    <div ref={containerRef} className="ticker-bar relative flex h-9 items-center overflow-hidden bg-black text-sm text-white">
-      <div ref={measureRef} className="invisible absolute left-0 top-0 flex whitespace-nowrap" aria-hidden="true">
+    <div
+      ref={containerRef}
+      className="ticker-bar relative z-20 flex h-9 items-center overflow-hidden bg-black text-sm text-white"
+    >
+      <div
+        ref={measureRef}
+        className="invisible pointer-events-none absolute left-0 top-0 flex whitespace-nowrap"
+        aria-hidden="true"
+      >
         {group("measure", { dup: true })}
       </div>
       <div
@@ -99,9 +117,10 @@ export default function TickerBar() {
         </div>
       </div>
       <button
+        type="button"
         aria-label="Dismiss"
         onClick={() => setClosed(true)}
-        className="absolute right-0 top-0 flex h-9 w-9 items-center justify-center bg-black text-white/80 hover:text-white"
+        className="absolute right-0 top-0 z-10 flex h-9 w-9 items-center justify-center bg-black text-white/80 hover:text-white"
       >
         ✕
       </button>

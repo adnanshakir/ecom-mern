@@ -1,9 +1,22 @@
+import mongoose from "mongoose";
 import Notification from "../models/Notification.js";
 import NotificationTemplate from "../models/NotificationTemplate.js";
 import DeviceToken from "../models/DeviceToken.js";
-import { dispatch } from "../services/notificationService.js";
+import { dispatch, resolveAutoImage } from "../services/notificationService.js";
 import { resolveAudience, countAudience } from "../services/notificationAudience.js";
 
+const VALID_TYPES = [
+  "sale",
+  "flash_sale",
+  "tagline",
+  "free_shipping",
+  "new_arrival",
+  "festive",
+  "coupon",
+  "win_back",
+  "custom",
+];
+const VALID_CHANNELS = ["web", "app", "both"];
 const VALID_SEGMENTS = [
   "cart",
   "wishlist",
@@ -17,6 +30,19 @@ const AUTO_VARS_REGEX = /\{\{(?:name|product|count)\}\}/g;
 const hasUnallowedPlaceholders = (text, allowAutoVars) => {
   const cleaned = allowAutoVars ? (text || "").replace(AUTO_VARS_REGEX, "") : text || "";
   return /\{\{/.test(cleaned);
+};
+
+export const resolveImage = async (req, res) => {
+  try {
+    const { link } = req.body || {};
+    if (typeof link !== "string") {
+      return res.status(400).json({ message: "Link must be a string" });
+    }
+    const imageUrl = await resolveAutoImage(link);
+    res.json({ imageUrl });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
 };
 
 export const getAudienceCount = async (req, res) => {
@@ -44,13 +70,31 @@ export const createNotification = async (req, res) => {
       channel = "both",
       link = "",
       imageUrl = "",
+      autoImage = true,
       sendNow = true,
       scheduledAt,
       tickerDurationHours = 24,
       audience,
       personalImage = false,
     } = req.body;
-    if (!title || !title.trim()) return res.status(400).json({ message: "Title is required" });
+    if (typeof title !== "string" || !title.trim()) {
+      return res.status(400).json({ message: "Title is required" });
+    }
+    if (title.trim().length > 65) {
+      return res.status(400).json({ message: "Title cannot exceed 65 characters" });
+    }
+    if (typeof body !== "string") {
+      return res.status(400).json({ message: "Body must be a string" });
+    }
+    if (body.trim().length > 240) {
+      return res.status(400).json({ message: "Body cannot exceed 240 characters" });
+    }
+    if (!VALID_TYPES.includes(type)) {
+      return res.status(400).json({ message: "Invalid notification type" });
+    }
+    if (!VALID_CHANNELS.includes(channel)) {
+      return res.status(400).json({ message: "Invalid channel" });
+    }
 
     const isSegment = audience?.type === "segment";
     if (isSegment) {
@@ -66,7 +110,10 @@ export const createNotification = async (req, res) => {
       return res.status(400).json({ message: "Fill all {{placeholders}} before sending" });
     }
 
-    if (imageUrl && imageUrl.trim() && !/^https:\/\//i.test(imageUrl.trim())) {
+    if (typeof imageUrl !== "string") {
+      return res.status(400).json({ message: "Image URL must be a string" });
+    }
+    if (imageUrl.trim() && !/^https:\/\//i.test(imageUrl.trim())) {
       return res.status(400).json({ message: "Image URL must start with https://" });
     }
 
@@ -81,6 +128,7 @@ export const createNotification = async (req, res) => {
     }
 
     const effectiveChannel = isSegment ? "app" : channel;
+    const useAutoImage = autoImage !== false && autoImage !== "false";
     const normalizedAudience = isSegment
       ? {
           type: "segment",
@@ -112,6 +160,7 @@ export const createNotification = async (req, res) => {
       channel: effectiveChannel,
       link,
       imageUrl: imageUrl.trim(),
+      autoImage: useAutoImage,
       tickerDurationHours,
       audience: normalizedAudience,
       personalImage: isSegment ? Boolean(personalImage) : false,
@@ -135,10 +184,13 @@ export const createNotification = async (req, res) => {
 
 export const cancelNotification = async (req, res) => {
   try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: "Invalid notification id" });
+    }
     const n = await Notification.findOneAndUpdate(
       { _id: req.params.id, status: "scheduled" },
       { status: "cancelled" },
-      { new: true }
+      { returnDocument: "after" }
     );
     if (!n)
       return res.status(400).json({ message: "Only scheduled notifications can be cancelled" });
@@ -150,10 +202,13 @@ export const cancelNotification = async (req, res) => {
 
 export const endTicker = async (req, res) => {
   try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: "Invalid notification id" });
+    }
     const n = await Notification.findByIdAndUpdate(
       req.params.id,
       { tickerEndsAt: new Date() },
-      { new: true }
+      { returnDocument: "after" }
     );
     if (!n) return res.status(404).json({ message: "Not found" });
     res.json({ notification: n });
@@ -219,6 +274,12 @@ export const createTemplate = async (req, res) => {
     if (!name || !name.trim()) return res.status(400).json({ message: "Name is required" });
     if (!titleTpl || !titleTpl.trim())
       return res.status(400).json({ message: "Title template is required" });
+    if (!VALID_CHANNELS.includes(channel)) {
+      return res.status(400).json({ message: "Invalid channel" });
+    }
+    if (!VALID_TYPES.includes(type)) {
+      return res.status(400).json({ message: "Invalid type" });
+    }
 
     const baseSlug =
       name
@@ -247,6 +308,9 @@ export const createTemplate = async (req, res) => {
 
 export const updateTemplate = async (req, res) => {
   try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: "Invalid template id" });
+    }
     const { name, type, titleTpl, bodyTpl, channel, enabled } = req.body;
     const tpl = await NotificationTemplate.findById(req.params.id);
     if (!tpl) return res.status(404).json({ message: "Template not found" });
@@ -257,7 +321,7 @@ export const updateTemplate = async (req, res) => {
     if (bodyTpl !== undefined) tpl.bodyTpl = (bodyTpl || "").trim();
     if (enabled !== undefined) tpl.enabled = Boolean(enabled);
     if (channel !== undefined) {
-      if (!["web", "app", "both"].includes(channel)) {
+      if (!VALID_CHANNELS.includes(channel)) {
         return res.status(400).json({ message: "Invalid channel" });
       }
       if (tpl.auto && channel !== "app") {
@@ -277,6 +341,9 @@ export const updateTemplate = async (req, res) => {
 
 export const deleteTemplate = async (req, res) => {
   try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: "Invalid template id" });
+    }
     const tpl = await NotificationTemplate.findById(req.params.id);
     if (!tpl) return res.status(404).json({ message: "Template not found" });
     if (tpl.isSystem) {
@@ -290,6 +357,7 @@ export const deleteTemplate = async (req, res) => {
 };
 
 export default {
+  resolveImage,
   getAudienceCount,
   createNotification,
   cancelNotification,

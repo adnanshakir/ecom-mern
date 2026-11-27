@@ -1,4 +1,7 @@
 /** @type {import('next').NextConfig} */
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
 const nextConfig = {
   images: {
     remotePatterns: [
@@ -11,6 +14,10 @@ const nextConfig = {
         hostname: "**",
       },
     ],
+  },
+
+  turbopack: {
+    root: path.dirname(fileURLToPath(import.meta.url)),
   },
 
   // Proxy /api/* to the backend so httpOnly cookies are same-origin

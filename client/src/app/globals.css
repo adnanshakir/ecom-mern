@@ -172,15 +172,42 @@
 }
 
 @media print {
-  body * { visibility: hidden !important; }
-  #invoice-print, #invoice-print * { visibility: visible !important; }
-  #invoice-print { position: absolute; left: 0; top: 0; width: 100%; max-width: none; padding: 0; }
-  @page { size: A4; margin: 12mm; }
+  body * {
+    visibility: hidden !important;
+  }
+  #invoice-print,
+  #invoice-print * {
+    visibility: visible !important;
+  }
+  #invoice-print {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    max-width: none;
+    padding: 0;
+  }
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
 }
 
-@keyframes ticker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
-.ticker-track { animation: ticker 25s linear infinite; }
-.ticker-track:hover { animation-play-state: paused; }
+@keyframes ticker {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+.ticker-track {
+  animation: ticker 25s linear infinite;
+}
+.ticker-bar:hover .ticker-track,
+.ticker-track:hover {
+  animation-play-state: paused;
+}
 @media (prefers-reduced-motion: reduce) {
   .ticker-bar {
     height: auto;
@@ -200,20 +227,45 @@
 
 .surface {
   border-radius: 12px;
-  background: linear-gradient(to bottom, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
-  box-shadow: 0 1px 0 rgba(255,255,255,0.05) inset, 0 1px 2px rgba(0,0,0,0.4), 0 10px 24px -14px rgba(0,0,0,0.6);
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.05) inset,
+    0 1px 2px rgba(0, 0, 0, 0.4),
+    0 10px 24px -14px rgba(0, 0, 0, 0.6);
 }
 /* ADAPT ".dark" to however the project toggles dark mode; light mode styles below */
 :root:not(.dark) .surface {
   background: linear-gradient(to bottom, #ffffff, #f6f6f7);
-  box-shadow: 0 1px 2px rgba(16,24,40,0.06), 0 6px 18px -8px rgba(16,24,40,0.10);
+  box-shadow:
+    0 1px 2px rgba(16, 24, 40, 0.06),
+    0 6px 18px -8px rgba(16, 24, 40, 0.1);
 }
-.surface-hover { transition: box-shadow 150ms ease, transform 150ms ease; }
-.surface-hover:hover { transform: translateY(-1px); }
-@keyframes fade-up { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
-.fade-up { animation: fade-up 200ms ease-out both; }
+.surface-hover {
+  transition:
+    box-shadow 150ms ease,
+    transform 150ms ease;
+}
+.surface-hover:hover {
+  transform: translateY(-1px);
+}
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.fade-up {
+  animation: fade-up 200ms ease-out both;
+}
 @media (prefers-reduced-motion: reduce) {
-  .fade-up { animation: none; }
-  .surface-hover:hover { transform: none; }
+  .fade-up {
+    animation: none;
+  }
+  .surface-hover:hover {
+    transform: none;
+  }
 }
-

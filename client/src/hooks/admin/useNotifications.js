@@ -6,6 +6,7 @@ import {
   getNotifications,
   createNotification,
   getAudienceCount,
+  resolveNotificationImage,
   cancelNotification,
   endTicker,
   getTemplates,
@@ -47,10 +48,12 @@ export function useNotifications() {
   const [editText, setEditText] = useState(false);
   const [showMore, setShowMore] = useState(false);
 
+  const [imageMode, setImageMode] = useState("none"); // "auto" | "custom" | "none"
   const [imageUrl, setImageUrl] = useState("");
+  const [autoImageState, setAutoImageState] = useState({ link: "", url: "" });
 
   // Open Screen & Destination Link State
-  const [openScreen, setOpenScreen] = useState("home"); // "home" | "product" | "category" | "orders" | "custom"
+  const [openScreen, setOpenScreenState] = useState("home"); // "home" | "product" | "category" | "orders" | "custom"
   const [customLink, setCustomLink] = useState("");
 
   // Product picker state
@@ -125,41 +128,46 @@ export function useNotifications() {
   }, []);
 
   // ---------------- FETCH NOTIFICATIONS ----------------
-  const loadNotifications = useCallback(async (overrides = {}) => {
-    const seq = ++historyReqSeqRef.current;
-    if (!overrides.silent) {
-      setNotificationsLoading(true);
-    }
-    setNotificationsError("");
-    try {
-      const page = overrides.page !== undefined ? overrides.page : historyPage;
-      const status = overrides.status !== undefined ? overrides.status : historyStatusFilter;
-      const params = {
-        page,
-        limit: 10,
-      };
-      if (status !== "all") {
-        params.status = status;
+  const loadNotifications = useCallback(
+    async (overrides = {}) => {
+      const seq = ++historyReqSeqRef.current;
+      if (!overrides.silent) {
+        setNotificationsLoading(true);
       }
-      const res = await getNotifications(params);
-      if (seq === historyReqSeqRef.current) {
-        setNotifications(res.data.notifications || []);
-        setHistoryPagination({
-          total: res.data.total || 0,
-          page: res.data.page || 1,
-          pages: res.data.pages || 1,
-        });
+      setNotificationsError("");
+      try {
+        const page = overrides.page !== undefined ? overrides.page : historyPage;
+        const status = overrides.status !== undefined ? overrides.status : historyStatusFilter;
+        const params = {
+          page,
+          limit: 10,
+        };
+        if (status !== "all") {
+          params.status = status;
+        }
+        const res = await getNotifications(params);
+        if (seq === historyReqSeqRef.current) {
+          setNotifications(res.data.notifications || []);
+          setHistoryPagination({
+            total: res.data.total || 0,
+            page: res.data.page || 1,
+            pages: res.data.pages || 1,
+          });
+        }
+      } catch (err) {
+        if (seq === historyReqSeqRef.current) {
+          setNotificationsError(
+            err.response?.data?.message || "Failed to load notifications history"
+          );
+        }
+      } finally {
+        if (seq === historyReqSeqRef.current) {
+          setNotificationsLoading(false);
+        }
       }
-    } catch (err) {
-      if (seq === historyReqSeqRef.current) {
-        setNotificationsError(err.response?.data?.message || "Failed to load notifications history");
-      }
-    } finally {
-      if (seq === historyReqSeqRef.current) {
-        setNotificationsLoading(false);
-      }
-    }
-  }, [historyPage, historyStatusFilter]);
+    },
+    [historyPage, historyStatusFilter]
+  );
 
   useEffect(() => {
     const timer = setTimeout(loadTemplates, 0);
@@ -342,6 +350,55 @@ export function useNotifications() {
     }
   }, [openScreen, selectedProduct, selectedCategory, customLink]);
 
+  const setOpenScreen = (nextScreen) => {
+    setOpenScreenState(nextScreen);
+    if (nextScreen === "home") {
+      setSelectedProduct(null);
+      setSelectedCategory(null);
+      setCustomLink("");
+    }
+    const supportsAuto = nextScreen === "product" || nextScreen === "category";
+    if (imageMode !== "custom") {
+      setImageMode(supportsAuto ? "auto" : "none");
+    }
+  };
+
+  // Debounced auto-image preview lookup (400ms)
+  useEffect(() => {
+    const supportsAuto = openScreen === "product" || openScreen === "category";
+    if (imageMode !== "auto" || !supportsAuto || !computedLink) {
+      return;
+    }
+    let alive = true;
+    const timer = setTimeout(() => {
+      resolveNotificationImage({ link: computedLink })
+        .then((res) => {
+          if (alive) setAutoImageState({ link: computedLink, url: res.data?.imageUrl || "" });
+        })
+        .catch(() => {
+          if (alive) setAutoImageState({ link: computedLink, url: "" });
+        });
+    }, 400);
+    return () => {
+      alive = false;
+      clearTimeout(timer);
+    };
+  }, [imageMode, openScreen, computedLink]);
+
+  const supportsAutoScreen = openScreen === "product" || openScreen === "category";
+  const resolvedAutoImage =
+    imageMode === "auto" &&
+    supportsAutoScreen &&
+    computedLink &&
+    autoImageState.link === computedLink
+      ? autoImageState.url
+      : "";
+  const autoImageLoading =
+    imageMode === "auto" &&
+    supportsAutoScreen &&
+    Boolean(computedLink) &&
+    autoImageState.link !== computedLink;
+
   // Non-auto templates for the Send wizard
   const manualTemplates = useMemo(() => {
     return templates.filter((t) => !t.auto);
@@ -420,9 +477,21 @@ export function useNotifications() {
   const isTitleEmpty = !finalTitle.trim();
   const isTitleTooLong = finalTitle.length > 65;
   const isBodyTooLong = finalBody.length > 240;
-  const isImageUrlInvalid = Boolean(imageUrl.trim() && !/^https:\/\//i.test(imageUrl.trim()));
+  const isImageUrlInvalid =
+    imageMode === "custom" && Boolean(imageUrl.trim() && !/^https:\/\//i.test(imageUrl.trim()));
+  const hideImageControl =
+    audienceType === "segment" && PERSONAL_IMAGE_SEGMENTS.includes(segment) && personalImage;
+  const previewImageUrl =
+    imageMode === "custom" ? imageUrl.trim() : imageMode === "auto" ? resolvedAutoImage : "";
+  const showNoAutoPhoto =
+    imageMode === "auto" &&
+    (openScreen === "product" || openScreen === "category") &&
+    Boolean(computedLink) &&
+    !autoImageLoading &&
+    !resolvedAutoImage;
   const isScheduleInvalid =
-    sendMode === "schedule" && (!scheduledAt || (minScheduledAt ? scheduledAt < minScheduledAt : false));
+    sendMode === "schedule" &&
+    (!scheduledAt || (minScheduledAt ? scheduledAt < minScheduledAt : false));
   const isScreenSelectionIncomplete =
     (openScreen === "product" && !selectedProduct?.slug) ||
     (openScreen === "category" && !selectedCategory?.slug);
@@ -454,13 +523,16 @@ export function useNotifications() {
     setSendError("");
     try {
       const isSegment = audienceType === "segment";
+      const isPersonalControlled =
+        isSegment && PERSONAL_IMAGE_SEGMENTS.includes(segment) && personalImage;
       const payload = {
         title: finalTitle.trim(),
         body: finalBody.trim(),
         type: template?.type || "custom",
         channel: isSegment ? "app" : channel,
         link: computedLink,
-        imageUrl: imageUrl.trim(),
+        imageUrl: isPersonalControlled ? "" : imageMode === "custom" ? imageUrl.trim() : "",
+        autoImage: isPersonalControlled ? false : imageMode === "auto",
         tickerDurationHours: Number(tickerDurationHours) || 24,
         sendNow: sendMode === "now",
         scheduledAt: sendMode === "schedule" ? new Date(scheduledAt).toISOString() : undefined,
@@ -476,7 +548,11 @@ export function useNotifications() {
       };
 
       await createNotification(payload);
-      toast.success(sendMode === "now" ? "Notification sent successfully!" : "Notification scheduled successfully!");
+      toast.success(
+        sendMode === "now"
+          ? "Notification sent successfully!"
+          : "Notification scheduled successfully!"
+      );
 
       // Reset wizard to Step 1
       setStep(1);
@@ -486,8 +562,10 @@ export function useNotifications() {
       setBodyTpl("");
       setEditText(false);
       setShowMore(false);
+      setImageMode("none");
       setImageUrl("");
-      setOpenScreen("home");
+      setAutoImageState({ link: "", url: "" });
+      setOpenScreenState("home");
       setSelectedProduct(null);
       setSelectedCategory(null);
       setCustomLink("");
@@ -673,8 +751,6 @@ export function useNotifications() {
     setTitleTpl(n.title || "");
     setBodyTpl(n.body || "");
     setEditText(true);
-    setImageUrl(n.imageUrl || "");
-    setShowMore(Boolean(n.imageUrl || (n.link && n.link !== "/")));
     setChannel(n.audience?.type === "segment" ? "app" : n.channel || "both");
     setAudienceTypeState(n.audience?.type === "segment" ? "segment" : "all");
     setSegment(n.audience?.segment || "cart");
@@ -689,34 +765,55 @@ export function useNotifications() {
 
     // Derive Open screen selection from link prefix
     const rawLink = n.link || "";
+    let nextScreen = "home";
     if (!rawLink || rawLink === "/") {
-      setOpenScreen("home");
+      nextScreen = "home";
+      setOpenScreenState("home");
       setSelectedProduct(null);
       setSelectedCategory(null);
       setCustomLink("");
     } else if (/^\/products?\//.test(rawLink)) {
-      setOpenScreen("product");
+      nextScreen = "product";
+      setOpenScreenState("product");
       const slug = rawLink.replace(/^\/products?\//, "");
       setSelectedProduct({ _id: "", name: slug, slug });
       setSelectedCategory(null);
       setCustomLink("");
     } else if (/^\/category\//.test(rawLink)) {
-      setOpenScreen("category");
+      nextScreen = "category";
+      setOpenScreenState("category");
       const slug = rawLink.replace(/^\/category\//, "");
       setSelectedCategory({ _id: "", name: slug, slug });
       setSelectedProduct(null);
       setCustomLink("");
     } else if (rawLink === "/orders" || rawLink === "/order" || rawLink === "/account/orders") {
-      setOpenScreen("orders");
+      nextScreen = "orders";
+      setOpenScreenState("orders");
       setSelectedProduct(null);
       setSelectedCategory(null);
       setCustomLink("");
     } else {
-      setOpenScreen("custom");
+      nextScreen = "custom";
+      setOpenScreenState("custom");
       setSelectedProduct(null);
       setSelectedCategory(null);
       setCustomLink(rawLink);
     }
+
+    const isAutoScreen = nextScreen === "product" || nextScreen === "category";
+    if (n.autoImage !== false && isAutoScreen) {
+      setImageMode("auto");
+      setImageUrl("");
+    } else if (n.imageUrl) {
+      setImageMode("custom");
+      setImageUrl(n.imageUrl);
+    } else {
+      setImageMode("none");
+      setImageUrl("");
+    }
+    setShowMore(
+      Boolean(n.imageUrl || (rawLink && rawLink !== "/") || (n.autoImage !== false && isAutoScreen))
+    );
 
     setActiveTab("send");
     toast.info("Notification details copied to Send tab");
@@ -755,8 +852,15 @@ export function useNotifications() {
     startEditText,
     showMore,
     setShowMore,
+    imageMode,
+    setImageMode,
     imageUrl,
     setImageUrl,
+    resolvedAutoImage,
+    autoImageLoading,
+    hideImageControl,
+    previewImageUrl,
+    showNoAutoPhoto,
     openScreen,
     setOpenScreen,
     customLink,

@@ -32,9 +32,12 @@ export function SendStep2Message({
   isBodyTooLong,
   showMore,
   setShowMore,
+  imageMode,
+  setImageMode,
   imageUrl,
   setImageUrl,
   isImageUrlInvalid,
+  hideImageControl,
   openScreen,
   setOpenScreen,
   productSearch,
@@ -185,40 +188,62 @@ export function SendStep2Message({
 
         {showMore && (
           <div className="mt-4 space-y-4 pt-4 border-t">
-            {/* Image URL */}
-            <div className="space-y-1.5">
-              <Label htmlFor="msg-image" className="text-xs font-medium">
-                Image URL
-              </Label>
-              <Input
-                id="msg-image"
-                placeholder="https://..."
-                value={imageUrl}
-                onChange={(e) => setImageUrl(e.target.value)}
-                className={cn("h-9", isImageUrlInvalid && "border-destructive")}
-              />
-              <p className="text-[11px] text-muted-foreground">
-                https only, 2:1 ratio, under 1 MB.
-              </p>
-              {isImageUrlInvalid && (
-                <p className="text-xs text-destructive">Image URL must start with https://</p>
-              )}
-            </div>
+            {/* Image selection (hidden when segment personalImage switch controls it) */}
+            {!hideImageControl && (
+              <div className="space-y-2">
+                <Label className="text-xs font-medium">Image</Label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { value: "auto", label: "Auto" },
+                    { value: "custom", label: "Custom URL" },
+                    { value: "none", label: "None" },
+                  ].map((opt) => {
+                    const isAutoDisabled =
+                      opt.value === "auto" && openScreen !== "product" && openScreen !== "category";
+                    return (
+                      <Button
+                        key={opt.value}
+                        type="button"
+                        size="sm"
+                        disabled={isAutoDisabled}
+                        variant={imageMode === opt.value ? "default" : "outline"}
+                        onClick={() => setImageMode(opt.value)}
+                        className="h-9 text-xs font-medium"
+                      >
+                        {opt.label}
+                      </Button>
+                    );
+                  })}
+                </div>
+                {openScreen !== "product" && openScreen !== "category" && (
+                  <p className="text-[11px] text-muted-foreground">
+                    Choose a product or category screen to use its photo
+                  </p>
+                )}
+                {imageMode === "custom" && (
+                  <div className="space-y-1.5 pt-1">
+                    <Input
+                      id="msg-image"
+                      placeholder="https://..."
+                      value={imageUrl}
+                      onChange={(e) => setImageUrl(e.target.value)}
+                      className={cn("h-9", isImageUrlInvalid && "border-destructive")}
+                    />
+                    <p className="text-[11px] text-muted-foreground">
+                      https only, 2:1 ratio, under 1 MB.
+                    </p>
+                    {isImageUrlInvalid && (
+                      <p className="text-xs text-destructive">Image URL must start with https://</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Open Screen Selection */}
             <div className="space-y-2">
               <Label className="text-xs font-medium">Open screen</Label>
-              <Select
-                value={openScreen}
-                onValueChange={(val) => {
-                  setOpenScreen(val);
-                  if (val === "home") {
-                    setSelectedProduct(null);
-                    setSelectedCategory(null);
-                    setCustomLink("");
-                  }
-                }}
-              >
+              <Select value={openScreen} onValueChange={(val) => setOpenScreen(val)}>
                 <SelectTrigger className="h-9">
                   <SelectValue>{SCREEN_LABELS[openScreen]}</SelectValue>
                 </SelectTrigger>
@@ -365,24 +390,13 @@ export function SendStep2Message({
 
       {/* Navigation Buttons for Step 2 */}
       <div className="flex items-center justify-between pt-2">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => setStep(1)}
-          className="h-9"
-        >
+        <Button type="button" variant="outline" onClick={() => setStep(1)} className="h-9">
           Back
         </Button>
-        <Button
-          type="button"
-          onClick={() => setStep(3)}
-          disabled={!canNext2}
-          className="h-9"
-        >
+        <Button type="button" onClick={() => setStep(3)} disabled={!canNext2} className="h-9">
           Next
         </Button>
       </div>
     </div>
   );
 }
-

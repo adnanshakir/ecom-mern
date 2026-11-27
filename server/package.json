@@ -4,13 +4,42 @@
   "description": "",
   "main": "server.js",
   "type": "module",
+  "packageManager": "pnpm@12.23.0",
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "prepare": "node -e \"if(process.env.NODE_ENV!=='production'){require('child_process').execSync('husky',{stdio:'inherit'})}\"",
-    "format": "prettier --write .",
-    "format:check": "prettier --check .",
-    "test": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --runInBand"
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "lint:files": "eslint --fix",
+    "test": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --runInBand",
+    "test:notifications": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --runInBand src/tests/notifications"
+  },
+  "jest": {
+    "coverageProvider": "v8",
+    "collectCoverageFrom": [
+      "src/services/notificationService.js",
+      "src/services/notificationTriggers.js",
+      "src/services/notificationAudience.js",
+      "src/controllers/adminNotificationController.js"
+    ],
+    "coverageThreshold": {
+      "src/services/notificationService.js": {
+        "lines": 90,
+        "branches": 85
+      },
+      "src/services/notificationTriggers.js": {
+        "lines": 90,
+        "branches": 85
+      },
+      "src/services/notificationAudience.js": {
+        "lines": 90,
+        "branches": 85
+      },
+      "src/controllers/adminNotificationController.js": {
+        "lines": 90,
+        "branches": 85
+      }
+    }
   },
   "keywords": [],
   "dependencies": {
@@ -40,26 +69,9 @@
     "cross-env": "^10.1.0",
     "eslint": "^10.8.0",
     "globals": "^17.8.0",
-    "husky": "^9.1.7",
     "jest": "^30.4.2",
-    "lint-staged": "^17.2.0",
     "mongodb-memory-server": "^11.2.0",
     "nodemon": "^3.1.14",
-    "prettier": "^3.9.6",
     "supertest": "^7.2.2"
-  },
-  "allowScripts": {
-    "bcrypt@6.0.0": true,
-    "mongodb-memory-server@11.2.0": true,
-    "unrs-resolver@1.12.2": true
-  },
-  "lint-staged": {
-    "*.js": [
-      "eslint --fix",
-      "prettier --write"
-    ],
-    "*.{json,md}": [
-      "prettier --write"
-    ]
   }
 }

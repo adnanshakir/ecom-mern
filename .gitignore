@@ -1,1 +1,6 @@
 .agents
+node_modules/
+.eslintcache
+.env
+.prettierignore
+.prettierrc

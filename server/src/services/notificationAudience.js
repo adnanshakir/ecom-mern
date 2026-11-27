@@ -8,7 +8,7 @@ import ProductVariant from "../models/admin/productVariant.model.js";
 import DeviceToken from "../models/DeviceToken.js";
 
 const getEffectivePrice = (v) =>
-  typeof v?.salePrice === "number" && v.salePrice > 0 ? v.salePrice : v?.price ?? 0;
+  typeof v?.salePrice === "number" && v.salePrice > 0 ? v.salePrice : (v?.price ?? 0);
 
 async function findCustomerUsersByAuthIds(authIds) {
   const db = mongoose.connection.db;
@@ -85,7 +85,7 @@ function mapCartsToAudience(carts, activeMap) {
         image: v.images?.[0]?.url || prod.images?.[0]?.url || "",
         price: getEffectivePrice(v),
       },
-      count: validItems.length,
+      count: new Set(validItems.map((it) => String(it.variant.product._id))).size,
     });
   }
   return out;
@@ -172,7 +172,7 @@ async function resolveWishlistAudience() {
         image,
         price,
       },
-      count: validProducts.length,
+      count: new Set(validProducts.map((p) => String(p._id))).size,
     });
   }
   return out;
@@ -271,9 +271,7 @@ async function resolveCategoryAudience(categoryId) {
     const key = String(w.customer);
     const meta = activeMap.get(key);
     if (!meta) continue;
-    const matched = (w.products || []).filter(
-      (p) => p && categoryIdSet.has(String(p.category))
-    );
+    const matched = (w.products || []).filter((p) => p && categoryIdSet.has(String(p.category)));
     if (!matched.length) continue;
 
     const latest = matched[matched.length - 1];

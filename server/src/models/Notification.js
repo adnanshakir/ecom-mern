@@ -22,6 +22,8 @@ const notificationSchema = new mongoose.Schema(
     channel: { type: String, enum: ["web", "app", "both"], default: "both" },
     link: { type: String, default: "" }, // e.g. /product/some-slug or /sale
     imageUrl: { type: String, trim: true, default: "" }, // optional, https only
+    autoImage: { type: Boolean, default: true },
+    dispatchLock: { type: Boolean, default: false, select: false },
     status: {
       type: String,
       enum: ["scheduled", "sending", "sent", "failed", "cancelled"],

@@ -9,6 +9,8 @@ export function NotificationPreviewCard({
   previewTitle,
   previewBody,
   showPersonalImagePlaceholder = false,
+  autoImageLoading = false,
+  showNoAutoPhoto = false,
 }) {
   return (
     <Card className="overflow-hidden">
@@ -22,6 +24,14 @@ export function NotificationPreviewCard({
             {showPersonalImagePlaceholder ? (
               <div className="relative flex aspect-[2/1] w-full items-center justify-center rounded-lg bg-muted text-xs text-muted-foreground">
                 Customer&apos;s product
+              </div>
+            ) : autoImageLoading ? (
+              <div className="relative flex aspect-[2/1] w-full items-center justify-center rounded-lg bg-muted text-xs text-muted-foreground">
+                Loading photo...
+              </div>
+            ) : showNoAutoPhoto ? (
+              <div className="relative flex aspect-[2/1] w-full items-center justify-center rounded-lg bg-muted text-xs text-muted-foreground">
+                No photo found for this screen
               </div>
             ) : (
               imageUrl &&
@@ -82,4 +92,3 @@ export function NotificationPreviewCard({
     </Card>
   );
 }
-

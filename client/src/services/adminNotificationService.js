@@ -4,7 +4,11 @@ export const getNotifications = (params) => api.get("/admin/notifications", { pa
 
 export const createNotification = (payload) => api.post("/admin/notifications", payload);
 
-export const getAudienceCount = (payload) => api.post("/admin/notifications/audience-count", payload);
+export const getAudienceCount = (payload) =>
+  api.post("/admin/notifications/audience-count", payload);
+
+export const resolveNotificationImage = (payload) =>
+  api.post("/admin/notifications/resolve-image", payload);
 
 export const cancelNotification = (id) => api.patch(`/admin/notifications/${id}/cancel`);
 
@@ -14,7 +18,7 @@ export const getTemplates = (params) => api.get("/admin/notification-templates",
 
 export const createTemplate = (payload) => api.post("/admin/notification-templates", payload);
 
-export const updateTemplate = (id, payload) => api.patch(`/admin/notification-templates/${id}`, payload);
+export const updateTemplate = (id, payload) =>
+  api.patch(`/admin/notification-templates/${id}`, payload);
 
 export const deleteTemplate = (id) => api.delete(`/admin/notification-templates/${id}`);
-

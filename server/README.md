@@ -1,4 +1,4 @@
-﻿# Fibio E-Commerce Backend API Documentation
+# Fibio E-Commerce Backend API Documentation
 
 A high-performance, enterprise-grade Node.js & Express REST API built with MongoDB (Mongoose) powering the Fibio wholesale e-commerce storefront and admin dashboard.
 
@@ -416,7 +416,7 @@ The test suite uses **Jest** + **Supertest** + **mongodb-memory-server** for fas
 Run tests:
 
 ```bash
-npm test
+pnpm test
 ```
 
 ---
@@ -590,7 +590,7 @@ git clone https://github.com/your-repo/fibio-backend.git
 cd fibio-backend/server
 
 # Install dependencies
-npm install
+pnpm install
 ```
 
 ### 3. Environment File Configuration
@@ -638,10 +638,10 @@ Default credentials: `admin@example.com` / `123456!` — **change these immediat
 
 ```bash
 # Run in development mode with nodemon
-npm run dev
+pnpm dev
 
 # Run in production mode
-npm start
+pnpm start
 ```
 
 The REST API will be live at `http://localhost:5000`. Health check endpoint: `http://localhost:5000/health`.
@@ -649,7 +649,7 @@ The REST API will be live at `http://localhost:5000`. Health check endpoint: `ht
 ### 6. Running Tests
 
 ```bash
-npm test
+pnpm test
 ```
 
 Tests run against an isolated in-memory MongoDB instance — no external database required.
@@ -658,10 +658,10 @@ Tests run against an isolated in-memory MongoDB instance — no external databas
 
 ```bash
 # Format all files with Prettier
-npm run format
+pnpm format
 
 # Check formatting without writing
-npm run format:check
+pnpm format:check
 ```
 
 Husky + lint-staged run ESLint and Prettier automatically on every `git commit`.
