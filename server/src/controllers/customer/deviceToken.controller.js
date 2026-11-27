@@ -35,7 +35,10 @@ export const unregisterDevice = async (req, res) => {
     }
     const trimmedToken = token.trim();
 
-    await DeviceToken.deleteOne({ token: trimmedToken });
+    const customerId = req.customerProfile?._id || req.customer?._id || req.customer?.id;
+    if (!customerId) return res.status(401).json({ message: "Customer profile not found" });
+
+    await DeviceToken.deleteOne({ token: trimmedToken, customer: customerId });
     res.status(200).json({ success: true, message: "Device token deleted" });
   } catch (e) {
     res.status(500).json({ message: e.message });

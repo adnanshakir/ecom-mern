@@ -2,10 +2,11 @@
   "name": "ecom-mern",
   "version": "1.0.0",
   "private": true,
+  "packageManager": "pnpm@12.23.0",
   "scripts": {
     "prepare": "node -e \"if(process.env.NODE_ENV!=='production'){require('child_process').execSync('husky',{stdio:'inherit'})}\"",
-    "lint": "npm --prefix client run lint && npm --prefix server run lint",
-    "lint:fix": "npm --prefix client run lint:fix && npm --prefix server run lint:fix",
+    "lint": "pnpm --dir client run lint && pnpm --dir server run lint",
+    "lint:fix": "pnpm --dir client run lint:fix && pnpm --dir server run lint:fix",
     "format": "prettier . --write",
     "format:check": "prettier . --check"
   },

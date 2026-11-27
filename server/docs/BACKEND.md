@@ -678,7 +678,7 @@ Products can be imported in **Shopify-compatible CSV format**:
 Tests use **Jest** with **Supertest** and **mongodb-memory-server** (in-memory MongoDB):
 
 ```bash
-npm test
+pnpm test
 ```
 
 Test files in `src/tests/`: auth, brand, category, product, productVariant, inventory, user, dashboard, cart, wishlist, review, customerAuth, customerProfile, image, csvImport, cors.

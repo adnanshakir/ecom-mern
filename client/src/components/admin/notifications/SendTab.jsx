@@ -29,8 +29,14 @@ export function SendTab({ notif }) {
     startEditText,
     showMore,
     setShowMore,
+    imageMode,
+    setImageMode,
     imageUrl,
     setImageUrl,
+    autoImageLoading,
+    hideImageControl,
+    previewImageUrl,
+    showNoAutoPhoto,
     openScreen,
     setOpenScreen,
     customLink,
@@ -95,7 +101,11 @@ export function SendTab({ notif }) {
             onClick={() => setStep(1)}
             className={cn(
               "cursor-pointer transition-colors",
-              step === 1 ? "text-primary font-semibold" : step > 1 ? "text-foreground hover:text-primary" : ""
+              step === 1
+                ? "text-primary font-semibold"
+                : step > 1
+                  ? "text-foreground hover:text-primary"
+                  : ""
             )}
           >
             1 Template
@@ -115,9 +125,7 @@ export function SendTab({ notif }) {
             2 Message
           </button>
           <span className="text-muted-foreground/40">›</span>
-          <span className={cn(step === 3 ? "text-primary font-semibold" : "")}>
-            3 Send
-          </span>
+          <span className={cn(step === 3 ? "text-primary font-semibold" : "")}>3 Send</span>
         </div>
 
         {/* STEP 1: PICK A TEMPLATE */}
@@ -149,9 +157,12 @@ export function SendTab({ notif }) {
             isBodyTooLong={isBodyTooLong}
             showMore={showMore}
             setShowMore={setShowMore}
+            imageMode={imageMode}
+            setImageMode={setImageMode}
             imageUrl={imageUrl}
             setImageUrl={setImageUrl}
             isImageUrlInvalid={isImageUrlInvalid}
+            hideImageControl={hideImageControl}
             openScreen={openScreen}
             setOpenScreen={setOpenScreen}
             productSearch={productSearch}
@@ -216,17 +227,16 @@ export function SendTab({ notif }) {
       <div className="w-full lg:sticky lg:top-6">
         <NotificationPreviewCard
           channel={channel}
-          imageUrl={imageUrl}
+          imageUrl={previewImageUrl}
           previewTitle={previewTitle}
           previewBody={previewBody}
           showPersonalImagePlaceholder={
-            audienceType === "segment" &&
-            PERSONAL_IMAGE_SEGMENTS.includes(segment) &&
-            personalImage
+            audienceType === "segment" && PERSONAL_IMAGE_SEGMENTS.includes(segment) && personalImage
           }
+          autoImageLoading={autoImageLoading}
+          showNoAutoPhoto={showNoAutoPhoto}
         />
       </div>
     </div>
   );
 }
-

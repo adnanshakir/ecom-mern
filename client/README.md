@@ -177,7 +177,9 @@ client/
 ## ⚡ Deep Technical Features
 
 ### 1. Next.js App Router & Hybrid Server/Client Components
+
 The frontend separates static SEO content from interactive client views:
+
 - **Server Components** (`product/[slug]/page.js`, category pages): Fetch data on the server during request time, generating complete HTML for search engines and ensuring zero client-side fetching delay on entry.
 - **Client Components** (`ProductCatalogFilterView.jsx`, `ProductInteractiveSection.jsx`): Manage interactive UI states (price sliders, active category selection, variant selection, cart additions).
 - **SEO Automation**: `robots.js` generates a `robots.txt` at runtime disallowing `/admin`, `/cart`, `/account`, `/orders`, `/wishlist`, etc. `sitemap.js` generates a `sitemap.xml` from the live product & category catalog.
@@ -185,7 +187,9 @@ The frontend separates static SEO content from interactive client views:
 ---
 
 ### 2. Redux Toolkit State Management
+
 Global client state is partitioned into clean feature slices:
+
 - **`authSlice`**: Admin user `accessToken`, role state (`super_admin`, `admin`, `staff`), and permission logic. The token lives in memory only (never localStorage) for XSS safety.
 - **`customerAuthSlice`**: Storefront customer authentication session, `accessToken`, and address book.
 - **`cartSlice`**: Synchronizes local cart items with backend `/api/customers/cart` API.
@@ -195,6 +199,7 @@ Global client state is partitioned into clean feature slices:
 ---
 
 ### 3. Authenticated Axios Factory (`createAuthApi.js`)
+
 A shared factory function used to create both the admin and customer Axios instances:
 
 ```
@@ -214,7 +219,9 @@ This ensures only one refresh call is in-flight at a time, even when multiple re
 ---
 
 ### 4. Dual-Mode Image Uploader Studio (`ImageUploader.jsx`)
+
 Reusable image management component used across Categories, Products, Variants, and Banners:
+
 - **Dual Source Modes**:
   - **Upload (ImageKit)**: Uploads files directly to ImageKit CDN returning cloud `{ url, fileId }`.
   - **Direct URL**: Allows pasting external public image URLs.
@@ -224,7 +231,9 @@ Reusable image management component used across Categories, Products, Variants, 
 ---
 
 ### 5. Storefront Banner Customization Suite (`/admin/banners`)
+
 Admin interface for controlling the 4 main storefront homepage banners (`hero`, `secondary-left`, `secondary-right`, `bottom`):
+
 - **Hero Banner**: Allows custom image selection, title, subtitle, CTA link, gradient overlay toggle, and custom overlay color selection (presets + custom color picker).
 - **Secondary Category Banners**: Supports image upload, text fields, gradient overlay toggle, and **Content Placement (Left vs Right)**.
 - **Bottom Banner**: Controls bulk quotation promo images and copy.
@@ -233,7 +242,9 @@ Admin interface for controlling the 4 main storefront homepage banners (`hero`, 
 ---
 
 ### 6. Catalog Filtering & Infinite Scroll Engine
+
 Catalog page (`ProductCatalogFilterView.jsx`) features:
+
 - **Category Tree Navigation**: Expandable parent-child category tree with active item indicators.
 - **Price Range Filter**: Min/Max price inputs and range slider with quick preset buttons (Under ₹500, ₹500 - ₹2,000, etc.).
 - **Automatic Infinite Scroll**: Uses `IntersectionObserver` sentinel to automatically fetch subsequent product batches as the user scrolls down.
@@ -242,6 +253,7 @@ Catalog page (`ProductCatalogFilterView.jsx`) features:
 ---
 
 ### 7. Route Protection Middleware
+
 `src/middleware.js` runs as a Next.js Edge Middleware and guards all `/admin/*` routes:
 
 ```
@@ -259,7 +271,9 @@ Incoming request to /admin/*
 ---
 
 ### 8. Form Validation with React Hook Form & Zod
+
 All forms across both admin and storefront use **React Hook Form** with **Zod** resolvers:
+
 - Schemas live in `src/schemas/` mirroring the server's validation structure.
 - `@hookform/resolvers/zod` connects schema to form, providing real-time per-field error messages.
 - `isomorphic-dompurify` sanitizes any rich-text/HTML content before submission.
@@ -272,36 +286,39 @@ All forms across both admin and storefront use **React Hook Form** with **Zod** 
 ### App Pages (`src/app/`)
 
 #### Storefront Pages (`src/app/(storefront)/`)
-| Route | Description |
-| :--- | :--- |
-| `/` | Homepage (HeroBanner, CategoryBanners, PopularProducts, BottomBanner) |
-| `/category/[slug]` | Category product listing |
-| `/product/[slug]` | Product detail with variant selection & add-to-cart |
-| `/cart` | Shopping cart |
-| `/wishlist` | Saved items |
-| `/search` | Search results |
-| `/login` | Customer login & registration |
-| `/account/profile` | Customer profile editing |
-| `/account/orders` | Customer order history |
-| `/contact-us` | Contact/enquiry form |
+
+| Route              | Description                                                           |
+| :----------------- | :-------------------------------------------------------------------- |
+| `/`                | Homepage (HeroBanner, CategoryBanners, PopularProducts, BottomBanner) |
+| `/category/[slug]` | Category product listing                                              |
+| `/product/[slug]`  | Product detail with variant selection & add-to-cart                   |
+| `/cart`            | Shopping cart                                                         |
+| `/wishlist`        | Saved items                                                           |
+| `/search`          | Search results                                                        |
+| `/login`           | Customer login & registration                                         |
+| `/account/profile` | Customer profile editing                                              |
+| `/account/orders`  | Customer order history                                                |
+| `/contact-us`      | Contact/enquiry form                                                  |
 
 #### Admin Pages (`src/app/admin/(admin)/`)
-| Route | Description |
-| :--- | :--- |
-| `/admin/dashboard` | Analytics overview & stock alerts |
-| `/admin/products` | Product list, create, edit, bulk operations |
-| `/admin/categories` | Category tree management |
-| `/admin/brands` | Brand management |
-| `/admin/banners` | Homepage banner configuration |
-| `/admin/inventory` | Manual stock adjustments & movement log |
-| `/admin/csv-import` | Bulk product CSV import |
-| `/admin/users` | Staff & admin user management |
+
+| Route               | Description                                 |
+| :------------------ | :------------------------------------------ |
+| `/admin/dashboard`  | Analytics overview & stock alerts           |
+| `/admin/products`   | Product list, create, edit, bulk operations |
+| `/admin/categories` | Category tree management                    |
+| `/admin/brands`     | Brand management                            |
+| `/admin/banners`    | Homepage banner configuration               |
+| `/admin/inventory`  | Manual stock adjustments & movement log     |
+| `/admin/csv-import` | Bulk product CSV import                     |
+| `/admin/users`      | Staff & admin user management               |
 
 ---
 
 ### Storefront Modular Components (`src/components/storefront/`)
 
 #### Layout (`src/components/storefront/layout/`)
+
 - **`Navbar.jsx`**: Main header featuring logo, real-time search bar with autocomplete suggestions dropdown, customer auth menu, cart drawer badge, and mobile drawer.
 - **`CategoryNav.jsx`**: Sticky horizontal category navigation bar.
 - **`Footer.jsx`**: Multi-column site footer with link sections, payment badges, and newsletter signup.
@@ -309,6 +326,7 @@ All forms across both admin and storefront use **React Hook Form** with **Zod** 
 - **`ScrollToTop.jsx`**: Floating scroll-to-top button appearing on long pages.
 
 #### Home (`src/components/storefront/home/`)
+
 - **`HeroBanner.jsx`**: Dynamic top hero banner with background overlay and value proposition badges.
 - **`CategoryBanners.jsx`**: Left and right promotional category cards supporting left/right text alignment.
 - **`BottomBanner.jsx`**: Bulk order quote callout section.
@@ -317,6 +335,7 @@ All forms across both admin and storefront use **React Hook Form** with **Zod** 
 - **`TrustFeaturesBar.jsx`**: Trust badges (Wholesale Prices, Bulk Discounts, Fast Delivery).
 
 #### Products (`src/components/storefront/products/`)
+
 - **`ProductCard.jsx`**: Reusable product card with image hover zoom, price tag, variant badge, and quick add/wishlist buttons.
 - **`ProductGrid.jsx`**: Responsive grid container for product cards.
 - **`ProductCatalogFilterView.jsx`**: Main catalog browsing layout with sidebar filters, sorting, and infinite scroll.
@@ -327,15 +346,18 @@ All forms across both admin and storefront use **React Hook Form** with **Zod** 
 - **`RelatedProducts.jsx`**: Recommended products from the same category.
 
 #### Account (`src/components/storefront/account/`)
+
 - **`ProfileView.jsx`**: Customer profile editing form — personal info, password change, and address book management (add/edit/delete addresses).
 - **`OrdersView.jsx`**: Customer order history listing with order status display.
 
 #### Contact (`src/components/storefront/contact/`)
+
 - **`ContactUsView.jsx`**: Full contact/enquiry page with form validation, business details, and map/location info.
 
 ---
 
 ### Admin Dashboard Components (`src/components/admin/`)
+
 - **`products/ImageUploader.jsx`**: Dual-mode ImageKit / Direct URL image uploader with single/multi previews.
 - **`products/ProductDetailsFields.jsx`**: Main product form inputs (name, category, brand, description, status, featured toggle).
 - **`products/VariantRowFields.jsx`**: Form inputs for individual SKU variants (SKU, price, sale price, stock, options, images).
@@ -345,47 +367,50 @@ All forms across both admin and storefront use **React Hook Form** with **Zod** 
 ### Custom Hooks (`src/hooks/`)
 
 #### Admin Hooks (`src/hooks/admin/`)
+
 Encapsulate all admin data-fetching, form logic, and mutation operations. Each hook owns its loading, error, and data state, exposing clean APIs to page components:
 
-| Hook | Purpose |
-| :--- | :--- |
-| `useAuth` | Admin token refresh & logout |
-| `useProducts` | Paginated products list + bulk operations |
-| `useProduct` | Single product data fetching |
-| `useCreateProduct` | Create product form state & submission |
-| `useEditProduct` | Edit product form state & submission |
-| `useProductVariants` | Variant list CRUD per product |
-| `useProductPicker` | Product search picker modal |
-| `useCategories` | Category tree CRUD |
-| `useBrands` | Brand CRUD |
-| `useUsers` | Staff/admin user CRUD |
-| `useCreateUser` | New user form |
-| `useCsvImport` | CSV file upload & import job polling |
-| `useRecentImports` | Recent import jobs list |
-| `useInventoryMovements` | Inventory ledger data |
-| `useUrlFilters` | Syncs filter state to URL query params |
+| Hook                    | Purpose                                   |
+| :---------------------- | :---------------------------------------- |
+| `useAuth`               | Admin token refresh & logout              |
+| `useProducts`           | Paginated products list + bulk operations |
+| `useProduct`            | Single product data fetching              |
+| `useCreateProduct`      | Create product form state & submission    |
+| `useEditProduct`        | Edit product form state & submission      |
+| `useProductVariants`    | Variant list CRUD per product             |
+| `useProductPicker`      | Product search picker modal               |
+| `useCategories`         | Category tree CRUD                        |
+| `useBrands`             | Brand CRUD                                |
+| `useUsers`              | Staff/admin user CRUD                     |
+| `useCreateUser`         | New user form                             |
+| `useCsvImport`          | CSV file upload & import job polling      |
+| `useRecentImports`      | Recent import jobs list                   |
+| `useInventoryMovements` | Inventory ledger data                     |
+| `useUrlFilters`         | Syncs filter state to URL query params    |
 
 #### Storefront Hooks (`src/hooks/storefront/`)
 
-| Hook | Purpose |
-| :--- | :--- |
-| `usePublicProducts` | Paginated product catalog with filters |
-| `usePublicProduct` | Single product detail |
-| `usePublicCategories` | Public category tree |
-| `usePublicBanners` | Storefront banner configs |
-| `useSearchSuggestions` | Debounced autocomplete search |
-| `useCart` | Cart sync, add, update, remove |
-| `useWishlist` | Wishlist sync & toggle |
-| `useVariantSelector` | Variant option selection & live stock |
-| `useRecentlyViewed` | Recently viewed products (localStorage) |
+| Hook                   | Purpose                                 |
+| :--------------------- | :-------------------------------------- |
+| `usePublicProducts`    | Paginated product catalog with filters  |
+| `usePublicProduct`     | Single product detail                   |
+| `usePublicCategories`  | Public category tree                    |
+| `usePublicBanners`     | Storefront banner configs               |
+| `useSearchSuggestions` | Debounced autocomplete search           |
+| `useCart`              | Cart sync, add, update, remove          |
+| `useWishlist`          | Wishlist sync & toggle                  |
+| `useVariantSelector`   | Variant option selection & live stock   |
+| `useRecentlyViewed`    | Recently viewed products (localStorage) |
 
 #### Shared Hooks
+
 - **`useConfirm`**: Reusable confirmation dialog hook — returns a `confirm()` promise that resolves on user acceptance.
 - **`useDebouncedValue`**: Generic debounce hook used by search inputs.
 
 ---
 
 ### Redux State Slices (`src/redux/slices/`)
+
 - **`authSlice`**: Admin access token (in-memory), user info, role, loading state.
 - **`customerAuthSlice`**: Customer access token (in-memory), customer info, addresses.
 - **`cartSlice`**: Cart items array, total count, syncing state.
@@ -398,9 +423,11 @@ Encapsulate all admin data-fetching, form logic, and mutation operations. Each h
 ### API Service Layer (`src/services/`)
 
 #### Authenticated Axios Factory
+
 **`createAuthApi.js`** — creates Axios instances with automatic token injection and `401 → silent refresh → retry` interceptor. Both admin and customer Axios instances (`services/admin/axios.js` and `services/storefront/customerAxios.js`) are built using this factory.
 
 #### Admin Services (`src/services/admin/`)
+
 - **`axios.js`**: Admin Axios instance with `baseURL: "/api"`.
 - **`auth.js`**: `login`, `logout`, `refresh`, `getMe`.
 - **`products.js`**: `getProducts`, `createProduct`, `updateProduct`, `deleteProduct`, `bulkUpdateProducts`, `bulkDeleteProducts`.
@@ -414,6 +441,7 @@ Encapsulate all admin data-fetching, form logic, and mutation operations. Each h
 - **`users.js`**: Staff/admin user CRUD.
 
 #### Storefront Services (`src/services/storefront/`)
+
 - **`customerAxios.js`**: Customer Axios instance with auto token refresh.
 - **`publicCatalog.js`**: `getPublicProducts`, `getPublicProductBySlug`, `getPublicCategories`, `getSearchSuggestions`.
 - **`publicBanners.js`**: `getPublicBanners`.
@@ -422,14 +450,17 @@ Encapsulate all admin data-fetching, form logic, and mutation operations. Each h
 - **`wishlist.js`**: `getWishlist`, `toggleWishlist`.
 
 #### Public Services
+
 - **`publicApi.js`**: Unauthenticated Axios instance for public endpoints.
 
 ---
 
 ### Validation Schemas (`src/schemas/`)
+
 Zod schemas used with React Hook Form across all forms:
 
 #### Admin Schemas (`src/schemas/admin/`)
+
 - **`auth.js`**: Admin login form schema.
 - **`product.js`**: Product create/edit and variant schemas.
 - **`category.js`**: Category create/edit.
@@ -454,51 +485,60 @@ Zod schemas used with React Hook Form across all forms:
 ## 🚀 Environment Setup & Quick Start
 
 ### Prerequisites
+
 - **Node.js**: `v18.0.0` or higher
 - **Backend API**: Running instance of the `server/` (default `http://localhost:5000`)
 
 ### 1. Installation
+
 ```bash
 cd client
-npm install
+pnpm install
 ```
 
 ### 2. Environment File Configuration
+
 Create a `.env.local` file in the `client/` root directory:
+
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:5000/api
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
 ```
 
 ### 3. Run Development Server
+
 ```bash
-npm run dev
+pnpm dev
 ```
+
 The client application will start at `http://localhost:3000`.
 
 ---
 
 ### 4. Build for Production
+
 ```bash
 # Generate optimized production bundle
-npm run build
+pnpm build
 
 # Start production server
-npm start
+pnpm start
 ```
 
 ### 5. Linting & Formatting
+
 ```bash
 # Run ESLint
-npm run lint
+pnpm lint
 
 # Auto-fix ESLint issues
-npm run lint:fix
+pnpm lint:fix
 
 # Format with Prettier
-npm run format
+pnpm format
 
 # Check formatting without writing
-npm run format:check
+pnpm format:check
 ```
+
 Husky + lint-staged run Prettier and ESLint automatically on every `git commit`.
